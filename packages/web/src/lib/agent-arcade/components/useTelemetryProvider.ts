@@ -18,7 +18,19 @@ export function useTelemetryProvider(opts: ProviderOpts) {
   const socketRef = useRef<Socket | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const hasHydratedRef = useRef(false)
+  const wasDisconnectedRef = useRef(false)
+  const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const store = useAgentArcadeStore()
+
+  // Periodic stale agent cleanup (every 30s, removes agents idle for > 60s)
+  useEffect(() => {
+    cleanupIntervalRef.current = setInterval(() => {
+      store.cleanupStaleAgents(60000)
+    }, 30000)
+    return () => {
+      if (cleanupIntervalRef.current) clearInterval(cleanupIntervalRef.current)
+    }
+  }, [store])
 
   useEffect(() => {
     if (!opts.autoConnect || !opts.url || !opts.sessionId) return
@@ -30,6 +42,12 @@ export function useTelemetryProvider(opts: ProviderOpts) {
 
     const hydrateFromSnapshot = (data: { agents: Agent[]; events: TelemetryEvent[] }) => {
       const local = useAgentArcadeStore.getState()
+
+      // Reset state if reconnecting after a disconnect (fresh start)
+      if (wasDisconnectedRef.current) {
+        store.reset()
+        wasDisconnectedRef.current = false
+      }
 
       // Initial snapshot hydrates the full scene. Later snapshots are treated as
       // recovery-only to avoid frame reset/flicker when the gateway publishes
@@ -72,6 +90,8 @@ export function useTelemetryProvider(opts: ProviderOpts) {
 
       socket.on('disconnect', () => {
         store.setStatus('disconnected')
+        wasDisconnectedRef.current = true
+        hasHydratedRef.current = false
       })
 
       socket.on('connect_error', () => {
