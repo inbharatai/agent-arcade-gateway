@@ -4,6 +4,26 @@ A production-ready telemetry gateway and visualizer for multi-agent workflows.
 
 Agent Arcade turns raw agent events into a real-time operational view: who is active, what tools are being used, where work is blocked, and how sessions progress over time.
 
+## Visual Hero
+
+[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/inbharatai/agent-arcade-gateway)
+[![Open Issues](https://img.shields.io/github/issues/inbharatai/agent-arcade-gateway)](https://github.com/inbharatai/agent-arcade-gateway/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/inbharatai/agent-arcade-gateway)](https://github.com/inbharatai/agent-arcade-gateway/pulls)
+[![Security](https://img.shields.io/badge/Security-Policy-blue)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/SECURITY.md)
+[![Contributing](https://img.shields.io/badge/Contributing-Guide-success)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/CONTRIBUTING.md)
+
+[![Agent Arcade Screenshot](docs/assets/hero-screenshot.png)](https://github.com/inbharatai/agent-arcade-gateway)
+
+[![Agent Arcade Demo GIF](docs/assets/hero-demo.gif)](https://github.com/inbharatai/agent-arcade-gateway)
+
+Live links:
+
+- Repository: https://github.com/inbharatai/agent-arcade-gateway
+- Issues: https://github.com/inbharatai/agent-arcade-gateway/issues
+- Pull requests: https://github.com/inbharatai/agent-arcade-gateway/pulls
+- Actions: https://github.com/inbharatai/agent-arcade-gateway/actions
+- Security tab: https://github.com/inbharatai/agent-arcade-gateway/security
+
 ## Why Agent Arcade
 
 Most agent systems expose logs. Agent Arcade exposes behavior.
@@ -106,6 +126,76 @@ npm run dev:web
 
 ```powershell
 node scripts/load/human-like-sim.mjs
+```
+
+## SDK Quickstart Examples
+
+### Node.js SDK
+
+```ts
+import { AgentArcade } from '@agent-arcade/sdk-node'
+
+const arcade = new AgentArcade({
+  url: 'http://localhost:8787',
+  sessionId: 'node-demo-session',
+})
+
+const agentId = arcade.spawn({ name: 'Node Coder', role: 'assistant' })
+arcade.state(agentId, 'thinking', { label: 'Planning implementation', progress: 0.2 })
+arcade.tool(agentId, 'read_file', { path: 'src/index.ts', label: 'Reading source' })
+arcade.state(agentId, 'writing', { label: 'Writing feature', progress: 0.7 })
+arcade.message(agentId, 'Implementation complete, running checks')
+arcade.end(agentId, { reason: 'Task complete', success: true })
+arcade.disconnect()
+```
+
+### Browser SDK (ES Module)
+
+```ts
+import { AgentArcadeBrowser } from '@agent-arcade/sdk-browser'
+
+const arcade = AgentArcadeBrowser.init({
+  url: 'http://localhost:8787',
+  sessionId: 'browser-demo-session',
+})
+
+const agentId = arcade.spawn({ name: 'Frontend Agent', role: 'assistant' })
+arcade.state(agentId, 'thinking', { label: 'Preparing UI update', progress: 0.3 })
+arcade.tool(agentId, 'open_browser', { label: 'Previewing page' })
+arcade.state(agentId, 'writing', { label: 'Updating components', progress: 0.85 })
+arcade.end(agentId, { reason: 'UI changes applied', success: true })
+```
+
+### Browser SDK (Script Tag)
+
+```html
+<script src="https://unpkg.com/@agent-arcade/sdk-browser/dist/index.js"></script>
+<script>
+  const arcade = window.AgentArcade.init({
+    url: 'http://localhost:8787',
+    sessionId: 'browser-global-demo',
+  })
+
+  const id = arcade.spawn({ name: 'Browser Bot' })
+  arcade.state(id, 'thinking', { label: 'Analyzing page' })
+  arcade.end(id, { reason: 'Done' })
+</script>
+```
+
+### Python SDK
+
+```python
+from agent_arcade import AgentArcade
+
+arcade = AgentArcade(url="http://localhost:8787", session_id="python-demo-session")
+
+agent_id = arcade.spawn(name="Python Planner", role="assistant")
+arcade.state(agent_id, "thinking", label="Reviewing requirements", progress=0.25)
+arcade.tool(agent_id, "read_file", path="docs/spec.md", label="Reading spec")
+arcade.state(agent_id, "writing", label="Drafting solution", progress=0.8)
+arcade.message(agent_id, "Submitting final plan")
+arcade.end(agent_id, reason="Completed", success=True)
+arcade.disconnect()
 ```
 
 ## Protocol Snapshot
