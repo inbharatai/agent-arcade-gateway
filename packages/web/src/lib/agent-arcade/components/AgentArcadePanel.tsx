@@ -595,6 +595,13 @@ function formatFeedEvent(ev: TelemetryEvent, agentName: string): string {
 }
 
 const AgentDetails = React.memo(function AgentDetails({ agent }: { agent: Agent }) {
+  // Use state for time to avoid calling Date.now() during render
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   const vis = STATE_VISUALS[agent.state]
   const trust = agent.trustScore ?? 0.5
   const trustColor = trust >= 0.8 ? '#10b981' : trust >= 0.5 ? '#f59e0b' : '#ef4444'
@@ -604,7 +611,7 @@ const AgentDetails = React.memo(function AgentDetails({ agent }: { agent: Agent 
       ? `${Math.round(agent.activeTime / 1000)}s`
       : `${Math.round(agent.activeTime / 60000)}m`
     : '—'
-  const alive = Date.now() - agent.spawnedAt
+  const alive = now - agent.spawnedAt
   const aliveLabel = alive < 60000 ? `${Math.round(alive / 1000)}s` : `${Math.round(alive / 60000)}m`
 
   return (
@@ -871,7 +878,14 @@ const MILESTONE_ICONS: Record<string, string> = {
 }
 
 const NarrativePanel = React.memo(function NarrativePanel({ narrative, agents }: { narrative: SessionNarrative; agents: Agent[] }) {
-  const elapsed = Date.now() - narrative.startedAt
+  // Use state for time to avoid calling Date.now() during render
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const elapsed = now - narrative.startedAt
   const elapsedLabel = elapsed < 60000 ? `${Math.round(elapsed / 1000)}s` : `${Math.round(elapsed / 60000)}m`
 
   const totalErrors = agents.reduce((sum, a) => sum + a.errorCount, 0)
@@ -911,7 +925,7 @@ const NarrativePanel = React.memo(function NarrativePanel({ narrative, agents }:
       {narrative.milestones.length > 0 ? (
         <div className="space-y-1 border-l-2 border-border pl-2 ml-1">
           {narrative.milestones.slice(-15).map((m, i) => {
-            const age = Date.now() - m.ts
+            const age = now - m.ts
             const timeLabel = age < 60000 ? `${Math.round(age / 1000)}s ago` : `${Math.round(age / 60000)}m ago`
             return (
               <div key={i} className="flex items-start gap-1.5">
