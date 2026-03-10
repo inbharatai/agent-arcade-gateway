@@ -1,52 +1,104 @@
+<div align="center">
+
+<img src="docs/assets/logo.png" alt="Agent Arcade Logo" width="120" />
+
 # Agent Arcade
 
-A production-ready telemetry gateway and visualizer for multi-agent workflows.
+### Real-time AI Agent Telemetry Gateway & Visualizer
 
-Agent Arcade turns raw agent events into a real-time operational view: who is active, what tools are being used, where work is blocked, and how sessions progress over time.
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 
-## Visual Hero
+**Watch your AI agents work in real-time with pixel-art flair**
 
-[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/inbharatai/agent-arcade-gateway)
-[![Open Issues](https://img.shields.io/github/issues/inbharatai/agent-arcade-gateway)](https://github.com/inbharatai/agent-arcade-gateway/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/inbharatai/agent-arcade-gateway)](https://github.com/inbharatai/agent-arcade-gateway/pulls)
-[![Security](https://img.shields.io/badge/Security-Policy-blue)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/SECURITY.md)
-[![Contributing](https://img.shields.io/badge/Contributing-Guide-success)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/CONTRIBUTING.md)
+<br />
 
-[![Agent Arcade Screenshot](docs/assets/hero-screenshot.png)](https://github.com/inbharatai/agent-arcade-gateway)
+![Agent Arcade - Retro Theme](docs/assets/arcade-retro-theme.png)
 
-[![Agent Arcade Demo GIF](docs/assets/hero-demo.gif)](https://github.com/inbharatai/agent-arcade-gateway)
+*14 agents collaborating in the Retro Arcade theme with live timeline tracking*
 
-Live links:
+</div>
 
-- Repository: https://github.com/inbharatai/agent-arcade-gateway
-- Issues: https://github.com/inbharatai/agent-arcade-gateway/issues
-- Pull requests: https://github.com/inbharatai/agent-arcade-gateway/pulls
-- Actions: https://github.com/inbharatai/agent-arcade-gateway/actions
-- Security tab: https://github.com/inbharatai/agent-arcade-gateway/security
+---
 
-## Why Agent Arcade
+<div align="center">
 
-Most agent systems expose logs. Agent Arcade exposes behavior.
+[![Open Issues](https://img.shields.io/github/issues/inbharatai/agent-arcade-gateway?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/inbharatai/agent-arcade-gateway?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/pulls)
+[![CI](https://img.shields.io/github/actions/workflow/status/inbharatai/agent-arcade-gateway/ci.yml?style=flat-square&label=CI)](https://github.com/inbharatai/agent-arcade-gateway/actions)
+[![Security](https://img.shields.io/badge/Security-Policy-blue?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/SECURITY.md)
+[![Contributing](https://img.shields.io/badge/Contributing-Guide-success?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/blob/main/CONTRIBUTING.md)
 
-- Live, session-scoped visualization of agent activity
-- Multi-transport ingestion: HTTP, WebSocket, SSE
-- Replay support for timeline reconstruction
-- Security controls for auth, signing, CORS, and rate limits
-- SDKs for Node.js, browser, and Python
-- Deployable with Docker Compose or PM2
+</div>
 
-## What You Get
+---
 
-- Gateway service (`packages/gateway`) on port `8787`
-- Next.js visualizer (`packages/web`) on port `3000`
-- SDKs:
-  - `packages/sdk-node`
-  - `packages/sdk-browser`
-  - `packages/sdk-python`
-- Load and simulation scripts in `scripts/load`
-- Deployment assets (`docker-compose.yml`, Dockerfiles, nginx/caddy examples)
+## 🖼️ Screenshots
 
-## Architecture
+<table>
+<tr>
+<td width="50%">
+
+### 🎯 Timeline View
+Real-time activity timeline showing agent states, tool usage, and event counts per agent.
+
+![Timeline View](docs/assets/arcade-timeline.png)
+
+</td>
+<td width="50%">
+
+### 🔍 Agent Details
+Deep-dive into individual agent metrics: trust score, uptime, current action, and message history.
+
+![Agent Details](docs/assets/arcade-agent-details.png)
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🌈 8 Beautiful Themes
+Choose from Office, War Room, **Retro Arcade**, Cyber Lab, Campus Ops, Deep Space, Dungeon, or Hacker Bunker.
+
+![Full Interface](docs/assets/arcade-full-interface.png)
+
+</td>
+</tr>
+</table>
+
+---
+
+## ✨ What is Agent Arcade?
+
+Agent Arcade turns raw agent events into a **real-time operational view**: who is active, what tools are being used, where work is blocked, and how sessions progress over time.
+
+> **Most agent systems expose logs. Agent Arcade exposes behavior.**
+
+### Key Features
+
+- 🎬 **Live Visualization** — Session-scoped real-time agent activity
+- 🔌 **Multi-Transport** — HTTP, WebSocket, SSE ingestion
+- ⏪ **Replay Support** — Timeline reconstruction for debugging
+- 🔐 **Security Controls** — JWT auth, signing, CORS, rate limits
+- 📦 **Multi-SDK** — Node.js, Browser, Python clients
+- 🐳 **Production-Ready** — Docker Compose or PM2 deployment
+
+## 📦 What You Get
+
+| Component | Description | Port |
+|-----------|-------------|------|
+| **Gateway** | Telemetry ingestion server | `8787` |
+| **Web Visualizer** | Next.js real-time dashboard | `3000` |
+| **SDK - Node.js** | `packages/sdk-node` | — |
+| **SDK - Browser** | `packages/sdk-browser` | — |
+| **SDK - Python** | `packages/sdk-python` | — |
+| **Load Scripts** | `scripts/load/*` | — |
+| **Deployment** | Docker Compose, PM2, nginx/caddy | — |
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
@@ -58,21 +110,25 @@ flowchart LR
   R[(Redis optional)] <--> G
 ```
 
-## Feature Highlights
+---
 
-### Real-time state model
+## 🎯 Feature Highlights
 
-Track agents through states like:
+### Real-time State Model
 
-- `idle`
-- `thinking`
-- `reading`
-- `writing`
-- `tool`
-- `waiting`
-- `done`
+Track agents through visual states:
 
-### Session telemetry
+| State | Description |
+|-------|-------------|
+| 🟡 `idle` | Waiting for work |
+| 🤔 `thinking` | Processing / reasoning |
+| 📖 `reading` | Reading files / context |
+| ✍️ `writing` | Writing code / content |
+| 🔧 `tool` | Executing a tool |
+| ⏳ `waiting` | Waiting for external input |
+| ✅ `done` | Task completed |
+
+### Session Telemetry
 
 - Per-session stream and replay
 - Agent-level progress and labels
@@ -80,137 +136,151 @@ Track agents through states like:
 - Parent-child links between agents
 - Position events for layout and scene rendering
 
-### Operational safeguards
+### Operational Safeguards
 
-- JWT-based auth in secure mode
-- Session signatures for trusted client session access
-- CORS allowlist controls
-- Flood and payload-size controls
-- Health and readiness endpoints
+- 🔐 JWT-based auth in secure mode
+- ✍️ Session signatures for trusted client session access
+- 🌐 CORS allowlist controls
+- 🚦 Flood and payload-size controls
+- 💚 Health and readiness endpoints
 
-## Quick Start (Local)
+---
 
-### Requirements
+## 🚀 Quick Start
 
-- Node.js 20+
-- npm 10+
-- Bun 1.3+
+### Prerequisites
 
-### 1) Install dependencies
+| Requirement | Version |
+|-------------|---------|
+| Node.js | 20+ |
+| npm | 10+ |
+| Bun | 1.3+ |
 
-```powershell
-# from repo root
+### 1️⃣ Install Dependencies
+
+```bash
 npm ci
-cd packages/gateway; bun install
-cd ../web; npm ci
-cd ../..
+cd packages/gateway && bun install
+cd ../web && npm ci
 ```
 
-### 2) Run gateway and web
+### 2️⃣ Start Services
 
-```powershell
-# terminal 1
+```bash
+# Terminal 1 - Gateway
 npm run dev:gateway
 
-# terminal 2
+# Terminal 2 - Web Dashboard
 npm run dev:web
 ```
 
-### 3) Open app
+**Or run everything in one command:**
 
-- Web: `http://localhost:3000`
-- Gateway health: `http://localhost:8787/health`
-- Gateway capabilities: `http://localhost:8787/v1/capabilities`
-
-### 4) Generate realistic activity
-
-```powershell
-node scripts/load/human-like-sim.mjs
-```
-
-## How to Use the Tool (Agent Arcade)
-
-Agent Arcade is a telemetry layer. It does not replace your app logic. It observes your AI workflow by receiving events from your code.
-
-### Usage model
-
-1. Run Agent Arcade gateway + web dashboard.
-2. Keep your client project running as usual.
-3. Emit telemetry events from the client project using SDK or HTTP.
-4. Open the dashboard and watch live agent behavior by session.
-
-### What to emit and when
-
-- `agent.spawn`: when an AI worker/assistant starts.
-- `agent.state`: when status changes (`thinking`, `reading`, `writing`, `tool`, `waiting`, `done`).
-- `agent.tool`: when a tool is called (`read_file`, `run_command`, `grep_search`, etc.).
-- `agent.message`: for useful user-facing status updates.
-- `agent.end`: when task is completed or failed.
-
-### Session strategy
-
-Use a separate `sessionId` per scope so activity stays clean and filterable:
-
-- One client app: `client-app-prod`
-- One environment: `staging-run`
-- One job/request: `ticket-1234`
-
-### Example user flow (Cursor + external codebase)
-
-1. Start Arcade (`npm run dev:gateway` and `npm run dev:web`).
-2. In your external project, add the Node/Python/browser emitter.
-3. Wrap key AI steps with telemetry calls.
-4. Keep coding normally in Cursor.
-5. Open `http://localhost:3000` to watch exactly what the AI is doing in that project.
-
-### Zero-wiring mode (auto-pick emitter workspace)
-
-Use these commands if you do not want to reconnect/wire every time:
-
-```powershell
-# One-time: pin target client workspace
-npm run emitter:auto -- "C:/path/to/client-project"
-
-# Next runs: auto-reuse last pinned workspace
-npm run emitter:auto
-```
-
-Or start the full Arcade stack + auto-emitter in one command:
-
-```powershell
-# One-time with explicit workspace
-npm run dev:arcade -- "C:/path/to/client-project"
-
-# Next runs reuse saved workspace
+```bash
 npm run dev:arcade
 ```
 
-The last workspace is stored in `.arcade-emitter.json` at repo root.
+### 3️⃣ Open Dashboard
 
-### Auto-heal mode (restart services if down)
+| Endpoint | URL |
+|----------|-----|
+| **Web Dashboard** | http://localhost:3000 |
+| **Gateway Health** | http://localhost:8787/health |
+| **Capabilities** | http://localhost:8787/v1/capabilities |
 
-Run a tiny watchdog that checks gateway/web health and restarts missing services:
+### 4️⃣ Generate Test Activity
 
-```powershell
+```bash
+node scripts/load/human-like-sim.mjs
+```
+
+---
+
+## 📖 Usage Guide
+
+Agent Arcade is a **telemetry layer**. It observes your AI workflow by receiving events from your code — it doesn't replace your app logic.
+
+### How It Works
+
+```
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│  Your AI App    │───▶│   Gateway    │───▶│  Web Dashboard  │
+│  (emits events) │    │   :8787      │    │     :3000       │
+└─────────────────┘    └──────────────┘    └─────────────────┘
+```
+
+### Event Types
+
+| Event | When to Emit |
+|-------|--------------|
+| `agent.spawn` | AI worker/assistant starts |
+| `agent.state` | Status changes (thinking, reading, writing, tool, waiting, done) |
+| `agent.tool` | Tool called (read_file, run_command, grep_search, etc.) |
+| `agent.message` | User-facing status updates |
+| `agent.end` | Task completed or failed |
+
+### Session Strategy
+
+Use a separate `sessionId` per scope for clean filtering:
+
+| Scope | Example sessionId |
+|-------|-------------------|
+| App | `client-app-prod` |
+| Environment | `staging-run` |
+| Job/Request | `ticket-1234` |
+
+### Example Workflow (Cursor + External Codebase)
+
+1. Start Arcade: `npm run dev:arcade`
+2. Add Node/Python/browser emitter to your project
+3. Wrap key AI steps with telemetry calls
+4. Code normally in Cursor
+5. Watch real-time activity at http://localhost:3000
+
+### Zero-Wiring Mode
+
+Auto-detect workspace without manual reconnection:
+
+```bash
+# Pin target workspace (one-time)
+npm run emitter:auto -- "C:/path/to/client-project"
+
+# Auto-reuse last pinned workspace
+npm run emitter:auto
+```
+
+Or start everything with one command:
+
+```bash
+npm run dev:arcade -- "C:/path/to/client-project"
+```
+
+Config stored in `.arcade-emitter.json`.
+
+### Auto-Heal Mode
+
+Watchdog that auto-restarts crashed services:
+
+```bash
 npm run dev:watchdog
 ```
 
-Optional environment variables:
+| Env Variable | Default |
+|--------------|---------|
+| `ARCADE_WATCHDOG_INTERVAL_MS` | `10000` |
+| `ARCADE_WATCHDOG_COOLDOWN_MS` | `30000` |
+| `ARCADE_GATEWAY_HEALTH_URL` | `http://localhost:8787/health` |
+| `ARCADE_WEB_HEALTH_URL` | `http://localhost:3000/api/health` |
 
-- `ARCADE_WATCHDOG_INTERVAL_MS` (default `10000`)
-- `ARCADE_WATCHDOG_COOLDOWN_MS` (default `30000`)
-- `ARCADE_GATEWAY_HEALTH_URL` (default `http://localhost:8787/health`)
-- `ARCADE_WEB_HEALTH_URL` (default `http://localhost:3000/api/health`)
+> ⚠️ **Note:** Agent Arcade only shows what is emitted. If your app doesn't send events, the dashboard cannot infer hidden AI actions.
 
-### Important note
+---
 
-Agent Arcade only shows what is emitted. If your app does not send events, the dashboard cannot infer hidden internal AI actions.
+## 💻 SDK Examples
 
-## SDK Quickstart Examples
+### Node.js
 
-### Node.js SDK
-
-```ts
+```typescript
 import { AgentArcade } from '@agent-arcade/sdk-node'
 
 const arcade = new AgentArcade({
@@ -227,9 +297,9 @@ arcade.end(agentId, { reason: 'Task complete', success: true })
 arcade.disconnect()
 ```
 
-### Browser SDK (ES Module)
+### Browser (ES Module)
 
-```ts
+```typescript
 import { AgentArcadeBrowser } from '@agent-arcade/sdk-browser'
 
 const arcade = AgentArcadeBrowser.init({
@@ -244,7 +314,7 @@ arcade.state(agentId, 'writing', { label: 'Updating components', progress: 0.85 
 arcade.end(agentId, { reason: 'UI changes applied', success: true })
 ```
 
-### Browser SDK (Script Tag)
+### Browser (Script Tag)
 
 ```html
 <script src="https://unpkg.com/@agent-arcade/sdk-browser/dist/index.js"></script>
@@ -260,7 +330,7 @@ arcade.end(agentId, { reason: 'UI changes applied', success: true })
 </script>
 ```
 
-### Python SDK
+### Python
 
 ```python
 from agent_arcade import AgentArcade
@@ -276,9 +346,11 @@ arcade.end(agent_id, reason="Completed", success=True)
 arcade.disconnect()
 ```
 
-## Protocol Snapshot
+---
 
-Example ingest payload:
+## 📡 Protocol Reference
+
+### Ingest Payload Example
 
 ```json
 {
@@ -296,118 +368,134 @@ Example ingest payload:
 }
 ```
 
-Supported event families include:
+### Supported Events
 
-- `agent.spawn`
-- `agent.state`
-- `agent.tool`
-- `agent.message`
-- `agent.link`
-- `agent.position`
-- `agent.end`
-- `session.start`
-- `session.end`
+| Event | Description |
+|-------|-------------|
+| `agent.spawn` | New agent created |
+| `agent.state` | State transition |
+| `agent.tool` | Tool invocation |
+| `agent.message` | Status message |
+| `agent.link` | Parent-child relationship |
+| `agent.position` | Layout position |
+| `agent.end` | Agent completed |
+| `session.start` | Session begins |
+| `session.end` | Session ends |
 
-## API Endpoints
+---
 
-Gateway (`:8787`):
+## 🔌 API Endpoints
 
-- `POST /v1/ingest`
-- `GET /v1/stream?sessionId=...`
-- `GET /v1/connect?sessionId=...`
-- `GET /v1/capabilities`
-- `GET /health`
-- `GET /ready`
+### Gateway (`:8787`)
 
-Web (`:3000`):
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/ingest` | Ingest telemetry events |
+| GET | `/v1/stream?sessionId=...` | SSE event stream |
+| GET | `/v1/connect?sessionId=...` | WebSocket connect |
+| GET | `/v1/capabilities` | Server capabilities |
+| GET | `/health` | Health check |
+| GET | `/ready` | Readiness probe |
 
-- `GET /api/health`
-- `POST /api/session-token`
+### Web (`:3000`)
 
-## Quality Gates
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Dashboard health |
+| POST | `/api/session-token` | Generate session token |
 
-Run full local checks:
+---
 
-```powershell
+## ✅ Quality Gates
+
+```bash
 npm run ci
 ```
 
-This includes linting, typecheck, build, and automated tests for gateway/web/SDK packages.
+Runs: lint → typecheck → build → test
 
-## Production Deployment
+---
+
+## 🐳 Production Deployment
 
 ### Docker Compose
 
-```powershell
+```bash
 docker compose up -d --build
 ```
 
-Set real secrets before exposing publicly:
+**Required Secrets:**
 
-- `JWT_SECRET`
-- `SESSION_SIGNING_SECRET`
-- `GATEWAY_JWT_SECRET`
+| Variable | Purpose |
+|----------|---------|
+| `JWT_SECRET` | Auth token signing |
+| `SESSION_SIGNING_SECRET` | Session validation |
+| `GATEWAY_JWT_SECRET` | Gateway auth (must match web) |
 
-Important:
+### PM2 (VM/Bare Metal)
 
-- `GATEWAY_JWT_SECRET` in web must match gateway JWT secret.
-- Keep session signing secret consistent between issuer and validator.
-
-### PM2 (VM/Bare metal)
-
-```powershell
+```bash
 npm run build:web
 npm run prod:start
 npm run prod:status
 ```
 
-## Security Posture
+---
 
-Recommended for production:
+## 🔐 Security
 
-- Enable auth (`REQUIRE_AUTH=1`)
-- Use strong random secrets (32+ bytes)
-- Restrict `ALLOWED_ORIGINS`
-- Enable HTTPS at edge proxy (nginx/caddy)
-- Keep branch protection enabled on `main`
-- Require pull requests and approvals for changes
+| Recommendation | Setting |
+|----------------|---------|
+| Enable auth | `REQUIRE_AUTH=1` |
+| Strong secrets | 32+ bytes random |
+| CORS restriction | Set `ALLOWED_ORIGINS` |
+| HTTPS | Configure at edge proxy |
+| Branch protection | Enabled on `main` |
 
-See:
+📄 See also: [SECURITY.md](SECURITY.md) • [Deployment Runbook](docs/DEPLOYMENT_RUNBOOK.md) • [Prod Readiness](docs/PROD_READINESS_GAPS.md)
 
-- `SECURITY.md`
-- `docs/DEPLOYMENT_RUNBOOK.md`
-- `docs/PROD_READINESS_GAPS.md`
+---
 
-## Monorepo Map
+## 🗂️ Monorepo Map
 
-- `packages/gateway`: Bun HTTP + Socket.IO + SSE telemetry gateway
-- `packages/web`: Next.js visualizer and UI runtime
-- `packages/sdk-node`: Node client SDK
-- `packages/sdk-browser`: Browser client SDK
-- `packages/sdk-python`: Python package scaffold
-- `scripts/load`: load generation and simulation tools
-- `docs`: runbooks, readiness notes, and integration guides
+```
+agent-arcade-gateway/
+├── packages/
+│   ├── gateway/        # Bun HTTP + Socket.IO + SSE telemetry gateway
+│   ├── web/            # Next.js visualizer and UI runtime
+│   ├── sdk-node/       # Node.js client SDK
+│   ├── sdk-browser/    # Browser client SDK
+│   └── sdk-python/     # Python SDK
+├── scripts/load/       # Load generation and simulation tools
+├── docs/               # Runbooks, readiness notes, integration guides
+└── docker-compose.yml  # Production deployment
+```
 
-## Contributing
+---
 
-Contributions are welcome.
+## 🤝 Contributing
 
-1. Fork repository
-2. Create feature branch
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
 3. Run `npm run ci`
-4. Open pull request with clear scope and test evidence
+4. Open a pull request
 
-See `CONTRIBUTING.md` for full guidance.
+📄 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
-## License
+---
 
-MIT License. See `LICENSE`.
+## 📄 License
 
-## Maintainer Note
+MIT License — see [LICENSE](LICENSE)
 
-This repository is designed for operator trust:
+---
 
-- clear event contracts
-- observable runtime behavior
-- explicit security controls
-- deployment paths that work from local to production
+<div align="center">
+
+**Built with ❤️ for AI agent observability**
+
+[Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) • [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) • [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
+
+</div>
