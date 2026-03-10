@@ -507,6 +507,8 @@ export function AgentArcadePanel({
             width={width}
             height={height}
             audioCallbacks={audioCallbacks}
+            connectionStatus={status}
+            errorMessage={store.error}
           />
         </div>
 
