@@ -187,6 +187,21 @@ npm run dev:arcade
 
 The last workspace is stored in `.arcade-emitter.json` at repo root.
 
+### Auto-heal mode (restart services if down)
+
+Run a tiny watchdog that checks gateway/web health and restarts missing services:
+
+```powershell
+npm run dev:watchdog
+```
+
+Optional environment variables:
+
+- `ARCADE_WATCHDOG_INTERVAL_MS` (default `10000`)
+- `ARCADE_WATCHDOG_COOLDOWN_MS` (default `30000`)
+- `ARCADE_GATEWAY_HEALTH_URL` (default `http://localhost:8787/health`)
+- `ARCADE_WEB_HEALTH_URL` (default `http://localhost:3000/api/health`)
+
 ### Important note
 
 Agent Arcade only shows what is emitted. If your app does not send events, the dashboard cannot infer hidden internal AI actions.
