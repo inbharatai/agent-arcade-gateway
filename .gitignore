@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.bun/
+.bun/install/cache/**
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Test / Coverage
+coverage/
+.nyc_output/
+
+# Deployment
+.vercel/
+.turbo/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

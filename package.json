@@ -1,0 +1,31 @@
+{
+  "name": "agent-arcade",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Agent Arcade — Universal Agent Visualization Platform",
+  "scripts": {
+    "dev:gateway": "cd packages/gateway && bun run src/index.ts",
+    "dev:web": "cd packages/web && npm run dev",
+    "dev": "echo \"Run dev:gateway and dev:web in separate terminals\"",
+    "build:web": "cd packages/web && npm run build",
+    "example:node": "npx tsx examples/node-agent.ts",
+    "example:python": "python examples/python-agent.py",
+    "copilot:live": "npx tsx examples/copilot-live.ts",
+    "prod:start": "pm2 start ecosystem.config.js",
+    "prod:stop": "pm2 stop all",
+    "prod:restart": "pm2 restart all",
+    "prod:status": "pm2 status",
+    "prod:logs": "pm2 logs",
+    "prod:monit": "pm2 monit",
+    "loadtest:gateway": "node scripts/load/run-k6-gateway.mjs",
+    "loadtest:gateway:quick": "node scripts/load/run-k6-gateway.mjs --quick",
+    "sim:human": "node scripts/load/human-like-sim.mjs",
+    "test:gateway": "cd packages/gateway && bun test test/",
+    "test:store": "cd packages/web && bun test test/",
+    "test:sdk": "cd packages/sdk-node && bun test test/ && cd ../sdk-browser && bun test test/",
+    "test": "bun test packages/gateway/test/ && cd packages/web && bun test test/ && cd ../sdk-node && bun test test/ && cd ../sdk-browser && bun test test/",
+    "lint:web": "cd packages/web && npx eslint src --max-warnings 0",
+    "typecheck:web": "cd packages/web && npx tsc --noEmit",
+    "ci": "npm run lint:web && npm run typecheck:web && npm run build:web && npm run test"
+  }
+}

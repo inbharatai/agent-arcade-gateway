@@ -1,0 +1,78 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: 8787
+      ALLOWED_ORIGINS: "http://localhost:3000"
+      REDIS_URL: "redis://redis:6379"
+      REQUIRE_AUTH: 1
+      JWT_SECRET: "change-me-in-production"
+      SESSION_SIGNING_SECRET: "change-me-in-production"
+      RATE_MAX_IP: 120
+      RATE_MAX_TOKEN: 240
+      RATE_WINDOW_MS: 1000
+      SESSION_FLOOD_MAX: 600
+      MAX_EVENTS: 500
+      RETENTION_SECONDS: 86400
+      ENABLE_REDIS_ADAPTER: 1
+      NODE_ENV: production
+      ENABLE_INTERNAL_ROUTES: 1
+      API_KEYS: ""
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8787"
+      GATEWAY_JWT_SECRET: "change-me-in-production"
+      SESSION_SIGNING_SECRET: "change-me-in-production"
+      NEXT_PUBLIC_DEFAULT_SESSION_ID: "copilot-live"
+      NEXT_PUBLIC_LOCK_SESSION_ID: 1
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  redis_data:

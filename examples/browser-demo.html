@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Arcade — Browser SDK Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #eee; padding: 2rem; }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    .controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    button { background: #333; color: #eee; border: 1px solid #555; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.85rem; }
+    button:hover { background: #444; }
+    button.primary { background: #2563eb; border-color: #3b82f6; }
+    .log { font-family: monospace; font-size: 0.75rem; background: #111; border: 1px solid #333; border-radius: 6px; padding: 1rem; max-height: 300px; overflow-y: auto; }
+    .log div { margin-bottom: 2px; white-space: pre-wrap; }
+    iframe { width: 100%; height: 500px; border: 1px solid #333; border-radius: 6px; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Agent Arcade — Browser SDK Demo</h1>
+
+  <div class="controls">
+    <button class="primary" onclick="spawnAgents()">Spawn 3 Agents</button>
+    <button onclick="simulateWork()">Simulate Work</button>
+    <button onclick="sendTool()">Send Tool Event</button>
+    <button onclick="sendMessage()">Send Message</button>
+    <button onclick="endAll()">End All Agents</button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <h2 style="margin-top:1.5rem;font-size:1.2rem;">Embedded via iframe</h2>
+  <iframe src="http://localhost:3000/embed?session=browser-demo&dark=1"></iframe>
+
+  <!-- Load Socket.IO client + browser SDK -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script type="module">
+    const GATEWAY = 'http://localhost:8787'
+    const SESSION = 'browser-demo'
+    const log = document.getElementById('log')
+
+    function appendLog(msg) {
+      const d = document.createElement('div')
+      d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`
+      log.prepend(d)
+    }
+
+    // Connect via Socket.IO directly (Browser SDK pattern)
+    const socket = io(GATEWAY, { transports: ['websocket'] })
+    socket.on('connect', () => {
+      appendLog('Connected to gateway')
+      socket.emit('subscribe', { sessionId: SESSION })
+    })
+    socket.on('telemetry', (ev) => appendLog(`Event: ${ev.type} agent=${ev.agentId}`))
+    socket.on('disconnect', () => appendLog('Disconnected'))
+
+    let counter = 0
+    function emit(agentId, type, payload) {
+      const ev = { v: 1, ts: Date.now(), sessionId: SESSION, agentId, type, payload }
+      socket.emit('event', ev)
+      appendLog(`Sent: ${type} -> ${agentId}`)
+    }
+
+    const agents = ['bot_alpha', 'bot_beta', 'bot_gamma']
+
+    window.spawnAgents = () => {
+      const names = ['Alpha', 'Beta', 'Gamma']
+      const roles = ['developer', 'researcher', 'writer']
+      agents.forEach((id, i) => {
+        setTimeout(() => emit(id, 'agent.spawn', { name: names[i], role: roles[i] }), i * 300)
+      })
+    }
+
+    window.simulateWork = () => {
+      const states = ['reading', 'thinking', 'writing', 'tool', 'done']
+      let step = 0
+      const iv = setInterval(() => {
+        const agent = agents[step % agents.length]
+        const state = states[Math.min(step, states.length - 1)]
+        emit(agent, 'agent.state', { state, label: `${state}…`, progress: (step + 1) / (states.length * agents.length) })
+        step++
+        if (step >= states.length * agents.length) clearInterval(iv)
+      }, 600)
+    }
+
+    window.sendTool = () => {
+      emit(agents[0], 'agent.tool', { name: 'read_file', path: '/src/index.ts' })
+    }
+
+    window.sendMessage = () => {
+      emit(agents[0], 'agent.message', { text: `Message #${++counter} from browser` })
+    }
+
+    window.endAll = () => {
+      agents.forEach((id, i) => {
+        setTimeout(() => emit(id, 'agent.end', { reason: 'Demo complete', success: true }), i * 200)
+      })
+    }
+  </script>
+</body>
+</html>

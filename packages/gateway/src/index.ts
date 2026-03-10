@@ -1,0 +1,1318 @@
+import { createHmac, randomUUID } from 'crypto'
+import { createServer, IncomingMessage, ServerResponse } from 'http'
+import { SignJWT, jwtVerify } from 'jose'
+import { createAdapter } from '@socket.io/redis-adapter'
+import { createClient, RedisClientType } from 'redis'
+import { Server, Socket } from 'socket.io'
+
+interface SSEClient {
+  id: string
+  sessionId: string
+  res: ServerResponse
+}
+
+// ---- Config -----------------------------------------------------------------
+const PORT = Number.parseInt(process.env.PORT || '8787', 10)
+const NODE_ENV = process.env.NODE_ENV || 'development'
+const PROTOCOL_VERSION = 1
+const REDIS_URL = process.env.REDIS_URL || ''
+const REQUIRE_AUTH = process.env.REQUIRE_AUTH
+  ? process.env.REQUIRE_AUTH === '1'
+  : NODE_ENV === 'production'
+const JWT_SECRET = process.env.JWT_SECRET || ''
+const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || JWT_SECRET
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || (NODE_ENV === 'production' ? '' : '*'))
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+const MAX_EVENTS = Number.parseInt(process.env.MAX_EVENTS || '500', 10)
+const REPLAY_COUNT = Number.parseInt(process.env.REPLAY_COUNT || '50', 10)
+const RETENTION_SECONDS = Number.parseInt(process.env.RETENTION_SECONDS || '86400', 10)
+
+const RATE_WINDOW_MS = Number.parseInt(process.env.RATE_WINDOW_MS || '1000', 10)
+const RATE_MAX_IP = Number.parseInt(process.env.RATE_MAX_IP || '120', 10)
+const RATE_MAX_TOKEN = Number.parseInt(process.env.RATE_MAX_TOKEN || '240', 10)
+const SESSION_FLOOD_MAX = Number.parseInt(process.env.SESSION_FLOOD_MAX || '600', 10)
+
+const ENABLE_INTERNAL_ROUTES = (process.env.ENABLE_INTERNAL_ROUTES || (NODE_ENV === 'production' ? '0' : '1')) === '1'
+const ENABLE_REDIS_ADAPTER = (process.env.ENABLE_REDIS_ADAPTER || '1') === '1'
+
+// API_KEYS format: keyId:keyValue:role:sessionRegex,keyId2:keyValue2:role:sessionRegex
+const API_KEYS = (process.env.API_KEYS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+// ---- Types ------------------------------------------------------------------
+type EventType =
+  | 'agent.spawn' | 'agent.state' | 'agent.tool' | 'agent.message'
+  | 'agent.link' | 'agent.position' | 'agent.end'
+  | 'session.start' | 'session.end'
+
+type AgentState =
+  | 'idle' | 'thinking' | 'reading' | 'writing' | 'tool'
+  | 'waiting' | 'moving' | 'error' | 'done'
+
+const VALID_STATES: AgentState[] = [
+  'idle', 'thinking', 'reading', 'writing', 'tool',
+  'waiting', 'moving', 'error', 'done',
+]
+
+const VALID_EVENT_TYPES: EventType[] = [
+  'agent.spawn', 'agent.state', 'agent.tool', 'agent.message',
+  'agent.link', 'agent.position', 'agent.end', 'session.start', 'session.end',
+]
+
+interface TelemetryEvent {
+  v: number
+  ts: number
+  sessionId: string
+  agentId: string
+  type: EventType
+  payload: Record<string, unknown>
+}
+
+interface AgentRecord {
+  id: string
+  sessionId: string
+  name: string
+  role: string
+  state: AgentState
+  label: string
+  progress: number
+  tools: string[]
+  messages: string[]
+  lastUpdate: number
+  parentAgentId?: string
+  position?: { x: number; y: number }
+  aiModel?: string
+  task?: string
+}
+
+interface SessionMeta {
+  id: string
+  createdAt: number
+  lastActivity: number
+  owner: string
+}
+
+interface ClientConnectMeta {
+  clientName?: string
+  aiModel?: string
+  agentMap?: Record<string, string>
+  taskMap?: Record<string, string>
+}
+
+type PrincipalRole = 'viewer' | 'publisher' | 'admin'
+interface Principal {
+  sub: string
+  role: PrincipalRole
+  tokenId: string
+  sessions: string[]
+  tokenType: 'jwt' | 'apiKey' | 'none'
+  exp?: number
+}
+
+// ---- Logging ----------------------------------------------------------------
+function log(level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    service: 'agent-arcade-gateway',
+    msg,
+    ...data,
+  }
+  console.log(JSON.stringify(entry))
+}
+
+// ---- Metrics ----------------------------------------------------------------
+const metrics = {
+  startedAt: Date.now(),
+  httpRequests: 0,
+  wsConnections: 0,
+  wsConnectedNow: 0,
+  sseConnectedNow: 0,
+  authFailures: 0,
+  publishAccepted: 0,
+  publishRejected: 0,
+  droppedEvents: 0,
+  sessionsTouched: 0,
+}
+
+const sseClients = new Map<string, Set<SSEClient>>()
+
+function broadcastSseEvent(sessionId: string, ev: TelemetryEvent) {
+  const clients = sseClients.get(sessionId)
+  if (!clients) return
+  const payload = `event: event\ndata: ${JSON.stringify(ev)}\n\n`
+  for (const c of clients) {
+    try {
+      c.res.write(payload)
+    } catch {
+      clients.delete(c)
+    }
+  }
+}
+
+function metricsPrometheus(): string {
+  const uptime = Math.floor((Date.now() - metrics.startedAt) / 1000)
+  return [
+    '# HELP agent_arcade_uptime_seconds Gateway uptime in seconds',
+    '# TYPE agent_arcade_uptime_seconds gauge',
+    `agent_arcade_uptime_seconds ${uptime}`,
+    '# HELP agent_arcade_http_requests_total HTTP requests total',
+    '# TYPE agent_arcade_http_requests_total counter',
+    `agent_arcade_http_requests_total ${metrics.httpRequests}`,
+    '# HELP agent_arcade_ws_connections_total WebSocket connection count total',
+    '# TYPE agent_arcade_ws_connections_total counter',
+    `agent_arcade_ws_connections_total ${metrics.wsConnections}`,
+    '# HELP agent_arcade_ws_connected_now Current WebSocket connections',
+    '# TYPE agent_arcade_ws_connected_now gauge',
+    `agent_arcade_ws_connected_now ${metrics.wsConnectedNow}`,
+    '# HELP agent_arcade_sse_connected_now Current SSE connections',
+    '# TYPE agent_arcade_sse_connected_now gauge',
+    `agent_arcade_sse_connected_now ${metrics.sseConnectedNow}`,
+    '# HELP agent_arcade_auth_failures_total Authentication failures total',
+    '# TYPE agent_arcade_auth_failures_total counter',
+    `agent_arcade_auth_failures_total ${metrics.authFailures}`,
+    '# HELP agent_arcade_publish_accepted_total Accepted published events',
+    '# TYPE agent_arcade_publish_accepted_total counter',
+    `agent_arcade_publish_accepted_total ${metrics.publishAccepted}`,
+    '# HELP agent_arcade_publish_rejected_total Rejected publish attempts',
+    '# TYPE agent_arcade_publish_rejected_total counter',
+    `agent_arcade_publish_rejected_total ${metrics.publishRejected}`,
+    '# HELP agent_arcade_dropped_events_total Dropped events',
+    '# TYPE agent_arcade_dropped_events_total counter',
+    `agent_arcade_dropped_events_total ${metrics.droppedEvents}`,
+  ].join('\n') + '\n'
+}
+
+// ---- CORS / network helpers -------------------------------------------------
+function getClientIp(req: IncomingMessage): string {
+  return req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()
+    || req.socket.remoteAddress
+    || 'unknown'
+}
+
+function originAllowed(origin?: string): boolean {
+  if (!origin) return true
+  if (ALLOWED_ORIGINS.length === 0) return NODE_ENV !== 'production'
+  if (ALLOWED_ORIGINS.includes('*')) return true
+  for (const rule of ALLOWED_ORIGINS) {
+    if (rule === origin) return true
+    if (rule.startsWith('regex:')) {
+      try {
+        const re: RegExp = new RegExp(rule.slice('regex:'.length))
+        if (re.test(origin)) return true
+      } catch {
+        // Ignore invalid regex rules.
+      }
+    }
+  }
+  return false
+}
+
+function setCors(req: IncomingMessage, res: ServerResponse): boolean {
+  const origin = req.headers.origin?.toString()
+  if (origin && !originAllowed(origin)) {
+    return false
+  }
+
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Signature')
+  return true
+}
+
+function setSecurityHeaders(res: ServerResponse) {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  if (NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+}
+
+function jsonRes(res: ServerResponse, status: number, body: unknown) {
+  setSecurityHeaders(res)
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify(body))
+}
+
+function textRes(res: ServerResponse, status: number, body: string, contentType = 'text/plain; charset=utf-8') {
+  setSecurityHeaders(res)
+  res.writeHead(status, { 'Content-Type': contentType })
+  res.end(body)
+}
+
+async function readBody(req: IncomingMessage): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length
+      if (size > 1_000_000) {
+        req.destroy()
+        reject(new Error('body too large'))
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()))
+    req.on('error', reject)
+  })
+}
+
+function validSessionId(sessionId: string): boolean {
+  return /^[a-zA-Z0-9:_\-.]{3,120}$/.test(sessionId)
+}
+
+function isValidRole(role: string): role is PrincipalRole {
+  return role === 'viewer' || role === 'publisher' || role === 'admin'
+}
+
+function canAccessSession(principal: Principal, sessionId: string): boolean {
+  if (principal.role === 'admin') return true
+  if (principal.sessions.includes('*')) return true
+  return principal.sessions.some(pattern => {
+    if (pattern === sessionId) return true
+    try {
+      // Anchor the regex so partial matches don't grant unintended access
+      const anchored = pattern.startsWith('^') ? pattern : `^(?:${pattern})$`
+      return new RegExp(anchored).test(sessionId)
+    } catch {
+      return false
+    }
+  })
+}
+
+function requiresRole(principal: Principal, allowed: PrincipalRole[]): boolean {
+  return allowed.includes(principal.role) || principal.role === 'admin'
+}
+
+function checkSessionSignature(sessionId: string, signature?: string): boolean {
+  if (!SESSION_SIGNING_SECRET) {
+    if (NODE_ENV === 'production') console.warn('[security] SESSION_SIGNING_SECRET not set — signature check bypassed in production!')
+    return true
+  }
+  if (!signature) return false
+  const expected = createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
+  return signature === expected
+}
+
+function makeSessionSignature(sessionId: string): string {
+  return createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
+}
+
+// ---- Auth -------------------------------------------------------------------
+const apiKeyIndex = new Map<string, { sub: string; role: PrincipalRole; sessionPattern: string }>()
+for (const row of API_KEYS) {
+  const [sub, keyValue, roleRaw, sessionPattern = '.*'] = row.split(':')
+  if (!sub || !keyValue || !isValidRole(roleRaw || '')) continue
+  apiKeyIndex.set(keyValue, { sub, role: roleRaw as PrincipalRole, sessionPattern })
+}
+
+let redis: RedisClientType | null = null
+let redisPub: RedisClientType | null = null
+let redisSub: RedisClientType | null = null
+
+async function verifyJwt(token: string): Promise<Principal | null> {
+  if (!JWT_SECRET) return null
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET), { algorithms: ['HS256'] })
+    const role = String(payload.role || '')
+    if (!isValidRole(role)) return null
+    const sessionsRaw = payload.sessions
+    const sessions = Array.isArray(sessionsRaw)
+      ? sessionsRaw.map(v => String(v))
+      : sessionsRaw ? [String(sessionsRaw)] : ['*']
+
+    const tokenId = String(payload.jti || `jwt-${payload.sub || 'unknown'}`)
+
+    if (redis && payload.jti) {
+      const revoked = await redis.get(`aa:revoked:${String(payload.jti)}`)
+      if (revoked) return null
+    }
+
+    return {
+      sub: String(payload.sub || 'unknown'),
+      role,
+      tokenId,
+      sessions,
+      tokenType: 'jwt',
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function authenticate(req: IncomingMessage, required: PrincipalRole[] = ['viewer']): Promise<Principal | null> {
+  if (!REQUIRE_AUTH) return { sub: 'anonymous', role: 'admin', tokenId: 'dev-anon', sessions: ['*'], tokenType: 'none' }
+
+  const authHeader = req.headers.authorization?.toString() || ''
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const apiKey = req.headers['x-api-key']?.toString() || ''
+  const candidate = bearer || apiKey
+
+  if (!candidate) return null
+
+  const api = apiKeyIndex.get(candidate)
+  if (api) {
+    const p: Principal = {
+      sub: api.sub,
+      role: api.role,
+      tokenId: `api-${api.sub}`,
+      sessions: [api.sessionPattern],
+      tokenType: 'apiKey',
+    }
+    return requiresRole(p, required) ? p : null
+  }
+
+  const jwtPrincipal = await verifyJwt(candidate)
+  if (!jwtPrincipal) return null
+  if (!requiresRole(jwtPrincipal, required)) return null
+  return jwtPrincipal
+}
+
+async function authenticateRawToken(rawToken: string, required: PrincipalRole[] = ['viewer']): Promise<Principal | null> {
+  if (!rawToken) return null
+  const api = apiKeyIndex.get(rawToken)
+  if (api) {
+    const p: Principal = {
+      sub: api.sub,
+      role: api.role,
+      tokenId: `api-${api.sub}`,
+      sessions: [api.sessionPattern],
+      tokenType: 'apiKey',
+    }
+    return requiresRole(p, required) ? p : null
+  }
+  const jwtPrincipal = await verifyJwt(rawToken)
+  if (!jwtPrincipal) return null
+  if (!requiresRole(jwtPrincipal, required)) return null
+  return jwtPrincipal
+}
+
+async function authenticateSocket(socket: Socket): Promise<Principal | null> {
+  if (!REQUIRE_AUTH) return { sub: 'anonymous', role: 'admin', tokenId: 'dev-anon', sessions: ['*'], tokenType: 'none' }
+
+  const token = String(socket.handshake.auth?.token || '')
+    || String(socket.handshake.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    || String(socket.handshake.headers['x-api-key'] || '')
+
+  if (!token) return null
+
+  const api = apiKeyIndex.get(token)
+  if (api) {
+    return {
+      sub: api.sub,
+      role: api.role,
+      tokenId: `api-${api.sub}`,
+      sessions: [api.sessionPattern],
+      tokenType: 'apiKey',
+    }
+  }
+  return await verifyJwt(token)
+}
+
+// ---- Storage ----------------------------------------------------------------
+class InMemoryStorage {
+  private sessions = new Map<string, SessionMeta>()
+  private agents = new Map<string, Map<string, AgentRecord>>()
+  private events = new Map<string, TelemetryEvent[]>()
+
+  async touchSession(sessionId: string, owner: string) {
+    const now = Date.now()
+    const existing = this.sessions.get(sessionId)
+    if (!existing) {
+      this.sessions.set(sessionId, { id: sessionId, createdAt: now, lastActivity: now, owner })
+    } else {
+      existing.lastActivity = now
+    }
+  }
+
+  async saveEvent(sessionId: string, ev: TelemetryEvent) {
+    const list = this.events.get(sessionId) || []
+    list.push(ev)
+    if (list.length > MAX_EVENTS) list.shift()
+    this.events.set(sessionId, list)
+  }
+
+  async getReplay(sessionId: string, count: number): Promise<TelemetryEvent[]> {
+    const list = this.events.get(sessionId) || []
+    return list.slice(-count)
+  }
+
+  async getAgents(sessionId: string): Promise<AgentRecord[]> {
+    return Array.from((this.agents.get(sessionId) || new Map()).values())
+  }
+
+  async getAgent(sessionId: string, agentId: string): Promise<AgentRecord | null> {
+    return (this.agents.get(sessionId) || new Map()).get(agentId) || null
+  }
+
+  async upsertAgent(sessionId: string, agent: AgentRecord) {
+    const map = this.agents.get(sessionId) || new Map<string, AgentRecord>()
+    map.set(agent.id, agent)
+    this.agents.set(sessionId, map)
+  }
+
+  async listSessions(): Promise<SessionMeta[]> {
+    return Array.from(this.sessions.values())
+  }
+}
+
+class RedisStorage {
+  constructor(private readonly client: RedisClientType) {}
+
+  private sessionMetaKey(sessionId: string) { return `aa:session:${sessionId}:meta` }
+  private sessionAgentsKey(sessionId: string) { return `aa:session:${sessionId}:agents` }
+  private sessionEventsKey(sessionId: string) { return `aa:session:${sessionId}:events` }
+
+  async touchSession(sessionId: string, owner: string) {
+    const key = this.sessionMetaKey(sessionId)
+    const now = Date.now().toString()
+    const existing = await this.client.hGet(key, 'id')
+    if (!existing) {
+      await this.client.hSet(key, {
+        id: sessionId,
+        owner,
+        createdAt: now,
+        lastActivity: now,
+      })
+      metrics.sessionsTouched++
+    } else {
+      await this.client.hSet(key, { lastActivity: now })
+    }
+    await this.client.expire(key, RETENTION_SECONDS)
+  }
+
+  async saveEvent(sessionId: string, ev: TelemetryEvent) {
+    const key = this.sessionEventsKey(sessionId)
+    await this.client.rPush(key, JSON.stringify(ev))
+    await this.client.lTrim(key, -MAX_EVENTS, -1)
+    await this.client.expire(key, RETENTION_SECONDS)
+  }
+
+  async getReplay(sessionId: string, count: number): Promise<TelemetryEvent[]> {
+    const key = this.sessionEventsKey(sessionId)
+    const raw = await this.client.lRange(key, -count, -1)
+    return raw.map(v => JSON.parse(v) as TelemetryEvent)
+  }
+
+  async getAgents(sessionId: string): Promise<AgentRecord[]> {
+    const key = this.sessionAgentsKey(sessionId)
+    const hash = await this.client.hGetAll(key)
+    return Object.values(hash).map(v => JSON.parse(v) as AgentRecord)
+  }
+
+  async getAgent(sessionId: string, agentId: string): Promise<AgentRecord | null> {
+    const key = this.sessionAgentsKey(sessionId)
+    const raw = await this.client.hGet(key, agentId)
+    if (!raw) return null
+    return JSON.parse(raw) as AgentRecord
+  }
+
+  async upsertAgent(sessionId: string, agent: AgentRecord) {
+    const key = this.sessionAgentsKey(sessionId)
+    await this.client.hSet(key, { [agent.id]: JSON.stringify(agent) })
+    await this.client.expire(key, RETENTION_SECONDS)
+  }
+
+  async listSessions(): Promise<SessionMeta[]> {
+    const out: SessionMeta[] = []
+    let cursor = '0'
+    do {
+      const page = await this.client.scan(cursor, { MATCH: 'aa:session:*:meta', COUNT: 200 })
+      cursor = page.cursor
+      if (page.keys.length > 0) {
+        const values = await Promise.all(page.keys.map(k => this.client.hGetAll(k)))
+        for (const v of values) {
+          if (!v.id) continue
+          out.push({
+            id: v.id,
+            owner: v.owner || 'unknown',
+            createdAt: Number.parseInt(v.createdAt || '0', 10) || 0,
+            lastActivity: Number.parseInt(v.lastActivity || '0', 10) || 0,
+          })
+        }
+      }
+    } while (cursor !== '0')
+    return out
+  }
+}
+
+type Storage = InMemoryStorage | RedisStorage
+let storage: Storage = new InMemoryStorage()
+
+// ---- Rate limiting ----------------------------------------------------------
+const localRate = new Map<string, { count: number; startedAt: number }>()
+
+async function allowRate(kind: string, key: string, max: number, windowMs: number): Promise<boolean> {
+  const bucket = `${kind}:${key}:${Math.floor(Date.now() / windowMs)}`
+
+  if (redis) {
+    const redisKey = `aa:rl:${bucket}`
+    const count = await redis.incr(redisKey)
+    if (count === 1) await redis.pExpire(redisKey, windowMs + 2000)
+    return count <= max
+  }
+
+  const now = Date.now()
+  const entry = localRate.get(bucket)
+  if (!entry || now - entry.startedAt > windowMs) {
+    localRate.set(bucket, { count: 1, startedAt: now })
+    return true
+  }
+  entry.count++
+  return entry.count <= max
+}
+
+// Purge stale rate-limit buckets every 60s to prevent memory leak
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of localRate) {
+    if (now - entry.startedAt > 60_000) localRate.delete(key)
+  }
+}, 60_000).unref()
+
+// ---- Event processing -------------------------------------------------------
+async function processEvent(ev: TelemetryEvent, principal: Principal) {
+  await storage.touchSession(ev.sessionId, principal.sub)
+  await storage.saveEvent(ev.sessionId, ev)
+
+  let agent = await storage.getAgent(ev.sessionId, ev.agentId)
+  const ensureAgent = async (): Promise<AgentRecord> => {
+    if (agent) return agent
+    const p = ev.payload as Record<string, unknown>
+    agent = {
+      id: ev.agentId,
+      sessionId: ev.sessionId,
+      name: typeof p.name === 'string' && p.name.trim() ? p.name : ev.agentId,
+      role: typeof p.role === 'string' && p.role.trim() ? p.role : 'assistant',
+      state: 'idle',
+      label: '',
+      progress: 0,
+      tools: [],
+      messages: [],
+      lastUpdate: ev.ts,
+      aiModel: typeof p.aiModel === 'string' ? p.aiModel : undefined,
+      task: typeof p.task === 'string' ? p.task : undefined,
+    }
+    await storage.upsertAgent(ev.sessionId, agent)
+    return agent
+  }
+
+  switch (ev.type) {
+    case 'agent.spawn': {
+      const p = ev.payload as Record<string, string>
+      agent = {
+        id: ev.agentId,
+        sessionId: ev.sessionId,
+        name: p.name || 'Agent',
+        role: p.role || 'assistant',
+        state: 'idle',
+        label: 'Starting...',
+        progress: 0,
+        tools: [],
+        messages: [],
+        lastUpdate: ev.ts,
+        aiModel: p.aiModel || undefined,
+        task: p.task || undefined,
+      }
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.state': {
+      agent = await ensureAgent()
+      const p = ev.payload as Record<string, unknown>
+      const nextState = String(p.state || '')
+      agent.state = VALID_STATES.includes(nextState as AgentState) ? (nextState as AgentState) : agent.state
+      if (typeof p.label === 'string') agent.label = p.label
+      if (typeof p.progress === 'number') agent.progress = Math.max(0, Math.min(1, p.progress))
+      if (typeof p.aiModel === 'string') agent.aiModel = p.aiModel
+      if (typeof p.task === 'string') agent.task = p.task
+      agent.lastUpdate = ev.ts
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.tool': {
+      agent = await ensureAgent()
+      const p = ev.payload as Record<string, string>
+      agent.state = 'tool'
+      agent.label = p.label || `Using ${p.name || 'tool'}`
+      if (p.name) agent.tools.push(p.name)
+      agent.lastUpdate = ev.ts
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.message': {
+      agent = await ensureAgent()
+      const p = ev.payload as Record<string, unknown>
+      if (p.level === 'waiting' || p.requiresInput) agent.state = 'waiting'
+      agent.messages.push(String(p.text || ''))
+      agent.lastUpdate = ev.ts
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.link': {
+      const p = ev.payload as Record<string, string>
+      const child = await storage.getAgent(ev.sessionId, p.childAgentId)
+      if (child) {
+        child.parentAgentId = p.parentAgentId
+        await storage.upsertAgent(ev.sessionId, child)
+      }
+      break
+    }
+    case 'agent.position': {
+      agent = await ensureAgent()
+      const p = ev.payload as Record<string, unknown>
+      agent.position = { x: Number(p.x || 0), y: Number(p.y || 0) }
+      agent.lastUpdate = ev.ts
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.end': {
+      agent = await ensureAgent()
+      const p = ev.payload as Record<string, unknown>
+      agent.state = 'done'
+      agent.label = String(p.reason || 'Completed')
+      agent.progress = 1
+      agent.lastUpdate = ev.ts
+      await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    default:
+      break
+  }
+}
+
+async function sessionSnapshot(sessionId: string) {
+  const [agents, events] = await Promise.all([
+    storage.getAgents(sessionId),
+    storage.getReplay(sessionId, REPLAY_COUNT),
+  ])
+  return { agents, events }
+}
+
+function normalizeConnectMeta(input: unknown): ClientConnectMeta {
+  const meta: ClientConnectMeta = {}
+  if (!input || typeof input !== 'object') return meta
+  const rec = input as Record<string, unknown>
+
+  if (typeof rec.clientName === 'string') meta.clientName = rec.clientName.slice(0, 120)
+  if (typeof rec.aiModel === 'string') meta.aiModel = rec.aiModel.slice(0, 200)
+
+  if (rec.agentMap && typeof rec.agentMap === 'object') {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rec.agentMap as Record<string, unknown>)) {
+      if (typeof v === 'string') out[String(k).slice(0, 80)] = v.slice(0, 200)
+    }
+    if (Object.keys(out).length) meta.agentMap = out
+  }
+
+  if (rec.taskMap && typeof rec.taskMap === 'object') {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rec.taskMap as Record<string, unknown>)) {
+      if (typeof v === 'string') out[String(k).slice(0, 80)] = v.slice(0, 300)
+    }
+    if (Object.keys(out).length) meta.taskMap = out
+  }
+
+  return meta
+}
+
+async function announceClientConnection(sessionId: string, principal: Principal, meta: ClientConnectMeta) {
+  const connectorId = `connector-${randomUUID().slice(0, 8)}`
+  const name = meta.clientName || principal.sub || 'External Client'
+
+  const events: TelemetryEvent[] = [
+    {
+      v: PROTOCOL_VERSION,
+      ts: Date.now(),
+      sessionId,
+      agentId: connectorId,
+      type: 'agent.spawn',
+      payload: {
+        name,
+        role: 'connector',
+        characterClass: 'operator',
+      },
+    },
+    {
+      v: PROTOCOL_VERSION,
+      ts: Date.now(),
+      sessionId,
+      agentId: connectorId,
+      type: 'agent.message',
+      payload: {
+        text: meta.aiModel
+          ? `Connected: ${name} | AI: ${meta.aiModel}`
+          : `Connected: ${name} | AI: not specified`,
+        level: 'info',
+      },
+    },
+  ]
+
+  if (meta.agentMap && Object.keys(meta.agentMap).length > 0) {
+    events.push({
+      v: PROTOCOL_VERSION,
+      ts: Date.now(),
+      sessionId,
+      agentId: connectorId,
+      type: 'agent.message',
+      payload: {
+        text: `Agent map: ${Object.entries(meta.agentMap).map(([a, m]) => `${a}=>${m}`).join(' | ')}`,
+        level: 'info',
+      },
+    })
+  }
+
+  if (meta.taskMap && Object.keys(meta.taskMap).length > 0) {
+    events.push({
+      v: PROTOCOL_VERSION,
+      ts: Date.now(),
+      sessionId,
+      agentId: connectorId,
+      type: 'agent.message',
+      payload: {
+        text: `Task map: ${Object.entries(meta.taskMap).map(([a, t]) => `${a}=>${t}`).join(' | ')}`,
+        level: 'info',
+      },
+    })
+  }
+
+  for (const ev of events) {
+    await processEvent(ev, principal)
+    io.to(`session:${sessionId}`).emit('event', ev)
+    broadcastSseEvent(sessionId, ev)
+    metrics.publishAccepted++
+  }
+}
+
+// ---- HTTP + Socket server ---------------------------------------------------
+const httpServer = createServer(async (req, res) => {
+  metrics.httpRequests++
+
+  if (!setCors(req, res)) {
+    metrics.authFailures++
+    return jsonRes(res, 403, { error: 'Origin not allowed' })
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204)
+    res.end()
+    return
+  }
+
+  const url = new URL(req.url || '/', `http://localhost:${PORT}`)
+
+  if (url.pathname === '/health') {
+    const sessions = await storage.listSessions()
+    const uptimeSeconds = Math.floor((Date.now() - metrics.startedAt) / 1000)
+    return jsonRes(res, 200, {
+      status: 'ok',
+      service: 'agent-arcade-gateway',
+      protocolVersion: PROTOCOL_VERSION,
+      env: NODE_ENV,
+      startedAt: metrics.startedAt,
+      uptimeSeconds,
+      sessions: sessions.length,
+      totalEvents: metrics.publishAccepted,
+      connected: {
+        websocket: metrics.wsConnectedNow,
+        sse: metrics.sseConnectedNow,
+      },
+      auth: {
+        required: REQUIRE_AUTH,
+      },
+    })
+  }
+
+  if (url.pathname === '/ready') {
+    return jsonRes(res, 200, { status: redis ? 'ready' : 'degraded' })
+  }
+
+  if (url.pathname === '/v1/capabilities') {
+    const authModes = REQUIRE_AUTH
+      ? [
+          ...(JWT_SECRET ? ['jwt'] : []),
+          ...(apiKeyIndex.size > 0 ? ['apiKey'] : []),
+        ]
+      : ['none']
+
+    return jsonRes(res, 200, {
+      name: 'agent-arcade-gateway',
+      protocolVersion: PROTOCOL_VERSION,
+      transports: {
+        ingestHttp: '/v1/ingest',
+        streamSse: '/v1/stream',
+        connectHttp: '/v1/connect',
+        socketIoPath: '/socket.io',
+      },
+      auth: {
+        required: REQUIRE_AUTH,
+        modes: authModes,
+        sessionSignature: Boolean(SESSION_SIGNING_SECRET),
+      },
+      cors: {
+        wildcardEnabled: ALLOWED_ORIGINS.includes('*'),
+        allowedOrigins: ALLOWED_ORIGINS,
+      },
+    })
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/connect') {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+
+    try {
+      const body = JSON.parse(await readBody(req)) as Record<string, unknown>
+      const sessionId = String(body.sessionId || '')
+      const sig = typeof body.sig === 'string' ? body.sig : undefined
+      const meta = normalizeConnectMeta(body.meta)
+
+      if (!validSessionId(sessionId)) {
+        return jsonRes(res, 400, { error: 'Invalid sessionId' })
+      }
+      if (!canAccessSession(principal, sessionId)) {
+        metrics.authFailures++
+        return jsonRes(res, 403, { error: 'Forbidden for session' })
+      }
+      if (!checkSessionSignature(sessionId, sig)) {
+        metrics.authFailures++
+        return jsonRes(res, 403, { error: 'Invalid session signature' })
+      }
+
+      await storage.touchSession(sessionId, principal.sub)
+      await announceClientConnection(sessionId, principal, meta)
+      return jsonRes(res, 200, { ok: true, sessionId, announced: true })
+    } catch {
+      return jsonRes(res, 400, { error: 'Invalid payload' })
+    }
+  }
+
+  if (url.pathname === '/metrics') {
+    const principal = await authenticate(req, ['admin'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    return textRes(res, 200, metricsPrometheus(), 'text/plain; version=0.0.4; charset=utf-8')
+  }
+
+  if (url.pathname === '/debug') {
+    if (!ENABLE_INTERNAL_ROUTES) return jsonRes(res, 404, { error: 'Not found' })
+    const principal = await authenticate(req, ['admin'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    const sessions = await storage.listSessions()
+    return jsonRes(res, 200, {
+      sessions,
+      metrics,
+      protocolVersion: PROTOCOL_VERSION,
+      env: NODE_ENV,
+    })
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/session-token') {
+    const principal = await authenticate(req, ['admin'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!JWT_SECRET) return jsonRes(res, 500, { error: 'JWT secret not configured' })
+
+    try {
+      const body = JSON.parse(await readBody(req)) as Record<string, unknown>
+      const sessionId = String(body.sessionId || '')
+      const role = String(body.role || 'viewer')
+      const ttlSec = Number(body.ttlSec || 3600)
+
+      if (!validSessionId(sessionId) || !isValidRole(role)) {
+        return jsonRes(res, 400, { error: 'Invalid sessionId or role' })
+      }
+
+      const token = await new SignJWT({
+        role,
+        sessions: [sessionId],
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setSubject(String(body.sub || `session-${sessionId}`))
+        .setJti(randomUUID())
+        .setIssuedAt()
+        .setExpirationTime(`${Math.max(60, ttlSec)}s`)
+        .sign(new TextEncoder().encode(JWT_SECRET))
+
+      return jsonRes(res, 200, {
+        token,
+        sessionId,
+        sessionSignature: makeSessionSignature(sessionId),
+      })
+    } catch (err) {
+      log('warn', 'token issue failed', { error: String(err) })
+      return jsonRes(res, 400, { error: 'Invalid payload' })
+    }
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/auth/revoke') {
+    const principal = await authenticate(req, ['admin'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!redis) return jsonRes(res, 503, { error: 'Revocation store unavailable' })
+
+    try {
+      const body = JSON.parse(await readBody(req)) as Record<string, unknown>
+      const jti = String(body.jti || '')
+      const ttlSec = Number(body.ttlSec || 86400)
+      if (!jti) return jsonRes(res, 400, { error: 'jti required' })
+
+      await redis.set(`aa:revoked:${jti}`, '1', { EX: Math.max(60, ttlSec) })
+      return jsonRes(res, 200, { ok: true })
+    } catch {
+      return jsonRes(res, 400, { error: 'Invalid payload' })
+    }
+  }
+
+  if (req.method === 'POST' && url.pathname === '/v1/ingest') {
+    const principal = await authenticate(req, ['publisher'])
+    if (!principal) {
+      metrics.authFailures++
+      metrics.publishRejected++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+
+    const ip = getClientIp(req)
+    const ipAllowed = await allowRate('ip', ip, RATE_MAX_IP, RATE_WINDOW_MS)
+    const tokenAllowed = await allowRate('token', principal.tokenId, RATE_MAX_TOKEN, RATE_WINDOW_MS)
+    if (!ipAllowed || !tokenAllowed) {
+      metrics.publishRejected++
+      metrics.droppedEvents++
+      return jsonRes(res, 429, { error: 'Rate limited' })
+    }
+
+    try {
+      const raw = await readBody(req)
+      const body = JSON.parse(raw) as TelemetryEvent
+      if (!body.sessionId || !body.agentId || !body.type) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: 'Missing required fields: sessionId, agentId, type' })
+      }
+      if (!validSessionId(body.sessionId)) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: 'Invalid sessionId format' })
+      }
+      if (!VALID_EVENT_TYPES.includes(body.type)) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: `Invalid event type: ${body.type}` })
+      }
+      if (!canAccessSession(principal, body.sessionId)) {
+        metrics.publishRejected++
+        metrics.authFailures++
+        return jsonRes(res, 403, { error: 'Forbidden for session' })
+      }
+
+      const sig = req.headers['x-session-signature']?.toString()
+      if (!checkSessionSignature(body.sessionId, sig)) {
+        metrics.publishRejected++
+        metrics.authFailures++
+        return jsonRes(res, 403, { error: 'Invalid session signature' })
+      }
+
+      const floodAllowed = await allowRate('session', body.sessionId, SESSION_FLOOD_MAX, RATE_WINDOW_MS)
+      if (!floodAllowed) {
+        metrics.publishRejected++
+        metrics.droppedEvents++
+        return jsonRes(res, 429, { error: 'Session flood protection triggered' })
+      }
+
+      const ev: TelemetryEvent = {
+        v: body.v || PROTOCOL_VERSION,
+        ts: body.ts || Date.now(),
+        sessionId: body.sessionId,
+        agentId: body.agentId,
+        type: body.type,
+        payload: body.payload || {},
+      }
+
+      await processEvent(ev, principal)
+      io.to(`session:${ev.sessionId}`).emit('event', ev)
+      broadcastSseEvent(ev.sessionId, ev)
+      metrics.publishAccepted++
+      return jsonRes(res, 200, { ok: true })
+    } catch (e: unknown) {
+      const msg = e instanceof Error && e.message === 'body too large' ? 'Request body too large' : 'Invalid JSON body'
+      return jsonRes(res, e instanceof Error && e.message === 'body too large' ? 413 : 400, { error: msg })
+    }
+  }
+
+  if (url.pathname === '/v1/stream') {
+    const sessionId = url.searchParams.get('sessionId') || ''
+    const signature = url.searchParams.get('sig') || undefined
+    const queryToken = url.searchParams.get('token') || ''
+    const queryApiKey = url.searchParams.get('apiKey') || ''
+
+    if (!sessionId || !validSessionId(sessionId)) {
+      return jsonRes(res, 400, { error: 'sessionId required and must be valid' })
+    }
+
+    const principal = await authenticate(req, ['viewer'])
+      || await authenticateRawToken(queryToken || queryApiKey, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, sessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    if (!checkSessionSignature(sessionId, signature)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Invalid session signature' })
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    })
+    metrics.sseConnectedNow++
+
+    const snap = await sessionSnapshot(sessionId)
+    res.write(`event: state\ndata: ${JSON.stringify(snap)}\n\n`)
+
+    const hb = setInterval(() => {
+      try {
+        res.write(': heartbeat\n\n')
+      } catch {
+        // no-op
+      }
+    }, 25_000)
+
+    const client: SSEClient = { id: randomUUID(), sessionId, res }
+    const set = sseClients.get(sessionId) || new Set<SSEClient>()
+    set.add(client)
+    sseClients.set(sessionId, set)
+
+    req.on('close', () => {
+      clearInterval(hb)
+      metrics.sseConnectedNow = Math.max(0, metrics.sseConnectedNow - 1)
+      set.delete(client)
+    })
+    return
+  }
+
+  return jsonRes(res, 404, { error: 'Not found' })
+})
+
+const io = new Server(httpServer, {
+  path: '/socket.io',
+  cors: {
+    origin: (origin, cb) => cb(null, originAllowed(origin || undefined)),
+    methods: ['GET', 'POST'],
+  },
+  pingTimeout: 60_000,
+  pingInterval: 25_000,
+  maxHttpBufferSize: 1_000_000,
+})
+
+io.use(async (socket, next) => {
+  try {
+    const origin = socket.handshake.headers.origin?.toString()
+    if (!originAllowed(origin)) return next(new Error('Origin not allowed'))
+
+    const principal = await authenticateSocket(socket)
+    if (!principal) {
+      metrics.authFailures++
+      return next(new Error('Unauthorized'))
+    }
+    ;(socket.data as { principal?: Principal }).principal = principal
+    return next()
+  } catch {
+    metrics.authFailures++
+    return next(new Error('Unauthorized'))
+  }
+})
+
+io.on('connection', async (socket: Socket) => {
+  metrics.wsConnections++
+  metrics.wsConnectedNow++
+
+  const principal = (socket.data as { principal: Principal }).principal
+  await redis?.hSet(`aa:conn:${socket.id}`, {
+    socketId: socket.id,
+    sub: principal.sub,
+    role: principal.role,
+    connectedAt: String(Date.now()),
+  })
+  await redis?.expire(`aa:conn:${socket.id}`, 3600)
+
+  let activeSessionId: string | null = null
+
+  socket.on('subscribe', async (data: { sessionId: string; sig?: string; clientName?: string; aiModel?: string; agentMap?: Record<string, string>; taskMap?: Record<string, string> }) => {
+    try {
+      const sessionId = String(data?.sessionId || '')
+      if (!validSessionId(sessionId)) {
+        socket.emit('error', { message: 'Invalid sessionId' })
+        return
+      }
+      if (!canAccessSession(principal, sessionId)) {
+        metrics.authFailures++
+        socket.emit('error', { message: 'Forbidden for session' })
+        return
+      }
+      if (!checkSessionSignature(sessionId, data?.sig)) {
+        metrics.authFailures++
+        socket.emit('error', { message: 'Invalid session signature' })
+        return
+      }
+
+      activeSessionId = sessionId
+      socket.join(`session:${sessionId}`)
+      await storage.touchSession(sessionId, principal.sub)
+      socket.emit('state', await sessionSnapshot(sessionId))
+      const meta = normalizeConnectMeta(data)
+      if (meta.clientName || meta.aiModel || meta.agentMap || meta.taskMap) {
+        await announceClientConnection(sessionId, principal, meta)
+      }
+      log('info', 'socket subscribed', { socketId: socket.id, sessionId, sub: principal.sub })
+    } catch {
+      socket.emit('error', { message: 'Subscription failed' })
+    }
+  })
+
+  socket.on('event', async (data: TelemetryEvent) => {
+    try {
+      if (!requiresRole(principal, ['publisher'])) {
+        metrics.publishRejected++
+        socket.emit('error', { message: 'Forbidden' })
+        return
+      }
+      if (!activeSessionId) {
+        metrics.publishRejected++
+        socket.emit('error', { message: 'Subscribe first' })
+        return
+      }
+
+      const ipAllowed = await allowRate('socket', socket.id, RATE_MAX_IP, RATE_WINDOW_MS)
+      const tokenAllowed = await allowRate('token', principal.tokenId, RATE_MAX_TOKEN, RATE_WINDOW_MS)
+      if (!ipAllowed || !tokenAllowed) {
+        metrics.publishRejected++
+        metrics.droppedEvents++
+        socket.emit('error', { message: 'Rate limited' })
+        return
+      }
+
+      if (!VALID_EVENT_TYPES.includes(data.type)) {
+        metrics.publishRejected++
+        socket.emit('error', { message: `Invalid event type: ${data.type}` })
+        return
+      }
+
+      const ev: TelemetryEvent = {
+        v: data.v || PROTOCOL_VERSION,
+        ts: data.ts || Date.now(),
+        sessionId: activeSessionId,
+        agentId: data.agentId,
+        type: data.type,
+        payload: data.payload || {},
+      }
+
+      await processEvent(ev, principal)
+      io.to(`session:${activeSessionId}`).emit('event', ev)
+      broadcastSseEvent(activeSessionId, ev)
+      metrics.publishAccepted++
+    } catch {
+      metrics.publishRejected++
+      socket.emit('error', { message: 'Event rejected' })
+    }
+  })
+
+  socket.on('disconnect', async () => {
+    metrics.wsConnectedNow = Math.max(0, metrics.wsConnectedNow - 1)
+    await redis?.del(`aa:conn:${socket.id}`)
+  })
+})
+
+async function bootstrap() {
+  if (REQUIRE_AUTH && !JWT_SECRET && apiKeyIndex.size === 0) {
+    throw new Error('Auth is required but neither JWT_SECRET nor API_KEYS are configured')
+  }
+
+  if (NODE_ENV === 'production') {
+    if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes('*')) {
+      log('warn', 'ALLOWED_ORIGINS is empty or wildcard in production — restrict to specific domains')
+    }
+    if (!SESSION_SIGNING_SECRET) {
+      log('warn', 'SESSION_SIGNING_SECRET not set — session signatures will not be validated')
+    }
+  }
+
+  if (REDIS_URL) {
+    redis = createClient({ url: REDIS_URL })
+    redis.on('error', (err) => log('error', 'redis error', { error: String(err) }))
+    await redis.connect()
+    storage = new RedisStorage(redis)
+    log('info', 'redis storage enabled', { url: REDIS_URL.replace(/:[^:@/]+@/, ':***@') })
+
+    if (ENABLE_REDIS_ADAPTER) {
+      redisPub = createClient({ url: REDIS_URL })
+      redisSub = createClient({ url: REDIS_URL })
+      await redisPub.connect()
+      await redisSub.connect()
+      io.adapter(createAdapter(redisPub, redisSub))
+      log('info', 'socket.io redis adapter enabled')
+    }
+  } else {
+    log('warn', 'redis disabled, running degraded in-memory mode')
+    if (NODE_ENV === 'production') {
+      throw new Error('REDIS_URL is required in production mode')
+    }
+  }
+
+  httpServer.listen(PORT, () => {
+    log('info', 'gateway started', {
+      port: PORT,
+      env: NODE_ENV,
+      requireAuth: REQUIRE_AUTH,
+      allowedOrigins: ALLOWED_ORIGINS,
+      redisEnabled: Boolean(redis),
+      redisAdapterEnabled: Boolean(redisPub && redisSub),
+      protocolVersion: PROTOCOL_VERSION,
+    })
+  })
+}
+
+function shutdown(signal: string) {
+  log('info', 'shutdown requested', { signal })
+  httpServer.close(async () => {
+    await Promise.allSettled([
+      redis?.quit(),
+      redisPub?.quit(),
+      redisSub?.quit(),
+    ])
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10_000).unref()
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('uncaughtException', (err) => log('error', 'uncaughtException', { error: err.message }))
+process.on('unhandledRejection', (reason) => log('error', 'unhandledRejection', { reason: String(reason) }))
+
+bootstrap().catch((err) => {
+  log('error', 'failed to start', { error: String(err) })
+  process.exit(1)
+})
