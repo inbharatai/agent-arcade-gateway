@@ -172,6 +172,12 @@ export function PixelCanvas({
   // Ambient dust motes
   const motesRef = useRef<DustMote[]>([])
 
+  // Connection state refs (avoid useEffect dependency array size changes)
+  const connectionStatusRef = useRef(connectionStatus)
+  const errorMessageRef = useRef(errorMessage)
+  useEffect(() => { connectionStatusRef.current = connectionStatus }, [connectionStatus])
+  useEffect(() => { errorMessageRef.current = errorMessage }, [errorMessage])
+
   const theme = useMemo(() => getTheme(themeId), [themeId])
   const pxConf = useMemo(() => PIXEL_CONFIGS[pixelLevel] || PIXEL_CONFIGS['16bit'], [pixelLevel])
   const tileSize = pxConf.tileSize
@@ -790,19 +796,22 @@ export function PixelCanvas({
 
       // â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (agents.length === 0) {
+        const connStatus = connectionStatusRef.current
+        const errMsg = errorMessageRef.current
+        
         ctx.fillStyle = theme.colors.text + '88'
         ctx.font = `bold ${tileSize * 0.45}px monospace`
         ctx.textAlign = 'center'
-        
+
         // Show context-aware message based on connection status
-        if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
+        if (connStatus === 'error' || connStatus === 'disconnected') {
           ctx.fillStyle = '#ef4444aa' // red tint for errors
           ctx.fillText('Gateway unreachable', w / 2, h / 2 - 20)
           ctx.font = `${tileSize * 0.25}px monospace`
           ctx.fillStyle = theme.colors.text + '88'
-          const hint = errorMessage || 'Start gateway: npm run dev:gateway'
+          const hint = errMsg || 'Start gateway: npm run dev:gateway'
           ctx.fillText(hint, w / 2, h / 2 + 15)
-        } else if (connectionStatus === 'connecting') {
+        } else if (connStatus === 'connecting') {
           ctx.fillText('Connecting to gateway...', w / 2, h / 2 - 20)
           ctx.font = `${tileSize * 0.25}px monospace`
           ctx.fillText('Please wait', w / 2, h / 2 + 15)
@@ -819,7 +828,7 @@ export function PixelCanvas({
 
     animRef.current = requestAnimationFrame(render)
     return () => cancelAnimationFrame(animRef.current)
-  }, [agents, chars, selectedAgentId, theme, pxConf, pixelLevel, zoom, reducedMotion, canvasW, canvasH, tileSize, connectionStatus, errorMessage])
+  }, [agents, chars, selectedAgentId, theme, pxConf, pixelLevel, zoom, reducedMotion, canvasW, canvasH, tileSize])
 
   // â”€â”€ Mouse move for hover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

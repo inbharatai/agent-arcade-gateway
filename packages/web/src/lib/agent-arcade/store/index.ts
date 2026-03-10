@@ -43,6 +43,7 @@ interface ArcadeStore {
   updateSettings: (patch: Partial<ArcadeSettings>) => void
   incrementDropped: () => void
   reset: () => void
+  cleanupStaleAgents: (staleMs?: number) => void
 }
 
 const createNarrative = (): SessionNarrative => ({
@@ -366,6 +367,24 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
   incrementDropped: () => set(s => ({ droppedEvents: s.droppedEvents + 1 })),
 
   reset: () => set({ ...initial, settings: get().settings, narrative: createNarrative() }),
+
+  // Auto-cleanup stale agents (agents with no updates for > staleMs)
+  cleanupStaleAgents: (staleMs = 60000) => {
+    const now = Date.now()
+    set((state) => {
+      const agents = new Map(state.agents)
+      let removed = 0
+      for (const [id, agent] of agents) {
+        // Remove agents that haven't updated in staleMs and are in done/idle state
+        if (now - agent.lastUpdate > staleMs && (agent.state === 'done' || agent.state === 'idle')) {
+          agents.delete(id)
+          removed++
+        }
+      }
+      if (removed === 0) return state
+      return { agents, agentsList: Array.from(agents.values()) }
+    })
+  },
 }))
 
 // Selectors
