@@ -128,6 +128,8 @@ interface CanvasProps {
   theme?: string
   pixelLevel?: string
   zoom?: number
+  connectionStatus?: 'connected' | 'connecting' | 'disconnected' | 'error'
+  errorMessage?: string | null
   reducedMotion?: boolean
   width?: number
   height?: number
@@ -145,6 +147,8 @@ export function PixelCanvas({
   width: propWidth,
   height: propHeight,
   audioCallbacks,
+  connectionStatus = 'disconnected',
+  errorMessage,
 }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef = useRef<number>(0)
@@ -789,9 +793,24 @@ export function PixelCanvas({
         ctx.fillStyle = theme.colors.text + '88'
         ctx.font = `bold ${tileSize * 0.45}px monospace`
         ctx.textAlign = 'center'
-        ctx.fillText('ðŸŽ® Waiting for agentsâ€¦', w / 2, h / 2 - 20)
-        ctx.font = `${tileSize * 0.25}px monospace`
-        ctx.fillText('Connect an agent SDK to get started', w / 2, h / 2 + 15)
+        
+        // Show context-aware message based on connection status
+        if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
+          ctx.fillStyle = '#ef4444aa' // red tint for errors
+          ctx.fillText('Gateway unreachable', w / 2, h / 2 - 20)
+          ctx.font = `${tileSize * 0.25}px monospace`
+          ctx.fillStyle = theme.colors.text + '88'
+          const hint = errorMessage || 'Start gateway: npm run dev:gateway'
+          ctx.fillText(hint, w / 2, h / 2 + 15)
+        } else if (connectionStatus === 'connecting') {
+          ctx.fillText('Connecting to gateway...', w / 2, h / 2 - 20)
+          ctx.font = `${tileSize * 0.25}px monospace`
+          ctx.fillText('Please wait', w / 2, h / 2 + 15)
+        } else {
+          ctx.fillText('Waiting for agents...', w / 2, h / 2 - 20)
+          ctx.font = `${tileSize * 0.25}px monospace`
+          ctx.fillText('Connect an agent SDK to get started', w / 2, h / 2 + 15)
+        }
       }
 
       ctx.restore()
@@ -800,7 +819,7 @@ export function PixelCanvas({
 
     animRef.current = requestAnimationFrame(render)
     return () => cancelAnimationFrame(animRef.current)
-  }, [agents, chars, selectedAgentId, theme, pxConf, pixelLevel, zoom, reducedMotion, canvasW, canvasH, tileSize])
+  }, [agents, chars, selectedAgentId, theme, pxConf, pixelLevel, zoom, reducedMotion, canvasW, canvasH, tileSize, connectionStatus, errorMessage])
 
   // â”€â”€ Mouse move for hover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
