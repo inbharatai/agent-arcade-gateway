@@ -128,6 +128,69 @@ npm run dev:web
 node scripts/load/human-like-sim.mjs
 ```
 
+## How to Use the Tool (Agent Arcade)
+
+Agent Arcade is a telemetry layer. It does not replace your app logic. It observes your AI workflow by receiving events from your code.
+
+### Usage model
+
+1. Run Agent Arcade gateway + web dashboard.
+2. Keep your client project running as usual.
+3. Emit telemetry events from the client project using SDK or HTTP.
+4. Open the dashboard and watch live agent behavior by session.
+
+### What to emit and when
+
+- `agent.spawn`: when an AI worker/assistant starts.
+- `agent.state`: when status changes (`thinking`, `reading`, `writing`, `tool`, `waiting`, `done`).
+- `agent.tool`: when a tool is called (`read_file`, `run_command`, `grep_search`, etc.).
+- `agent.message`: for useful user-facing status updates.
+- `agent.end`: when task is completed or failed.
+
+### Session strategy
+
+Use a separate `sessionId` per scope so activity stays clean and filterable:
+
+- One client app: `client-app-prod`
+- One environment: `staging-run`
+- One job/request: `ticket-1234`
+
+### Example user flow (Cursor + external codebase)
+
+1. Start Arcade (`npm run dev:gateway` and `npm run dev:web`).
+2. In your external project, add the Node/Python/browser emitter.
+3. Wrap key AI steps with telemetry calls.
+4. Keep coding normally in Cursor.
+5. Open `http://localhost:3000` to watch exactly what the AI is doing in that project.
+
+### Zero-wiring mode (auto-pick emitter workspace)
+
+Use these commands if you do not want to reconnect/wire every time:
+
+```powershell
+# One-time: pin target client workspace
+npm run emitter:auto -- "C:/path/to/client-project"
+
+# Next runs: auto-reuse last pinned workspace
+npm run emitter:auto
+```
+
+Or start the full Arcade stack + auto-emitter in one command:
+
+```powershell
+# One-time with explicit workspace
+npm run dev:arcade -- "C:/path/to/client-project"
+
+# Next runs reuse saved workspace
+npm run dev:arcade
+```
+
+The last workspace is stored in `.arcade-emitter.json` at repo root.
+
+### Important note
+
+Agent Arcade only shows what is emitted. If your app does not send events, the dashboard cannot infer hidden internal AI actions.
+
 ## SDK Quickstart Examples
 
 ### Node.js SDK

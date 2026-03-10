@@ -11,6 +11,8 @@
     "example:node": "npx tsx examples/node-agent.ts",
     "example:python": "python examples/python-agent.py",
     "copilot:live": "npx tsx examples/copilot-live.ts",
+    "emitter:auto": "node scripts/start-auto-emitter.mjs",
+    "dev:arcade": "node scripts/dev-arcade-auto.mjs",
     "prod:start": "pm2 start ecosystem.config.js",
     "prod:stop": "pm2 stop all",
     "prod:restart": "pm2 restart all",
