@@ -180,7 +180,7 @@ function shouldTrackProcess(proc: ProcInfo): ToolMatch | null {
 async function listProcesses(): Promise<ProcInfo[]> {
   if (process.platform === 'win32') {
     const psCmd = [
-      "$ErrorActionPreference = 'SilentlyContinue'",
+      "$ErrorActionPreference = 'SilentlyContinue';",
       'Get-CimInstance Win32_Process',
       '| Select-Object ProcessId,Name,CommandLine',
       '| ConvertTo-Json -Compress',
