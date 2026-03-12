@@ -90,16 +90,21 @@ export class AgentArcadeBrowser {
     if (this.socket && this.ready) {
       this.socket.emit('event', ev)
     } else {
-      fetch(`${this.url}/v1/ingest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
-          ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
-          ...(this.sessionSignature ? { 'x-session-signature': this.sessionSignature } : {}),
-        },
-        body: JSON.stringify(ev),
-      }).catch(() => {})
+      const attempt = (retries: number) => {
+        fetch(`${this.url}/v1/ingest`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+            ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
+            ...(this.sessionSignature ? { 'x-session-signature': this.sessionSignature } : {}),
+          },
+          body: JSON.stringify(ev),
+        }).catch(() => {
+          if (retries > 0) setTimeout(() => attempt(retries - 1), 1000 * (3 - retries))
+        })
+      }
+      attempt(2)
     }
   }
 

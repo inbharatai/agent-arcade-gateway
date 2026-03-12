@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-07-17
+
+### Security
+
+- **Session signature enforcement** — Gateway now rejects unsigned sessions in production when `SESSION_SIGNING_SECRET` is missing (previously returned `true`, bypassing auth)
+- **ReDoS guard on CORS regex** — Origin patterns are validated for length (≤200 chars) and nested quantifiers before `new RegExp()`
+- **Input length validation** — Agent names capped at 200 chars, roles at 100, labels at 500, message text at 4000
+
+### Fixed
+
+- **SSE memory leak** — `res.destroy()` now called on write errors in `broadcastSseEvent()` to prevent leaked connections
+- **Unbounded messages array** — Messages per agent capped at 1,000 (truncates to last 500)
+- **Unbounded tools array** — Tools per agent capped at 500 (truncates to last 250)
+- **SDK-node silent failure** — HTTP fallback in `emit()` now retries 2× with exponential backoff instead of `catch(() => {})`
+- **SDK-browser silent failure** — Same retry logic applied to browser SDK's HTTP fallback
+- **Python SDK silent import failure** — Logs a clear warning when `python-socketio` is not installed instead of silently falling back
+
+### Improved
+
+- **Universal workspace watcher** — `copilot-live.ts` auto-discovers project directories (`backend/`, `frontend/`, `src/`, `packages/`, `app/`, `lib/`) instead of a hardcoded list
+- **File classification** — `classifyFile()` uses real project labels (routers, services, components, API, config) instead of generic categories
+
 ## [1.0.0] - 2026-03-10
 
 ### Added
@@ -38,5 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Historical event replay
 - Prometheus metrics export
 
+[2.1.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v1.0.0...v2.1.0
 [1.0.0]: https://github.com/inbharatai/agent-arcade-gateway/releases/tag/v1.0.0
-[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v2.1.0...HEAD

@@ -7,6 +7,7 @@
     "dev:gateway": "cd packages/gateway && bun run src/index.ts",
     "dev:web": "cd packages/web && npm run dev",
     "dev": "echo \"Run dev:gateway and dev:web in separate terminals\"",
+    "dev:local": "node scripts/dev-arcade-local.mjs",
     "dev:watchdog": "node scripts/arcade-watchdog.mjs",
     "build:web": "cd packages/web && npm run build",
     "example:node": "npx tsx examples/node-agent.ts",
@@ -30,5 +31,8 @@
     "lint:web": "cd packages/web && npx eslint src --max-warnings 0",
     "typecheck:web": "cd packages/web && npx tsc --noEmit",
     "ci": "npm run lint:web && npm run typecheck:web && npm run build:web && npm run test"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
   }
 }

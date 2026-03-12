@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-2.1.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 
 **Watch your AI agents work in real-time with pixel-art flair**
 
@@ -66,6 +66,25 @@ Choose from Office, War Room, **Retro Arcade**, Cyber Lab, Campus Ops, Deep Spac
 </td>
 </tr>
 </table>
+
+---
+
+## 🆕 What's New in v2.1.0
+
+### Security Hardening
+- **Session signature bypass fixed** — Production now rejects unsigned sessions instead of silently allowing them when `SESSION_SIGNING_SECRET` is missing
+- **ReDoS protection** — CORS origin regex patterns are validated for length (&le;200 chars) and nested quantifiers before compilation
+- **Input validation** — Agent names, roles, and labels are now length-capped to prevent memory abuse
+
+### Stability Fixes
+- **SSE socket cleanup** — `res.destroy()` is called on write errors to prevent leaked connections
+- **Bounded data structures** — Messages capped at 1,000 per agent (truncates to 500); tools capped at 500 (truncates to 250)
+- **SDK retry logic** — Node.js and Browser SDKs now retry HTTP fallback 2× with exponential backoff instead of silently swallowing errors
+- **Python SDK warning** — Logs a clear warning when `python-socketio` is missing instead of failing silently
+
+### Universal Workspace Support
+- **Auto-discovery watcher** — `copilot-live.ts` now detects `backend/`, `frontend/`, `src/`, `packages/`, `app/`, `lib/` directories automatically instead of using a hardcoded list
+- **Improved file classification** — Labels match real project structures (routers, services, components, API, config) instead of generic categories
 
 ---
 
@@ -448,7 +467,9 @@ npm run prod:status
 |----------------|---------|
 | Enable auth | `REQUIRE_AUTH=1` |
 | Strong secrets | 32+ bytes random |
-| CORS restriction | Set `ALLOWED_ORIGINS` |
+| Session signing | `SESSION_SIGNING_SECRET` — **required in production** (unsigned sessions are rejected) |
+| CORS restriction | Set `ALLOWED_ORIGINS` (regex patterns validated against ReDoS) |
+| Input limits | Agent names ≤200 chars, roles ≤100, labels ≤500, messages ≤4000 |
 | HTTPS | Configure at edge proxy |
 | Branch protection | Enabled on `main` |
 

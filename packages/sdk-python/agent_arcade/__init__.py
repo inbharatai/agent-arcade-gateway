@@ -66,7 +66,7 @@ class AgentArcade:
 
     # ── Connection ───────────────────────────────────────────────────────
     def connect(self) -> None:
-        """Try Socket.IO first, fall back to HTTP-only mode silently."""
+        """Try Socket.IO first, fall back to HTTP-only mode with a warning."""
         try:
             import socketio  # type: ignore
 
@@ -76,6 +76,13 @@ class AgentArcade:
                 "sessionId": self.session_id,
                 "token": self.auth_token,
             })
+        except ImportError:
+            import logging
+            logging.getLogger(__name__).warning(
+                "python-socketio not installed — using HTTP-only fallback. "
+                "Install it with: pip install python-socketio[client]"
+            )
+            self._sio = None
         except Exception:
             self._sio = None  # HTTP fallback
 

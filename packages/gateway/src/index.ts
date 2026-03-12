@@ -151,6 +151,7 @@ function broadcastSseEvent(sessionId: string, ev: TelemetryEvent) {
       c.res.write(payload)
     } catch {
       clients.delete(c)
+      try { c.res.destroy() } catch { /* already closed */ }
     }
   }
 }
@@ -203,7 +204,13 @@ function originAllowed(origin?: string): boolean {
     if (rule === origin) return true
     if (rule.startsWith('regex:')) {
       try {
-        const re: RegExp = new RegExp(rule.slice('regex:'.length))
+        const pattern = rule.slice('regex:'.length)
+        // Guard against ReDoS: reject overly complex patterns
+        if (pattern.length > 200 || /([+*])\1/.test(pattern)) {
+          log('warn', `Skipping suspicious CORS regex pattern: ${pattern.slice(0, 60)}`)
+          continue
+        }
+        const re: RegExp = new RegExp(pattern)
         if (re.test(origin)) return true
       } catch {
         // Ignore invalid regex rules.
@@ -294,8 +301,11 @@ function requiresRole(principal: Principal, allowed: PrincipalRole[]): boolean {
 
 function checkSessionSignature(sessionId: string, signature?: string): boolean {
   if (!SESSION_SIGNING_SECRET) {
-    if (NODE_ENV === 'production') console.warn('[security] SESSION_SIGNING_SECRET not set — signature check bypassed in production!')
-    return true
+    if (NODE_ENV === 'production') {
+      log('error', 'SESSION_SIGNING_SECRET not set in production — rejecting session signature check')
+      return false
+    }
+    return true // Allow in dev when secret is not configured
   }
   if (!signature) return false
   const expected = createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
@@ -612,8 +622,8 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       agent = {
         id: ev.agentId,
         sessionId: ev.sessionId,
-        name: p.name || 'Agent',
-        role: p.role || 'assistant',
+        name: String(p.name || 'Agent').slice(0, 200),
+        role: String(p.role || 'assistant').slice(0, 100),
         state: 'idle',
         label: 'Starting...',
         progress: 0,
@@ -631,7 +641,7 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       const p = ev.payload as Record<string, unknown>
       const nextState = String(p.state || '')
       agent.state = VALID_STATES.includes(nextState as AgentState) ? (nextState as AgentState) : agent.state
-      if (typeof p.label === 'string') agent.label = p.label
+      if (typeof p.label === 'string') agent.label = p.label.slice(0, 500)
       if (typeof p.progress === 'number') agent.progress = Math.max(0, Math.min(1, p.progress))
       if (typeof p.aiModel === 'string') agent.aiModel = p.aiModel
       if (typeof p.task === 'string') agent.task = p.task
@@ -643,8 +653,13 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       agent = await ensureAgent()
       const p = ev.payload as Record<string, string>
       agent.state = 'tool'
-      agent.label = p.label || `Using ${p.name || 'tool'}`
-      if (p.name) agent.tools.push(p.name)
+      agent.label = String(p.label || `Using ${p.name || 'tool'}`).slice(0, 500)
+      if (p.name) {
+        const toolName = String(p.name).slice(0, 200)
+        agent.tools.push(toolName)
+        // Cap tools array to prevent unbounded growth
+        if (agent.tools.length > 500) agent.tools = agent.tools.slice(-250)
+      }
       agent.lastUpdate = ev.ts
       await storage.upsertAgent(ev.sessionId, agent)
       break
@@ -653,7 +668,10 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       agent = await ensureAgent()
       const p = ev.payload as Record<string, unknown>
       if (p.level === 'waiting' || p.requiresInput) agent.state = 'waiting'
-      agent.messages.push(String(p.text || ''))
+      const msgText = String(p.text || '').slice(0, 4000)
+      agent.messages.push(msgText)
+      // Cap messages to prevent unbounded memory growth
+      if (agent.messages.length > 1000) agent.messages = agent.messages.slice(-500)
       agent.lastUpdate = ev.ts
       await storage.upsertAgent(ev.sessionId, agent)
       break

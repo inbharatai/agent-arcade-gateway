@@ -90,19 +90,21 @@ function relative(filepath: string): string {
 function classifyFile(filepath: string): { module: string; type: string } {
   const rel = relative(filepath)
   const ext = path.extname(filepath)
-  if (rel.includes('themes'))    return { module: 'themes', type: 'theme-engine' }
-  if (rel.includes('sprites'))   return { module: 'sprites', type: 'character-system' }
-  if (rel.includes('core'))      return { module: 'core', type: 'renderer' }
-  if (rel.includes('audio'))     return { module: 'audio', type: 'audio-engine' }
-  if (rel.includes('store'))     return { module: 'store', type: 'state-management' }
-  if (rel.includes('movement'))  return { module: 'movement', type: 'pathfinding' }
-  if (rel.includes('component')) return { module: 'components', type: 'ui' }
-  if (rel.includes('gateway'))   return { module: 'gateway', type: 'server' }
-  if (rel.includes('sdk'))       return { module: 'sdk', type: 'sdk' }
-  if (rel.includes('prisma'))    return { module: 'database', type: 'schema' }
-  if (rel.includes('example'))   return { module: 'examples', type: 'tooling' }
-  if (ext === '.css')            return { module: 'styles', type: 'styling' }
+  // Backend (FastAPI)
+  if (rel.includes('routers'))   return { module: 'backend/routers', type: 'api-route' }
+  if (rel.includes('services'))  return { module: 'backend/services', type: 'business-logic' }
+  if (rel.includes('core') && rel.startsWith('backend')) return { module: 'backend/core', type: 'infrastructure' }
+  if (rel.includes('schemas'))   return { module: 'backend/schemas', type: 'data-model' }
+  if (rel === 'backend/main.py') return { module: 'backend', type: 'entrypoint' }
+  if (rel.startsWith('backend')) return { module: 'backend', type: 'python' }
+  // Frontend (Next.js)
+  if (rel.includes('components')) return { module: 'frontend/components', type: 'ui' }
+  if (rel.includes('frontend/app')) return { module: 'frontend/app', type: 'page' }
+  if (rel.includes('frontend/lib')) return { module: 'frontend/lib', type: 'utility' }
+  if (rel.includes('frontend/hooks')) return { module: 'frontend/hooks', type: 'hook' }
+  if (ext === '.css')            return { module: 'frontend/styles', type: 'styling' }
   if (ext === '.json')           return { module: 'config', type: 'configuration' }
+  if (ext === '.md')             return { module: 'docs', type: 'documentation' }
   return { module: 'workspace', type: 'source' }
 }
 
@@ -382,11 +384,11 @@ async function main() {
   console.log('')
 
   // ── Watch directories ─────────────────────────────────────────────────
-  const watchDirs = [
-    path.join(WORKSPACE, 'packages'),
-    path.join(WORKSPACE, 'examples'),
-    path.join(WORKSPACE, 'src'),
-  ].filter(d => fs.existsSync(d))
+  // Auto-discover which top-level source dirs exist in this workspace.
+  // Falls back to watching the whole workspace root if none of the standard dirs are found.
+  const STANDARD_DIRS = ['backend', 'frontend', 'src', 'packages', 'examples', 'app', 'lib']
+  const discovered = STANDARD_DIRS.map(d => path.join(WORKSPACE, d)).filter(d => fs.existsSync(d))
+  const watchDirs = discovered.length > 0 ? discovered : [WORKSPACE]
 
   for (const dir of watchDirs) {
     try {

@@ -107,17 +107,22 @@ export class AgentArcade {
     if (this.socket && this.connected) {
       this.socket.emit('event', ev)
     } else {
-      // HTTP fallback
-      fetch(`${this.url}/v1/ingest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
-          ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
-          ...(this.sessionSignature ? { 'x-session-signature': this.sessionSignature } : {}),
-        },
-        body: JSON.stringify(ev),
-      }).catch(() => {})
+      // HTTP fallback with retry
+      const attempt = (retries: number) => {
+        fetch(`${this.url}/v1/ingest`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+            ...(this.apiKey ? { 'x-api-key': this.apiKey } : {}),
+            ...(this.sessionSignature ? { 'x-session-signature': this.sessionSignature } : {}),
+          },
+          body: JSON.stringify(ev),
+        }).catch(() => {
+          if (retries > 0) setTimeout(() => attempt(retries - 1), 1000 * (4 - retries))
+        })
+      }
+      attempt(2)
     }
   }
 
