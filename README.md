@@ -17,7 +17,19 @@
 
 ![Agent Arcade v3.0](docs/assets/arcade-retro-theme.png)
 
-*Multi-agent session: OpenAI, Claude, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
+*Multi-agent session: OpenAI, Claude, OpenClaw, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
+
+</div>
+
+---
+
+<div align="center">
+
+### Now with OpenClaw Integration
+
+<img src="docs/assets/openclaw-integration.svg" alt="OpenClaw + Agent Arcade Integration" width="800" />
+
+*Full observability into OpenClaw's Brain, Skills, Memory, Heartbeat, and Channel systems — one line of code*
 
 </div>
 
@@ -316,6 +328,108 @@ arcade.disconnect()
 
 ---
 
+## OpenClaw Integration Guide
+
+OpenClaw (163K GitHub stars) is the hottest open-source AI agent framework in 2026. Agent Arcade provides **first-class integration** with all 5 OpenClaw components.
+
+### What Gets Tracked
+
+| OpenClaw Component | Tracked Events | Arcade Visualization |
+|--------------------|---------------|---------------------|
+| **Brain** (ReAct loop) | `think`, `plan`, `act`, `observe`, `respond`, `error` | Thinking/tool/writing state transitions |
+| **Skills** (5,700+ plugins) | `start`, `end`, `error` | Each skill spawns a child agent with parent link |
+| **Memory** (Markdown files) | `read`, `write`, `search` | Tool events with key names and sizes |
+| **Heartbeat** (scheduler) | `start`, `end` | Each scheduled task spawns a child agent |
+| **Gateway** (channels) | `receive`, `send` | Reading/writing states per channel message |
+
+### Integration Methods
+
+**Method 1: One-Line Wrap** (recommended)
+
+```typescript
+import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
+
+// Wrap your OpenClaw instance — auto-instruments everything
+const claw = wrapOpenClaw(openClawInstance, {
+  gatewayUrl: 'http://localhost:8787',
+  sessionId: 'my-claw-session',
+  agentName: 'MyClaw',         // optional: custom agent name
+  trackMemory: true,           // optional: track memory ops (default: true)
+  trackHeartbeat: true,        // optional: track scheduled tasks (default: true)
+  trackSkills: true,           // optional: track skill executions (default: true)
+})
+
+// Use OpenClaw normally — all activity appears in the Arcade dashboard
+// When done:
+claw.arcadeDisconnect()
+```
+
+**Method 2: Event Hooks** (granular control)
+
+```typescript
+import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
+
+const hooks = createOpenClawHooks({
+  gatewayUrl: 'http://localhost:8787',
+  sessionId: 'my-claw-session',
+})
+
+// Attach only the events you want to track
+claw.on('brain:think', hooks.onThink)
+claw.on('brain:plan', hooks.onPlan)
+claw.on('brain:act', hooks.onAct)
+claw.on('brain:observe', hooks.onObserve)
+claw.on('brain:respond', hooks.onRespond)
+claw.on('brain:error', hooks.onBrainError)
+
+claw.on('skill:start', hooks.onSkillStart)
+claw.on('skill:end', hooks.onSkillEnd)
+claw.on('skill:error', hooks.onSkillError)
+
+claw.on('memory:read', hooks.onMemoryRead)
+claw.on('memory:write', hooks.onMemoryWrite)
+claw.on('memory:search', hooks.onMemorySearch)
+
+claw.on('heartbeat:start', hooks.onHeartbeatStart)
+claw.on('heartbeat:end', hooks.onHeartbeatEnd)
+
+// Cleanup
+hooks.onEnd('Session complete')
+hooks.disconnect()
+```
+
+**Method 3: Gateway Middleware**
+
+```typescript
+import { openClawMiddleware } from '@agent-arcade/adapter-openclaw'
+
+// Instruments all incoming channel messages automatically
+claw.gateway.use(openClawMiddleware({
+  gatewayUrl: 'http://localhost:8787',
+  sessionId: 'production',
+}))
+```
+
+### How It Works Under the Hood
+
+```
+OpenClaw Instance
+  ├── brain.think("What's the weather?")
+  │     └── Arcade: spawn agent → state(thinking)
+  ├── brain.act("weather_skill", { city: "NYC" })
+  │     └── Arcade: tool("weather_skill") → state(tool)
+  ├── skills.execute("weather_skill")
+  │     └── Arcade: spawn child → link to parent → state(tool) → end
+  ├── memory.write("last_query", "weather NYC")
+  │     └── Arcade: tool("memory:write", { key: "last_query" })
+  ├── brain.respond("It's 72F and sunny!")
+  │     └── Arcade: state(writing) → end(success)
+  └── heartbeat.run("check_inbox")
+        └── Arcade: spawn child → link to parent → end
+```
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -323,6 +437,7 @@ flowchart LR
   subgraph Adapters["Plug & Play Adapters"]
     OA[OpenAI Adapter]
     AA[Anthropic Adapter]
+    OC[OpenClaw Adapter]
     LC[LangChain Adapter]
     LI[LlamaIndex Adapter]
     CR[CrewAI Adapter]
@@ -753,6 +868,8 @@ MIT License — see [LICENSE](LICENSE)
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
 
 **Agent Arcade v3.0 — See every AI agent. Track every token. Level up.**
+
+*Now with first-class OpenClaw, OpenAI, Anthropic, LangChain, LlamaIndex, CrewAI, and AutoGen support.*
 
 [Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
 

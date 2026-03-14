@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="960" y2="540" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="100%" stop-color="#1a1a3e"/>
+    </linearGradient>
+    <linearGradient id="clawGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6b35"/>
+      <stop offset="100%" stop-color="#ff9f1c"/>
+    </linearGradient>
+    <linearGradient id="arcadeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff6b35"/>
+      <stop offset="50%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="brainGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="skillGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="memGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="dashGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="540" fill="url(#bg)"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.05" stroke="#6366f1" stroke-width="0.5">
+    <line x1="0" y1="0" x2="960" y2="0"/><line x1="0" y1="60" x2="960" y2="60"/>
+    <line x1="0" y1="120" x2="960" y2="120"/><line x1="0" y1="180" x2="960" y2="180"/>
+    <line x1="0" y1="240" x2="960" y2="240"/><line x1="0" y1="300" x2="960" y2="300"/>
+    <line x1="0" y1="360" x2="960" y2="360"/><line x1="0" y1="420" x2="960" y2="420"/>
+    <line x1="0" y1="480" x2="960" y2="480"/>
+    <line x1="0" y1="0" x2="0" y2="540"/><line x1="120" y1="0" x2="120" y2="540"/>
+    <line x1="240" y1="0" x2="240" y2="540"/><line x1="360" y1="0" x2="360" y2="540"/>
+    <line x1="480" y1="0" x2="480" y2="540"/><line x1="600" y1="0" x2="600" y2="540"/>
+    <line x1="720" y1="0" x2="720" y2="540"/><line x1="840" y1="0" x2="840" y2="540"/>
+    <line x1="960" y1="0" x2="960" y2="540"/>
+  </g>
+
+  <!-- Title -->
+  <text x="480" y="45" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="28" font-weight="800" fill="#ffffff" filter="url(#glow)">
+    OpenClaw + Agent Arcade
+  </text>
+  <text x="480" y="72" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#8892b0" letter-spacing="4">
+    FULL-STACK AI OBSERVABILITY
+  </text>
+
+  <!-- ═══════════════ LEFT: OpenClaw Box ═══════════════ -->
+  <rect x="40" y="100" width="280" height="380" rx="16" fill="#111122" stroke="#ff6b35" stroke-width="2" opacity="0.9"/>
+  <rect x="40" y="100" width="280" height="50" rx="16" fill="url(#clawGrad)" opacity="0.15"/>
+  <!-- OpenClaw icon (claw shape) -->
+  <text x="60" y="133" font-size="24">&#x1F9BE;</text>
+  <text x="92" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#ff9f1c">OpenClaw</text>
+  <text x="235" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#666" font-style="italic">163K stars</text>
+
+  <!-- Brain component -->
+  <rect x="60" y="165" width="240" height="48" rx="8" fill="#0d1117" stroke="#10b981" stroke-width="1.5"/>
+  <text x="75" y="185" font-size="14">&#x1F9E0;</text>
+  <text x="96" y="186" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#10b981">Brain</text>
+  <text x="96" y="202" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#666">ReAct loop: Think → Act → Observe</text>
+
+  <!-- Skills component -->
+  <rect x="60" y="223" width="240" height="48" rx="8" fill="#0d1117" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="75" y="243" font-size="14">&#x1F527;</text>
+  <text x="96" y="244" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#3b82f6">Skills</text>
+  <text x="96" y="260" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#666">5,700+ community plug-in actions</text>
+
+  <!-- Memory component -->
+  <rect x="60" y="281" width="240" height="48" rx="8" fill="#0d1117" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="75" y="301" font-size="14">&#x1F4BE;</text>
+  <text x="96" y="302" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#f59e0b">Memory</text>
+  <text x="96" y="318" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#666">Persistent context in Markdown files</text>
+
+  <!-- Heartbeat component -->
+  <rect x="60" y="339" width="240" height="48" rx="8" fill="#0d1117" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="75" y="359" font-size="14">&#x1F4AB;</text>
+  <text x="96" y="360" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#ef4444">Heartbeat</text>
+  <text x="96" y="376" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#666">Scheduled tasks &amp; inbox monitoring</text>
+
+  <!-- Gateway component -->
+  <rect x="60" y="397" width="240" height="48" rx="8" fill="#0d1117" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="75" y="417" font-size="14">&#x1F310;</text>
+  <text x="96" y="418" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#8b5cf6">Gateway</text>
+  <text x="96" y="434" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#666">Slack, WhatsApp, Discord channels</text>
+
+  <!-- ═══════════════ CENTER: Connection Arrows ═══════════════ -->
+  <!-- Main arrow -->
+  <line x1="330" y1="290" x2="400" y2="290" stroke="url(#arrowGrad)" stroke-width="3" filter="url(#glow)"/>
+  <polygon points="400,283 415,290 400,297" fill="#ffd700" filter="url(#glow)"/>
+
+  <!-- Arrow label -->
+  <rect x="340" y="255" width="70" height="22" rx="4" fill="#1a1a2e" stroke="#ffd700" stroke-width="1"/>
+  <text x="375" y="270" text-anchor="middle" font-family="'Courier New', monospace" font-size="8" fill="#ffd700">one line</text>
+
+  <!-- Code snippet box -->
+  <rect x="335" y="310" width="85" height="48" rx="6" fill="#0d1117" stroke="#333" stroke-width="1"/>
+  <text x="342" y="325" font-family="'Courier New', monospace" font-size="7" fill="#c084fc">wrapOpenClaw</text>
+  <text x="342" y="337" font-family="'Courier New', monospace" font-size="7" fill="#86efac">(claw, {</text>
+  <text x="342" y="349" font-family="'Courier New', monospace" font-size="7" fill="#fbbf24">  ...opts</text>
+  <text x="342" y="355" font-family="'Courier New', monospace" font-size="7" fill="#86efac">})</text>
+
+  <!-- ═══════════════ RIGHT: Agent Arcade Box ═══════════════ -->
+  <rect x="420" y="100" width="500" height="380" rx="16" fill="#111122" stroke="#6366f1" stroke-width="2" opacity="0.9"/>
+  <rect x="420" y="100" width="500" height="50" rx="16" fill="url(#arcadeGrad)" opacity="0.15"/>
+  <!-- Arcade icon -->
+  <text x="440" y="133" font-size="24">&#x1F3AE;</text>
+  <text x="472" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="700" fill="#a78bfa">Agent Arcade</text>
+  <text x="630" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#666" font-style="italic">Universal Observability</text>
+
+  <!-- Dashboard row -->
+  <g>
+    <!-- Live Visualization -->
+    <rect x="440" y="165" width="145" height="75" rx="8" fill="#0d1117" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="455" y="186" font-size="14">&#x1F4FA;</text>
+    <text x="476" y="187" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#22c55e">Live Dashboard</text>
+    <text x="455" y="202" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Pixel-art canvas, 8 themes</text>
+    <text x="455" y="214" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">60fps sprites + particles</text>
+    <text x="455" y="226" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Real-time agent states</text>
+
+    <!-- Gamification -->
+    <rect x="595" y="165" width="145" height="75" rx="8" fill="#0d1117" stroke="#ffd700" stroke-width="1.5"/>
+    <text x="610" y="186" font-size="14">&#x1F3C6;</text>
+    <text x="631" y="187" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#ffd700">Gamification</text>
+    <text x="610" y="202" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">32 achievements (4 tiers)</text>
+    <text x="610" y="214" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">12 RPG levels + streaks</text>
+    <text x="610" y="226" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Leaderboard (5 categories)</text>
+
+    <!-- XP + Leaderboard -->
+    <rect x="750" y="165" width="150" height="75" rx="8" fill="#0d1117" stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="765" y="186" font-size="14">&#x2B50;</text>
+    <text x="786" y="187" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#8b5cf6">XP System</text>
+    <text x="765" y="202" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Task XP: 100 base</text>
+    <text x="765" y="214" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Speed bonus: +50-200</text>
+    <text x="765" y="226" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Streak multiplier: 3.0x</text>
+  </g>
+
+  <!-- Second row -->
+  <g>
+    <!-- Cost Tracking -->
+    <rect x="440" y="255" width="145" height="75" rx="8" fill="#0d1117" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="455" y="276" font-size="14">&#x1F4B0;</text>
+    <text x="476" y="277" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#ef4444">Cost Tracking</text>
+    <text x="455" y="292" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">25+ AI models tracked</text>
+    <text x="455" y="304" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Per-agent breakdown</text>
+    <text x="455" y="316" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Budget alerts at 80%/95%</text>
+
+    <!-- Session Replay -->
+    <rect x="595" y="255" width="145" height="75" rx="8" fill="#0d1117" stroke="#06b6d4" stroke-width="1.5"/>
+    <text x="610" y="276" font-size="14">&#x23EA;</text>
+    <text x="631" y="277" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#06b6d4">Session Replay</text>
+    <text x="610" y="292" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Record + playback</text>
+    <text x="610" y="304" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">0.25x to 8x speed</text>
+    <text x="610" y="316" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Seek + export JSON</text>
+
+    <!-- Notifications -->
+    <rect x="750" y="255" width="150" height="75" rx="8" fill="#0d1117" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="765" y="276" font-size="14">&#x1F514;</text>
+    <text x="786" y="277" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#f59e0b">Alerts</text>
+    <text x="765" y="292" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Slack, Discord, Email</text>
+    <text x="765" y="304" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Cost + error thresholds</text>
+    <text x="765" y="316" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#555">Rate-limited delivery</text>
+  </g>
+
+  <!-- Connection flow labels -->
+  <g font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#666">
+    <text x="440" y="360">Events tracked per OpenClaw component:</text>
+  </g>
+
+  <!-- Flow mapping table -->
+  <g>
+    <rect x="440" y="370" width="460" height="95" rx="8" fill="#0a0a15" stroke="#222" stroke-width="1"/>
+
+    <!-- Headers -->
+    <text x="460" y="389" font-family="'Segoe UI', Arial, sans-serif" font-size="9" font-weight="700" fill="#888">OpenClaw</text>
+    <text x="570" y="389" font-family="'Segoe UI', Arial, sans-serif" font-size="9" font-weight="700" fill="#888">Tracked Events</text>
+    <text x="780" y="389" font-family="'Segoe UI', Arial, sans-serif" font-size="9" font-weight="700" fill="#888">Arcade State</text>
+    <line x1="450" y1="395" x2="890" y2="395" stroke="#222" stroke-width="0.5"/>
+
+    <!-- Brain row -->
+    <circle cx="455" cy="409" r="4" fill="#10b981"/>
+    <text x="465" y="412" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#10b981">Brain</text>
+    <text x="570" y="412" font-family="'Courier New', monospace" font-size="7" fill="#aaa">think, plan, act, observe, respond</text>
+    <text x="780" y="412" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#22c55e">thinking → tool → writing</text>
+
+    <!-- Skills row -->
+    <circle cx="455" cy="425" r="4" fill="#3b82f6"/>
+    <text x="465" y="428" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#3b82f6">Skills</text>
+    <text x="570" y="428" font-family="'Courier New', monospace" font-size="7" fill="#aaa">start, end, error</text>
+    <text x="780" y="428" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#22c55e">child agent per skill</text>
+
+    <!-- Memory row -->
+    <circle cx="455" cy="441" r="4" fill="#f59e0b"/>
+    <text x="465" y="444" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#f59e0b">Memory</text>
+    <text x="570" y="444" font-family="'Courier New', monospace" font-size="7" fill="#aaa">read, write, search</text>
+    <text x="780" y="444" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#22c55e">tool events</text>
+
+    <!-- Heartbeat row -->
+    <circle cx="455" cy="457" r="4" fill="#ef4444"/>
+    <text x="465" y="460" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#ef4444">Heartbeat</text>
+    <text x="570" y="460" font-family="'Courier New', monospace" font-size="7" fill="#aaa">start, end</text>
+    <text x="780" y="460" font-family="'Segoe UI', Arial, sans-serif" font-size="8" fill="#22c55e">child agent per task</text>
+  </g>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="500" width="960" height="40" fill="#0a0a12" opacity="0.8"/>
+  <text x="480" y="524" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#555">
+    Agent Arcade v3.0  |  MIT License  |  github.com/inbharatai/agent-arcade-gateway  |  Made by InBharat AI
+  </text>
+</svg>
