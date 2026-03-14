@@ -1,0 +1,23 @@
+{
+  "name": "@agent-arcade/adapter-openai",
+  "version": "1.0.0",
+  "description": "OpenAI SDK adapter for Agent Arcade -- auto-instruments chat, images, audio, embeddings",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "openai": ">=4.0.0"
+  },
+  "dependencies": {
+    "@agent-arcade/sdk-node": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "openai": "^4.0.0"
+  },
+  "keywords": ["agent-arcade", "openai", "gpt", "telemetry", "ai-agents", "gamification"],
+  "license": "MIT"
+}
