@@ -142,12 +142,12 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     if (newEvents.length === 0) return
 
     for (const event of newEvents) {
-      achievementEngine.processEvent(event, agentsMap)
+      achievementEngine.check(event, agentsMap)
       xpEngine.processEvent(event, agentsMap)
       leaderboard.processEvent(event, agentsMap)
 
       if (isRecording) {
-        replayEngine.recordEvent(event)
+        replayEngine.captureEvent(event)
       }
     }
     processedCountRef.current = events.length
@@ -156,11 +156,11 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     const timer = setTimeout(() => {
       setAchievements(achievementEngine.getAll())
       setAllXP(xpEngine.getAllXP())
-      setLeaderboardEntries(leaderboard.getRankings(leaderboardCategory))
+      setLeaderboardEntries(leaderboard.getLeaderboard(leaderboardCategory))
       const streak = xpEngine.getStreak()
       setStreakDays(streak.days)
       setStreakMultiplier(streak.multiplier)
-      setSavedReplayCount(replayEngine.listSaved().length)
+      setSavedReplayCount(replayEngine.listRecordings().length)
 
       // Inline cost calculation from agent data
       const agentCosts = agents.map(a => ({
@@ -201,7 +201,7 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     setLeaderboardCategory(cat)
     if (leaderboardRef.current) {
       const timer = setTimeout(() => {
-        setLeaderboardEntries(leaderboardRef.current!.getRankings(cat))
+        setLeaderboardEntries(leaderboardRef.current!.getLeaderboard(cat))
       }, 0)
       return () => clearTimeout(timer)
     }
