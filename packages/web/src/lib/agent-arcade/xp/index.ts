@@ -114,7 +114,7 @@ export class XPEngine {
         const payload = event.payload as Record<string, unknown>
         if (payload.success === false) break
 
-        let xp = XP_RULES.taskComplete
+        let xp: number = XP_RULES.taskComplete
         const duration = event.ts - (agent.spawnedAt || event.ts)
 
         // Speed bonuses (stackable)

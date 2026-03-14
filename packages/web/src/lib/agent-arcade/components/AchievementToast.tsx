@@ -28,10 +28,13 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
 
   useEffect(() => {
     if (achievement) {
-      setVisible(true)
-      setExiting(false)
+      // Use setTimeout(0) to avoid synchronous setState in effect body
+      const showTimer = setTimeout(() => {
+        setVisible(true)
+        setExiting(false)
+      }, 0)
 
-      const timer = setTimeout(() => {
+      const dismissTimer = setTimeout(() => {
         setExiting(true)
         setTimeout(() => {
           setVisible(false)
@@ -39,7 +42,10 @@ export function AchievementToast({ achievement, onDismiss }: AchievementToastPro
         }, 400)
       }, 5000)
 
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(showTimer)
+        clearTimeout(dismissTimer)
+      }
     }
   }, [achievement, onDismiss])
 

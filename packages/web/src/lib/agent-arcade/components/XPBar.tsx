@@ -5,7 +5,7 @@
  * Shows level, title, progress to next level, and streak info.
  */
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
 import type { AgentXP } from '../xp'
 
 interface XPBarProps {
@@ -33,19 +33,26 @@ export function XPBar({ xp, compact = false }: XPBarProps) {
   const [sparkle, setSparkle] = useState(false)
   const prevXP = useRef(xp.totalXP)
 
+  // Animate progress bar
   useEffect(() => {
-    // Animate the bar
     const timer = setTimeout(() => setAnimatedProgress(xp.xpProgress), 100)
+    return () => clearTimeout(timer)
+  }, [xp.xpProgress])
 
-    // Show sparkle on XP gain
+  // Show sparkle on XP gain — compare via ref inside effect only
+  useEffect(() => {
     if (xp.totalXP > prevXP.current) {
-      setSparkle(true)
-      setTimeout(() => setSparkle(false), 1000)
+      // Use queueMicrotask to avoid synchronous setState in effect body
+      const showTimer = setTimeout(() => setSparkle(true), 0)
+      const hideTimer = setTimeout(() => setSparkle(false), 1000)
+      prevXP.current = xp.totalXP
+      return () => {
+        clearTimeout(showTimer)
+        clearTimeout(hideTimer)
+      }
     }
     prevXP.current = xp.totalXP
-
-    return () => clearTimeout(timer)
-  }, [xp.xpProgress, xp.totalXP])
+  }, [xp.totalXP])
 
   const levelColor = LEVEL_COLORS[xp.level] || '#fff'
 
