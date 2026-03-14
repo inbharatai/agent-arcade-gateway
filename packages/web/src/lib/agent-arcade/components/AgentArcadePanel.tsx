@@ -13,6 +13,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { GamePanel } from './GamePanel'
 import { PixelCanvas, CanvasAudioCallbacks } from '../core/PixelCanvas'
 import { useAgentArcadeStore, useAgents, useConnectionStatus, useSettings, useNarrative } from '../store'
 import { useTelemetryProvider } from './useTelemetryProvider'
@@ -77,6 +78,7 @@ export function AgentArcadePanel({
   const [showThemeGrid, setShowThemeGrid] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
   const [showNarrativePanel, setShowNarrativePanel] = useState(false)
+  const [showGamePanel, setShowGamePanel] = useState(false)
   const audioInitRef = useRef(false)
 
   const agents = useAgents()
@@ -282,6 +284,11 @@ export function AgentArcadePanel({
                   className={`px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showNarrativePanel ? 'bg-muted ring-1 ring-border' : ''}`}
                   title="Session Story"
                 >📜</button>
+                <button
+                  onClick={() => setShowGamePanel(g => !g)}
+                  className={`px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showGamePanel ? 'bg-muted ring-1 ring-border' : ''}`}
+                  title="XP, Achievements, Costs, Replay"
+                >🎮</button>
                 <button
                   onClick={() => { setShowSettings(s => !s); setShowThemeGrid(false) }}
                   className="px-1.5 py-0.5 rounded hover:bg-muted text-xs"
@@ -541,6 +548,18 @@ export function AgentArcadePanel({
           </div>
           <span className="flex-shrink-0 text-muted-foreground/50">{store.events.length} events</span>
         </div>
+      )}
+
+      {/* ── Game Panel (v3.0 — XP, Achievements, Leaderboard, Costs, Replay) ── */}
+      {!embed && (
+        <GamePanel
+          agents={agents}
+          agentsMap={store.agents}
+          events={store.events}
+          sessionId={sessionId}
+          visible={showGamePanel}
+          onToggle={() => setShowGamePanel(g => !g)}
+        />
       )}
 
       {/* ── Narrative Panel ────────────────────────────────────────────── */}

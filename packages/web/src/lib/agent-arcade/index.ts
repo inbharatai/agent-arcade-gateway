@@ -40,3 +40,16 @@ export { PixelCanvas } from './core/PixelCanvas'
 // Components
 export { AgentArcadePanel } from './components/AgentArcadePanel'
 export { useTelemetryProvider } from './components/useTelemetryProvider'
+export { GamePanel } from './components/GamePanel'
+export { AchievementPanel } from './components/AchievementPanel'
+export { AchievementToast } from './components/AchievementToast'
+export { XPBar } from './components/XPBar'
+export { Leaderboard } from './components/Leaderboard'
+export { CostDashboard } from './components/CostDashboard'
+export { ReplayControls } from './components/ReplayControls'
+
+// Engines
+export { AchievementEngine } from './achievements'
+export { XPEngine } from './xp'
+export { LeaderboardManager } from './xp/leaderboard'
+export { ReplayEngine } from './replay'
