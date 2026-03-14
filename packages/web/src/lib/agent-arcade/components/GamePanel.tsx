@@ -455,6 +455,7 @@ function estimateCost(model: string, inputTokens: number, outputTokens: number):
   else if (m.includes('gemini')) { inputRate = 0.075; outputRate = 0.3 }
   else if (m.includes('mistral-large')) { inputRate = 3; outputRate = 9 }
   else if (m.includes('deepseek')) { inputRate = 0.27; outputRate = 1.1 }
+  else if (m.includes('openclaw') || m.includes('claw')) { inputRate = 0; outputRate = 0 } // OpenClaw is local/free
   else if (m.includes('llama') || m.includes('ollama')) { return 0 }
   else { inputRate = 1; outputRate = 3 } // generic fallback
 

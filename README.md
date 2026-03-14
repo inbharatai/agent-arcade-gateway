@@ -528,6 +528,7 @@ Real-time cost tracking for 25+ AI models:
 | **Google** | Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0 |
 | **Mistral** | Mistral Large, Mistral Medium, Mistral Small |
 | **DeepSeek** | DeepSeek V3, DeepSeek R1 |
+| **OpenClaw** | Local agent (free — runs on your hardware) |
 | **Local** | Ollama, llama.cpp (free) |
 
 Features:

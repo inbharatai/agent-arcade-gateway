@@ -60,6 +60,8 @@ const MODEL_COLORS: Record<string, string> = {
   'qwen': '#EC4899',
   'o3': '#14B8A6',
   'o4': '#14B8A6',
+  'openclaw': '#FF6B35',
+  'claw': '#FF6B35',
 }
 
 function getModelColor(model: string): string {
