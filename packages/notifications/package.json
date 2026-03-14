@@ -1,0 +1,19 @@
+{
+  "name": "@agent-arcade/notifications",
+  "version": "1.0.0",
+  "description": "Agent Arcade notification router -- WhatsApp, Slack, Discord, Email",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/nodemailer": "^6.4.0"
+  },
+  "keywords": ["agent-arcade", "notifications", "whatsapp", "slack", "discord"],
+  "license": "MIT"
+}

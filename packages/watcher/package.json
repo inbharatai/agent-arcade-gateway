@@ -1,0 +1,11 @@
+{
+  "name": "@agent-arcade/watcher",
+  "version": "1.0.0",
+  "description": "Process watcher for Agent Arcade -- auto-detects AI agent processes",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts"
+  },
+  "license": "MIT"
+}

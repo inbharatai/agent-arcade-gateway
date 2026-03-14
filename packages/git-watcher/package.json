@@ -1,0 +1,11 @@
+{
+  "name": "@agent-arcade/git-watcher",
+  "version": "1.0.0",
+  "description": "Git index watcher for Agent Arcade -- tracks file changes per agent",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts"
+  },
+  "license": "MIT"
+}
