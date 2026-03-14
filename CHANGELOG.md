@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-03-15
+
+### Added — Phase 1: Multi-Framework SDK Integrations
+- **LangChain adapter** (`@agent-arcade/adapter-langchain`) — BaseCallbackHandler with full lifecycle mapping
+- **OpenAI SDK adapter** (`@agent-arcade/adapter-openai`) — Wraps chat, images, audio, embeddings
+- **Anthropic/Claude adapter** (`@agent-arcade/adapter-anthropic`) — Streaming, tool use, extended thinking
+- **CrewAI adapter** (`agent-arcade-crewai`) — Python adapter for crew/agent/task lifecycle
+- **AutoGen adapter** (`agent-arcade-autogen`) — Python adapter for multi-agent conversations
+- **LlamaIndex adapter** (`@agent-arcade/adapter-llamaindex`) — Query, retrieval, synthesis, embeddings
+
+### Added — Phase 2: Zero-Code Instrumentation
+- **AI Proxy** (`@agent-arcade/proxy`) — HTTP proxy on :8788 that intercepts OpenAI, Anthropic, Gemini, Ollama, Mistral API calls
+- **Process Watcher** (`@agent-arcade/watcher`) — Auto-detects AI agent processes (Claude Code, Aider, Cursor, etc.)
+- **Git Watcher** (`@agent-arcade/git-watcher`) — Monitors git index and emits file change events
+- **Log Tailer** (`@agent-arcade/log-tailer`) — Watches AI tool log files and auto-parses into events
+- **Cost Calculator** (`packages/gateway/src/cost.ts`) — Pricing for 25+ models, per-agent cost tracking, budget alerts
+
+### Added — Phase 3: Universal Connector
+- **CLI** (`@agent-arcade/cli`) — `agent-arcade init/start/status/demo/hook claude-code`
+- **arcade.config.json** — Universal config schema for zero-code setup
+- **Claude Code hooks** — Auto-generated pre-tool and post-tool hooks
+
+### Added — Phase 4: Notification System
+- **Notification Router** — Central dispatcher for Slack, Discord, Email, WhatsApp
+- Alert rules for cost threshold, error rate, agent errors, and agent waiting states
+- Rate limiting to prevent notification spam
+
+### Added — Phase 5: Dashboard Upgrades
+- **Achievement System** — 30+ achievements across 6 categories (speed, reliability, tooling, endurance, teamwork, special)
+- **XP & Leveling** — 12 RPG levels from Novice to Godlike, streak multipliers up to 3.0x
+- **Leaderboard** — Sortable rankings across 5 categories with crown icons for top 3
+- **Session Replay** — Record/playback/seek/speed control with import/export
+- **Cost Dashboard** — Real-time per-agent cost tracking, model breakdown, budget progress bar
+- **Achievement Toast** — Animated popup notification on achievement unlock
+- **XP Bar** — Animated experience bar with sparkle effects and level-up animations
+
 ## [2.1.0] - 2025-07-17
 
 ### Security
