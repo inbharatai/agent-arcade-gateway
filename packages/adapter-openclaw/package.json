@@ -1,0 +1,22 @@
+{
+  "name": "@agent-arcade/adapter-openclaw",
+  "version": "1.0.0",
+  "description": "OpenClaw adapter for Agent Arcade -- auto-instruments OpenClaw agents, skills, and heartbeat tasks",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@openclaw/sdk": ">=0.5.0"
+  },
+  "dependencies": {
+    "@agent-arcade/sdk-node": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "keywords": ["agent-arcade", "openclaw", "ai-agents", "telemetry", "observability", "gamification"],
+  "license": "MIT"
+}

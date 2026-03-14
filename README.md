@@ -44,6 +44,7 @@ Most AI observability tools give you logs after the fact. Agent Arcade gives you
 ```
                     ┌─── OpenAI ───┐
                     ├── Anthropic ──┤
+                    ├── OpenClaw ───┤
  Your AI Agents ────├── LangChain ──┼───▶ Agent Arcade ───▶ Live Dashboard
                     ├── CrewAI ─────┤       Gateway           + Achievements
                     ├── AutoGen ────┤       + Proxy           + XP System
@@ -60,7 +61,7 @@ Most AI observability tools give you logs after the fact. Agent Arcade gives you
 <td>
 
 ### Plug & Play Adapters
-6 framework adapters — wrap any AI SDK in one line
+7 framework adapters — wrap any AI SDK in one line
 
 ### Zero-Code Proxy
 Change your base URL, get full telemetry. No SDK needed.
@@ -92,6 +93,7 @@ Slack, Discord, Email, WhatsApp notifications
 |-----------|---------|-------------|----------|
 | **OpenAI** | `@agent-arcade/adapter-openai` | `wrapOpenAI(client)` — one line | TypeScript |
 | **Anthropic/Claude** | `@agent-arcade/adapter-anthropic` | `wrapAnthropic(client)` — one line | TypeScript |
+| **OpenClaw** | `@agent-arcade/adapter-openclaw` | `wrapOpenClaw(claw)` — one line | TypeScript |
 | **LangChain** | `@agent-arcade/adapter-langchain` | Callback handler | TypeScript |
 | **LlamaIndex** | `@agent-arcade/adapter-llamaindex` | Callback handler | TypeScript |
 | **CrewAI** | `agent-arcade-crewai` | `arcade_crew(crew)` decorator | Python |
@@ -191,6 +193,36 @@ const message = await client.messages.create({
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Explain quantum computing' }],
 })
+```
+
+### OpenClaw — One Line
+
+```typescript
+import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
+
+const claw = wrapOpenClaw(openClawInstance, {
+  gatewayUrl: 'http://localhost:8787',
+  sessionId: 'my-claw',
+})
+
+// OpenClaw runs normally — Brain, Skills, Memory, Heartbeat all visualized
+// Every ReAct loop step, skill execution, and memory operation appears live
+```
+
+Or use event hooks for granular control:
+
+```typescript
+import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
+
+const hooks = createOpenClawHooks({
+  gatewayUrl: 'http://localhost:8787',
+  sessionId: 'my-claw',
+})
+
+claw.on('brain:think', hooks.onThink)
+claw.on('brain:act', hooks.onAct)
+claw.on('skill:start', hooks.onSkillStart)
+claw.on('skill:end', hooks.onSkillEnd)
 ```
 
 ### Zero-Code Proxy — Any Language
@@ -612,6 +644,7 @@ agent-arcade-gateway/
 │   │
 │   ├── adapter-openai/      # OpenAI SDK wrapper
 │   ├── adapter-anthropic/   # Anthropic/Claude SDK wrapper
+│   ├── adapter-openclaw/    # OpenClaw agent framework wrapper
 │   ├── adapter-langchain/   # LangChain callback handler
 │   ├── adapter-llamaindex/  # LlamaIndex callback handler
 │   ├── adapter-crewai/      # CrewAI Python adapter

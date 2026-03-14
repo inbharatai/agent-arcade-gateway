@@ -104,12 +104,11 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     // Subscribe to achievement unlocks
     const unsubAch = achievementEngineRef.current.onUnlock((event: AchievementUnlockEvent) => {
       const timer = setTimeout(() => setToastAchievement(event.achievement), 0)
-      // Also award XP for the achievement
+      // Also award XP for the achievement — prefer an active (non-done) agent
       if (xpEngineRef.current) {
-        // Find the first active agent to award XP to
-        const firstAgent = agents[0]
-        if (firstAgent) {
-          xpEngineRef.current.awardAchievementXP(firstAgent.id, firstAgent.name, event.achievement.tier)
+        const activeAgent = agents.find(a => a.state !== 'done') || agents[0]
+        if (activeAgent) {
+          xpEngineRef.current.awardAchievementXP(activeAgent.id, activeAgent.name, event.achievement.tier)
         }
       }
       return () => clearTimeout(timer)
@@ -145,6 +144,15 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
       achievementEngine.check(event, agentsMap)
       xpEngine.processEvent(event, agentsMap)
       leaderboard.processEvent(event, agentsMap)
+
+      // Sync XP data into leaderboard for each agent
+      const agent = agentsMap.get(event.agentId)
+      if (agent) {
+        const xpData = xpEngine.getAgentXP(event.agentId)
+        if (xpData) {
+          leaderboard.updateXP(event.agentId, xpData.totalXP, xpData.level, xpData.levelTitle)
+        }
+      }
 
       if (isRecording) {
         replayEngine.captureEvent(event)
@@ -245,42 +253,46 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
   // Unlocked achievements count
   const unlockedCount = useMemo(() => achievements.filter(a => a.unlockedAt != null).length, [achievements])
 
+  // Level-up toast renderer (shared between visible and hidden states)
+  const levelUpToast = toastLevelUp && (
+    <div
+      role="status"
+      aria-live="polite"
+      style={{
+        position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+        background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+        border: '3px solid #ffd700',
+        borderRadius: 8, padding: '16px 20px', minWidth: 280,
+        fontFamily: '"Press Start 2P", monospace',
+        animation: 'slideIn 0.4s ease-out forwards',
+        boxShadow: '0 0 20px rgba(255,215,0,0.3)',
+      }}
+    >
+      <div style={{ fontSize: 10, color: '#ffd700', letterSpacing: 2, marginBottom: 8 }}>
+        LEVEL UP!
+      </div>
+      <div style={{ fontSize: 12, color: '#fff', marginBottom: 4 }}>
+        {toastLevelUp.agentName}
+      </div>
+      <div style={{ fontSize: 9, color: '#8892b0' }}>
+        Level {toastLevelUp.oldLevel} {'\u2192'} Level {toastLevelUp.newLevel} &middot; {toastLevelUp.newTitle}
+      </div>
+      <button
+        onClick={dismissLevelUp}
+        aria-label="Dismiss level up notification"
+        style={{ position: 'absolute', top: 8, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 10 }}
+      >
+        {'\u2715'}
+      </button>
+    </div>
+  )
+
   if (!visible) {
     return (
       <>
         {/* Always render toasts even when panel is hidden */}
         <AchievementToast achievement={toastAchievement} onDismiss={dismissToast} />
-
-        {/* Level-up toast */}
-        {toastLevelUp && (
-          <div
-            style={{
-              position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-              background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-              border: '3px solid #ffd700',
-              borderRadius: 8, padding: '16px 20px', minWidth: 280,
-              fontFamily: '"Press Start 2P", monospace',
-              animation: 'slideIn 0.4s ease-out forwards',
-              boxShadow: '0 0 20px rgba(255,215,0,0.3)',
-            }}
-          >
-            <div style={{ fontSize: 10, color: '#ffd700', letterSpacing: 2, marginBottom: 8 }}>
-              LEVEL UP!
-            </div>
-            <div style={{ fontSize: 12, color: '#fff', marginBottom: 4 }}>
-              {toastLevelUp.agentName}
-            </div>
-            <div style={{ fontSize: 9, color: '#8892b0' }}>
-              Level {toastLevelUp.oldLevel} {'\u2192'} Level {toastLevelUp.newLevel} &middot; {toastLevelUp.newTitle}
-            </div>
-            <button
-              onClick={dismissLevelUp}
-              style={{ position: 'absolute', top: 8, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 10 }}
-            >
-              {'\u2715'}
-            </button>
-          </div>
-        )}
+        {levelUpToast}
 
         {/* Compact XP + toggle bar */}
         <div
@@ -312,37 +324,7 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     <>
       {/* Achievement Toast — always at top level */}
       <AchievementToast achievement={toastAchievement} onDismiss={dismissToast} />
-
-      {/* Level-up toast */}
-      {toastLevelUp && (
-        <div
-          style={{
-            position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-            border: '3px solid #ffd700',
-            borderRadius: 8, padding: '16px 20px', minWidth: 280,
-            fontFamily: '"Press Start 2P", monospace',
-            animation: 'slideIn 0.4s ease-out forwards',
-            boxShadow: '0 0 20px rgba(255,215,0,0.3)',
-          }}
-        >
-          <div style={{ fontSize: 10, color: '#ffd700', letterSpacing: 2, marginBottom: 8 }}>
-            LEVEL UP!
-          </div>
-          <div style={{ fontSize: 12, color: '#fff', marginBottom: 4 }}>
-            {toastLevelUp.agentName}
-          </div>
-          <div style={{ fontSize: 9, color: '#8892b0' }}>
-            Level {toastLevelUp.oldLevel} {'\u2192'} Level {toastLevelUp.newLevel} &middot; {toastLevelUp.newTitle}
-          </div>
-          <button
-            onClick={dismissLevelUp}
-            style={{ position: 'absolute', top: 8, right: 12, background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 10 }}
-          >
-            {'\u2715'}
-          </button>
-        </div>
-      )}
+      {levelUpToast}
 
       {/* Game Panel */}
       <div className="border-t border-border bg-gradient-to-b from-muted/40 to-muted/20">

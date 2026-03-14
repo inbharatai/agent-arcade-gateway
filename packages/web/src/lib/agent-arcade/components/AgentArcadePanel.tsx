@@ -271,34 +271,34 @@ export function AgentArcadePanel({
               <>
                 <button
                   onClick={() => { setShowThemeGrid(g => !g); setShowSettings(false) }}
-                  className="px-1.5 py-0.5 rounded hover:bg-muted text-xs"
-                  title="Themes"
-                >🎨</button>
+                  className="group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs"
+                  aria-label="Themes"
+                >🎨<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Themes</span></button>
                 <button
                   onClick={() => setShowTimeline(t => !t)}
-                  className={`px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showTimeline ? 'bg-muted ring-1 ring-border' : ''}`}
-                  title="Timeline"
-                >📊</button>
+                  className={`group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showTimeline ? 'bg-muted ring-1 ring-border' : ''}`}
+                  aria-label="Timeline"
+                >📊<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Timeline</span></button>
                 <button
                   onClick={() => setShowNarrativePanel(n => !n)}
-                  className={`px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showNarrativePanel ? 'bg-muted ring-1 ring-border' : ''}`}
-                  title="Session Story"
-                >📜</button>
+                  className={`group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showNarrativePanel ? 'bg-muted ring-1 ring-border' : ''}`}
+                  aria-label="Session Story"
+                >📜<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Story</span></button>
                 <button
                   onClick={() => setShowGamePanel(g => !g)}
-                  className={`px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showGamePanel ? 'bg-muted ring-1 ring-border' : ''}`}
-                  title="XP, Achievements, Costs, Replay"
-                >🎮</button>
+                  className={`group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs ${showGamePanel ? 'bg-muted ring-1 ring-border' : ''}`}
+                  aria-label="Gamification: XP, Achievements, Costs, Replay"
+                >🎮<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Game</span></button>
                 <button
                   onClick={() => { setShowSettings(s => !s); setShowThemeGrid(false) }}
-                  className="px-1.5 py-0.5 rounded hover:bg-muted text-xs"
-                  title="Settings"
-                >⚙️</button>
+                  className="group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs"
+                  aria-label="Settings"
+                >⚙️<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Settings</span></button>
                 <button
                   onClick={() => setShowDebug(d => !d)}
-                  className="px-1.5 py-0.5 rounded hover:bg-muted text-xs"
-                  title="Debug"
-                >🐛</button>
+                  className="group relative px-1.5 py-0.5 rounded hover:bg-muted text-xs"
+                  aria-label="Debug Panel"
+                >🐛<span className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 rounded bg-popover px-1.5 py-0.5 text-[8px] text-popover-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">Debug</span></button>
               </>
             )}
           </div>
