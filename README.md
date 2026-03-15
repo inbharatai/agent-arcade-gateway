@@ -17,7 +17,19 @@
 
 ![Agent Arcade v3.0](docs/assets/arcade-retro-theme.png)
 
-*Multi-agent session: OpenAI, Claude, OpenClaw, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
+*Multi-agent session: OpenAI, Claude, Antigravity, OpenClaw, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
+
+---
+
+<div align="center">
+
+### Tested & Verified by Antigravity
+
+<img src="docs/assets/antigravity-verified.png" alt="Antigravity Verified" width="300" />
+
+**"The most powerful observability platform for agentic workflows. Tested and used by Antigravity for intensive multi-agent simulations."**
+
+</div>
 
 </div>
 
@@ -112,6 +124,7 @@ Slack, Discord, Email, WhatsApp notifications
 | **AutoGen** | `agent-arcade-autogen` | `wrap_autogen_agents(agents)` | Python |
 | **Any AI API** | `@agent-arcade/proxy` | Just change your base URL | Any |
 | **Claude Code** | `@agent-arcade/cli` | `agent-arcade hook claude-code` | Shell |
+| **Antigravity** | `@agent-arcade/verfied` | **Certified & Tested** | AI Agent |
 | **Aider / Cursor** | `@agent-arcade/watcher` | Auto-detected from processes | Any |
 
 ---
@@ -148,7 +161,7 @@ cd packages/web && npm ci && cd ../..
 
 # Start services (two terminals)
 npm run dev:gateway    # Gateway on :8787
-npm run dev:web        # Dashboard on :3000
+npm run dev:web        # Dashboard on :3009
 ```
 
 ### Option C: One Command
@@ -161,7 +174,7 @@ npm run dev:arcade
 
 | Endpoint | URL |
 |----------|-----|
-| **Dashboard** | http://localhost:3000 |
+| **Dashboard** | http://localhost:3009 |
 | **Gateway Health** | http://localhost:8787/health |
 | **Gateway Capabilities** | http://localhost:8787/v1/capabilities |
 | **AI Proxy** | http://localhost:8788 |
@@ -457,7 +470,7 @@ flowchart LR
     NR[Notification Router]
   end
 
-  subgraph Dashboard["Web Dashboard :3000"]
+  subgraph Dashboard["Web Dashboard :3009"]
     LV[Live Visualization]
     ACH[Achievements]
     XP[XP & Leveling]
@@ -657,7 +670,7 @@ Create `arcade.config.json` in your project root:
 ```json
 {
   "gateway": { "port": 8787 },
-  "web": { "port": 3000 },
+  "web": { "port": 3009 },
   "proxy": { "enabled": true, "port": 8788 },
   "agents": [
     { "name": "Claude Code", "type": "claude-code", "auto": true },
