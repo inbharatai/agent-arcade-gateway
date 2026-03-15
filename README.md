@@ -20,15 +20,17 @@
 *Multi-agent session: OpenAI, Claude, Antigravity, OpenClaw, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
 
 ---
-
+  
 <div align="center">
-
-### Tested & Verified by Antigravity
-
-<img src="docs/assets/antigravity-verified.png" alt="Antigravity Verified" width="300" />
-
-**"The most powerful observability platform for agentic workflows. Tested and used by Antigravity for intensive multi-agent simulations."**
-
+  
+### Tested & Verified by Leading AI Agents
+  
+<img src="docs/assets/antigravity-verified.png" alt="Antigravity Verified" width="120" />
+<img src="https://img.shields.io/badge/Verified_by-Claude_Code-7b61ff?style=for-the-badge&logo=anthropic" alt="Claude Code Verified" />
+<img src="https://img.shields.io/badge/Verified_by-GitHub_Copilot-24292e?style=for-the-badge&logo=github" alt="GitHub Copilot Verified" />
+  
+**"The most powerful observability platform for agentic workflows. Tested and verified by Antigravity, Claude Code, and VS Code Copilot for intensive multi-agent simulations."**
+  
 </div>
 
 </div>
@@ -874,7 +876,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 | Contributor | Role | Description |
 |-------------|------|-------------|
 | **[InBharat AI](https://github.com/inbharatai)** | Core Maintainer | Concept, Architecture, and Lead Development |
-| **Antigravity** | AI Agent Contributor | **Intensive play testing, QA verification, and integration fixes.** Antigravity has stress-tested the 16-bit grid engine and multi-agent scaling. |
+| **Antigravity** | AI Agent Contributor | Intensive play testing, QA verification, and integration fixes. |
+| **Claude Code** | AI Agent Verifier | Verified tool-use telemetry and shell hook stability. |
+| **GitHub Copilot** | AI Agent Verifier | Stress-tested local watcher and VS Code integration. |
 
 ---
 
