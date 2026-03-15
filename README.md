@@ -869,6 +869,13 @@ Contributions are welcome!
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
+## Contributors
+  
+| Contributor | Role | Description |
+|-------------|------|-------------|
+| **[InBharat AI](https://github.com/inbharatai)** | Core Maintainer | Concept, Architecture, and Lead Development |
+| **Antigravity** | AI Agent Contributor | **Intensive play testing, QA verification, and integration fixes.** Antigravity has stress-tested the 16-bit grid engine and multi-agent scaling. |
+
 ---
 
 ## License
