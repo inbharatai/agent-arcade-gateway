@@ -2,6 +2,13 @@
   "name": "agent-arcade",
   "version": "3.0.0",
   "private": true,
+  "contributors": [
+    {
+      "name": "Antigravity",
+      "url": "https://github.com/google-deepmind/antigravity",
+      "role": "AI Agent / QA Tester"
+    }
+  ],
   "description": "Agent Arcade — Universal Agent Visualization Platform",
   "scripts": {
     "dev:gateway": "cd packages/gateway && bun run src/index.ts",

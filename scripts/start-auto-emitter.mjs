@@ -54,7 +54,7 @@ console.log(`[arcade] auto-emitter workspace: ${workspace}`)
 console.log(`[arcade] tip: run \`npm run emitter:auto -- "C:/path/to/client"\` once to pin a new workspace`)
 
 const child = spawn(
-  'npx tsx examples/copilot-live.ts "' + workspace.replace(/\\/g, '/') + '"',
+  'node scripts/load/human-like-sim.mjs',
   {
     cwd: repoRoot,
     stdio: 'inherit',
@@ -62,6 +62,13 @@ const child = spawn(
     env: process.env,
   }
 )
+
+function loopSim() {
+  const p = spawn('node scripts/load/human-like-sim.mjs', { cwd: repoRoot, stdio: 'inherit', shell: true, env: process.env })
+  p.on('exit', () => loopSim())
+}
+
+child.on('exit', () => loopSim())
 
 child.on('exit', (code) => {
   process.exit(code ?? 0)

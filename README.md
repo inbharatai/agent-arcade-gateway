@@ -581,6 +581,15 @@ npm run prod:start
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
+## Contributors
+  
+| Contributor | Role | Description |
+|-------------|------|-------------|
+| **[InBharat AI](https://github.com/inbharatai)** | Core Maintainer | Concept, Architecture, and Lead Development |
+| **Antigravity** | AI Agent Contributor | Intensive play testing, QA verification, and integration fixes. |
+| **Claude Code** | AI Agent Verifier | Verified tool-use telemetry and shell hook stability. |
+| **GitHub Copilot** | AI Agent Verifier | Stress-tested local watcher and VS Code integration. |
+
 ---
 
 <div align="center">

@@ -32,7 +32,7 @@ const STORAGE_KEY = 'agent-arcade-settings'
 const SETTINGS_VERSION = 2  // Bump to force audio-on migration
 
 export const DEFAULT_SETTINGS: ArcadeSettings = {
-  theme: 'office',
+  theme: 'retro-arcade',
   pixelLevel: '16bit',
   soundEnabled: true,
   musicEnabled: true,
