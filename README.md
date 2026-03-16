@@ -29,16 +29,66 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 
 > **One platform. Every AI framework. Zero code changes required.**
 
-```
-                    ┌── Claude Code ──┐
-                    ├── OpenAI ────────┤
-                    ├── Anthropic ─────┤
- Your AI Agents ────├── LangChain ─────┼───▶  Agent Arcade  ───▶  Live Dashboard
-                    ├── CrewAI ─────────┤      Gateway               + XP Leveling
-                    ├── Cursor / Aider ─┤      :47890                + Cost Tracking
-                    ├── Ollama / Mistral┤                            + Achievements
-                    └── Any HTTP API ──┘                            + Intervention
-```
+<table align="center">
+<tr>
+<td align="center" width="280">
+
+**🎮 Your AI Agents**
+
+[![Claude Code](https://img.shields.io/badge/Claude_Code-7C3AED?style=flat-square&logo=anthropic&logoColor=white)](#)
+[![OpenAI](https://img.shields.io/badge/OpenAI-10A37F?style=flat-square&logo=openai&logoColor=white)](#)
+[![Anthropic](https://img.shields.io/badge/Anthropic-D4A574?style=flat-square&logo=anthropic&logoColor=white)](#)
+[![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat-square&logoColor=white)](#)
+[![CrewAI](https://img.shields.io/badge/CrewAI-FF6B6B?style=flat-square&logoColor=white)](#)
+[![AutoGen](https://img.shields.io/badge/AutoGen-0078D4?style=flat-square&logo=microsoft&logoColor=white)](#)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-FF4500?style=flat-square&logoColor=white)](#)
+[![Cursor](https://img.shields.io/badge/Cursor-F97316?style=flat-square&logoColor=white)](#)
+[![Ollama](https://img.shields.io/badge/Ollama-00FF41?style=flat-square&logoColor=black)](#)
+[![Mistral](https://img.shields.io/badge/Mistral-0F1729?style=flat-square&logoColor=white)](#)
+[![Any HTTP](https://img.shields.io/badge/Any_HTTP_API-888?style=flat-square&logoColor=white)](#)
+
+</td>
+<td align="center" width="60">
+
+**▶▶▶**
+
+*Socket.IO*
+*SSE*
+*HTTP*
+
+</td>
+<td align="center" width="200">
+
+**⚡ Gateway**
+**`:47890`**
+
+🎯 Event Ingestion
+💰 Cost Calculator
+🔔 Notification Router
+💬 Chat Proxy
+
+</td>
+<td align="center" width="60">
+
+**▶▶▶**
+
+*Real-time*
+
+</td>
+<td align="center" width="220">
+
+**🕹️ Live Dashboard**
+**`:47380`**
+
+🎨 Pixel-Art Canvas
+🏆 XP & Achievements
+💵 Cost Tracking
+⏸️ Agent Intervention
+💬 AI Chat Console
+
+</td>
+</tr>
+</table>
 
 **Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use.
 
@@ -53,19 +103,21 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 | "Each framework needs different tooling" | One platform for Claude Code, OpenAI, LangChain, CrewAI, and 8 more |
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
 
-### How It Works
+### 🕹️ How It Works
 
 ```
-1. Start Agent Arcade          →  npm run dev:arcade
-2. Use your AI tool normally   →  Claude Code, Cursor, your Python app — anything
-3. Watch the magic             →  http://localhost:47380
+ ╔══════════════════════════════════════════════════════════════════════╗
+ ║  1. 🚀 START     →  npm run dev:arcade                             ║
+ ║  2. 🤖 USE AI    →  Claude Code, Cursor, your Python app           ║
+ ║  3. 🎮 WATCH     →  http://localhost:47380                         ║
+ ╚══════════════════════════════════════════════════════════════════════╝
 ```
 
 The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console Chat shares the same API keys from your environment — observatory, console, and arcade are one unified system.
 
 ---
 
-## Live Dashboard
+## 🎮 Live Dashboard
 
 <div align="center">
 
@@ -86,7 +138,7 @@ The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP P
 
 ---
 
-## AI Chat Console
+## 💬 AI Chat Console
 
 <div align="center">
 
@@ -107,7 +159,7 @@ The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP P
 
 ---
 
-## Agent Intervention System
+## ⏸️ Agent Intervention System
 
 <div align="center">
 
@@ -176,7 +228,7 @@ WHATSAPP_GATEWAY_TOKEN=                   # Optional gateway auth token
 
 ---
 
-## Settings Panel
+## ⚙️ Settings Panel
 
 The ⚙️ Settings panel (6 tabs) is accessible from the toolbar:
 
@@ -191,7 +243,7 @@ The ⚙️ Settings panel (6 tabs) is accessible from the toolbar:
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -238,7 +290,7 @@ This registers hooks in `~/.claude/settings.json` — every tool call Claude Cod
 
 ---
 
-## Framework Integrations
+## 🔌 Framework Integrations
 
 ### Claude Code Hooks — Zero Configuration
 
@@ -399,7 +451,7 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ---
 
-## All Supported Frameworks
+## 🎯 All Supported Frameworks
 
 | Framework | Package | Method |
 |-----------|---------|--------|
@@ -417,7 +469,7 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ---
 
-## Gamification System
+## 🏆 Gamification System
 
 ### 32 Achievements
 
@@ -445,7 +497,7 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ---
 
-## Cost Intelligence
+## 💰 Cost Intelligence
 
 Real-time cost tracking for 29 AI models:
 
@@ -462,74 +514,92 @@ Budget warning at 80% of configured threshold in dashboard. Configurable cost th
 
 ---
 
-## What Makes Agent Arcade Unique
+## 🌟 What Makes Agent Arcade Unique
 
-| Innovation | Description |
-|-----------|-------------|
-| **Pixel-Art Visualization** | Every agent is a unique procedurally-generated character (15 classes, 13 animation frames, per-pixel shading). Model-based coloring: Claude agents are purple, GPT agents are green, Gemini is blue. 100% canvas-drawn — zero external assets. |
-| **WhatsApp Agent Control** | Scan a QR code, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. Works with every connected framework — OpenClaw, Claude Code, LangChain, all of them. |
-| **Zero-Config Console** | The Chat Console inherits API keys directly from your shell environment. No `.env` files. No Settings page. Start the gateway in the same terminal as your AI tool and it just works. |
-| **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
-| **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
-| **RPG Gamification** | 32 achievements, 12 XP levels (Novice → Godlike), streak multiplier up to 3.0x. Leaderboards across 5 categories. Achievement toasts with confetti animation. |
-| **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
-| **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
-| **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
-| **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+| | Innovation | Description |
+|:-:|:----------|:------------|
+| 🎨 | **Pixel-Art Visualization** | Every agent is a unique procedurally-generated character (15 classes, 13 animation frames, per-pixel shading). Model-based coloring: Claude → purple, GPT → green, Gemini → blue. 100% canvas-drawn — zero external assets. |
+| 💚 | **WhatsApp Agent Control** | Scan a QR code, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. Works with every connected framework — OpenClaw, Claude Code, LangChain, all of them. |
+| ⚡ | **Zero-Config Console** | The Chat Console inherits API keys directly from your shell environment. No `.env` files. No Settings page. Start the gateway in the same terminal as your AI tool and it just works. |
+| 🔌 | **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
+| 💰 | **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
+| 🏆 | **RPG Gamification** | 32 achievements, 12 XP levels (Novice → Godlike), streak multiplier up to 3.0x. Leaderboards across 5 categories. Achievement toasts with confetti animation. |
+| ⏸️ | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
+| 📊 | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
+| 🌍 | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
+| 🐙 | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
-  subgraph Adapters["Plug & Play Adapters"]
-    CC[Claude Code Hooks]
-    OA[OpenAI Adapter]
-    AA[Anthropic Adapter]
-    LC[LangChain Adapter]
-    CR[CrewAI / AutoGen]
-    OC[OpenClaw Adapter]
+  subgraph Adapters["🎮 Plug & Play Adapters"]
+    CC["🟣 Claude Code Hooks"]
+    OA["🟢 OpenAI Adapter"]
+    AA["🟠 Anthropic Adapter"]
+    LC["⚫ LangChain Adapter"]
+    CR["🔴 CrewAI / AutoGen"]
+    OC["🟧 OpenClaw Adapter"]
   end
 
-  subgraph ZeroCode["Zero-Code Tools"]
-    PX[AI Proxy :8788]
-    PW[Process Watcher]
+  subgraph ZeroCode["🔌 Zero-Code Tools"]
+    PX["🌐 AI Proxy :8788"]
+    PW["👁️ Process Watcher"]
   end
 
-  subgraph Core["Gateway :47890"]
-    GY[Event Ingestion]
-    CC2[Cost Calculator]
-    NR[Notification Router]
-    ST[Session Store]
-    CP[Chat Proxy]
+  subgraph Core["⚡ Gateway :47890"]
+    GY["🎯 Event Ingestion"]
+    CC2["💰 Cost Calculator"]
+    NR["🔔 Notification Router"]
+    ST["💾 Session Store"]
+    CP["💬 Chat Proxy"]
   end
 
-  subgraph Dashboard["Web Dashboard :47380"]
-    LV[Pixel-Art Canvas]
-    INT[Intervention Panel]
-    CON[AI Chat Console]
-    SET[Settings Panel]
-    XP[XP + Achievements]
-    RP[Session Replay]
+  subgraph Dashboard["🕹️ Web Dashboard :47380"]
+    LV["🎨 Pixel-Art Canvas"]
+    INT["⏸️ Intervention Panel"]
+    CON["🤖 AI Chat Console"]
+    SET["⚙️ Settings Panel"]
+    XP["🏆 XP + Achievements"]
+    RP["📼 Session Replay"]
   end
 
-  subgraph Control["Control Surfaces"]
-    WA[WhatsApp QR Client :47891]
-    API[REST API]
-    CLI[CLI Slash Commands]
+  subgraph Control["📱 Control Surfaces"]
+    WA["💚 WhatsApp QR :47891"]
+    API["🔷 REST API"]
+    CLI["⌨️ CLI Slash Commands"]
   end
 
-  Adapters -->|Socket.IO / HTTP| Core
-  ZeroCode -->|POST /v1/ingest| Core
-  Core -->|SSE + Socket.IO| Dashboard
-  Control -->|HTTP /v1/agents| Core
-  Core -.->|Slack / Discord / Email| NR
+  Adapters -->|"Socket.IO / HTTP"| Core
+  ZeroCode -->|"POST /v1/ingest"| Core
+  Core -->|"SSE + Socket.IO"| Dashboard
+  Control -->|"HTTP /v1/agents"| Core
+  Core -.->|"Slack / Discord / Email"| NR
+
+  style Adapters fill:#2d1b69,stroke:#7c3aed,stroke-width:2px,color:#e9d5ff
+  style ZeroCode fill:#1a3a2a,stroke:#10b981,stroke-width:2px,color:#d1fae5
+  style Core fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#fed7aa
+  style Dashboard fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+  style Control fill:#164e63,stroke:#06b6d4,stroke-width:2px,color:#cffafe
 ```
+
+<div align="center">
+
+| Layer | Port | Technology | Role |
+|:-----:|:----:|:----------:|:----:|
+| 🎮 **Adapters** | — | Socket.IO / HTTP POST | Framework-specific wrappers that emit telemetry |
+| 🔌 **Proxy** | `:8788` | Bun HTTP | Zero-code interception — just change your base URL |
+| ⚡ **Gateway** | `:47890` | Bun + Socket.IO + SSE | Event ingestion, cost calc, chat proxy, notifications |
+| 🕹️ **Dashboard** | `:47380` | Next.js + Canvas | Pixel-art viz, intervention, console, gamification |
+| 📱 **Control** | `:47891` | Baileys + HTTP | WhatsApp QR, REST API, CLI slash commands |
+
+</div>
 
 ---
 
-## API Reference
+## 📡 API Reference
 
 ### Gateway (`:47890`)
 
@@ -591,7 +661,7 @@ flowchart LR
 
 ---
 
-## Monorepo Map
+## 📦 Monorepo Map
 
 ```
 agent-arcade-gateway/
@@ -628,7 +698,7 @@ agent-arcade-gateway/
 
 ---
 
-## Testing
+## 🧪 Testing
 
 ```bash
 # Full CI pipeline
@@ -647,7 +717,7 @@ bun test packages/adapter-openai/src/index.test.ts  # 14 OpenAI adapter tests
 
 ---
 
-## Production Deployment
+## 🚀 Production Deployment
 
 ```bash
 # Docker Compose
@@ -688,7 +758,7 @@ npm run prod:start
 
 ---
 
-## Security
+## 🔒 Security
 
 | Feature | Details |
 |---------|---------|
@@ -704,7 +774,7 @@ npm run prod:start
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -713,7 +783,7 @@ npm run prod:start
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
-## Contributors
+## 👥 Contributors
   
 | Contributor | Role | Description |
 |-------------|------|-------------|
@@ -726,11 +796,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 <div align="center">
 
+```
+ ╔══════════════════════════════════════════════════════════════════════════╗
+ ║                                                                        ║
+ ║   🕹️  A G E N T   A R C A D E   v 3 . 2                               ║
+ ║                                                                        ║
+ ║   See every AI agent. Track every token. Control from anywhere.        ║
+ ║   Level up.                                                            ║
+ ║                                                                        ║
+ ╚══════════════════════════════════════════════════════════════════════════╝
+```
+
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
 
-### Agent Arcade v3.2 — See every AI agent. Track every token. Control from anywhere. Level up.
-
-**237 tests passing** · **21 packages** · **10 framework adapters** · **29 model cost profiles** · **32 achievements**
+[![Tests](https://img.shields.io/badge/Tests-237_passing-10B981?style=for-the-badge)](#)
+[![Packages](https://img.shields.io/badge/Packages-21-6366F1?style=for-the-badge)](#)
+[![Adapters](https://img.shields.io/badge/Adapters-10-F97316?style=for-the-badge)](#)
+[![Models](https://img.shields.io/badge/Cost_Profiles-29-EF4444?style=for-the-badge)](#)
+[![Achievements](https://img.shields.io/badge/Achievements-32-FBBF24?style=for-the-badge)](#)
 
 *Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · OpenClaw · Mistral · Ollama · Cursor · Copilot · Aider · DeepSeek*
 
