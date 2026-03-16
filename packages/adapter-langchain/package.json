@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-langchain",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "LangChain adapter for Agent Arcade -- auto-instruments chains, tools, and retrievers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

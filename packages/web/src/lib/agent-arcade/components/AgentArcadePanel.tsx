@@ -27,7 +27,7 @@ import {
   playTrustChime, playRecoverySfx, playMilestoneSfx,
 } from '../audio/synth'
 import { startMusic, stopMusic } from '../audio/music'
-import { speak, stopVoice } from '../audio/voice'
+import { speak, stopVoice, unlockVoice } from '../audio/voice'
 
 // ── Status badge ────────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<ConnectionStatus, { bg: string; text: string; pulse?: boolean }> = {
@@ -62,7 +62,7 @@ export interface AgentArcadePanelProps {
 }
 
 export function AgentArcadePanel({
-  gatewayUrl = 'http://localhost:8787',
+  gatewayUrl = 'http://localhost:47890',
   sessionId = 'default',
   authToken,
   apiKey,
@@ -102,12 +102,25 @@ export function AgentArcadePanel({
   }, [settings.soundEnabled, settings.musicEnabled, settings.theme])
 
   useEffect(() => {
-    const handler = () => initAudio()
-    document.addEventListener('click', handler)
-    document.addEventListener('keydown', handler)
+    // Attempt immediate voice unlock on mount (works without gesture on Firefox/Safari)
+    unlockVoice()
+
+    // Re-attempt on first pointer/key interaction — fires before 'click' so voice
+    // starts on the very first user action, not the second
+    const handleInteraction = () => { initAudio(); unlockVoice() }
+    document.addEventListener('pointerdown', handleInteraction)
+    document.addEventListener('keydown', handleInteraction)
+    document.addEventListener('click', handleInteraction)
+
+    // Also unlock when tab regains focus (user switching back to the page)
+    const handleVisibility = () => { if (document.visibilityState === 'visible') unlockVoice() }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
-      document.removeEventListener('click', handler)
-      document.removeEventListener('keydown', handler)
+      document.removeEventListener('pointerdown', handleInteraction)
+      document.removeEventListener('keydown', handleInteraction)
+      document.removeEventListener('click', handleInteraction)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [initAudio])
 
@@ -144,8 +157,21 @@ export function AgentArcadePanel({
       }
       if (settings.voiceEnabled) {
         const agent = agents.find(a => a.id === agentId)
-        if (agent && agent.label) speak(agent.label, agentId, agents.indexOf(agent))
+        // Only speak label when it contains real execution info (not a generic word)
+        if (agent && agent.label && agent.label.trim().length > 6) {
+          speak(agent.label, agentId, agents.indexOf(agent))
+        }
       }
+    },
+    onMessage: (agentId: string, text: string) => {
+      if (!settings.voiceEnabled) return
+      const agent = agents.find(a => a.id === agentId)
+      // Strip generic prefixes so the agent speaks meaningful content
+      const cleaned = text
+        .replace(/^(Output:|Processing:|Done:|Error:|Redirected:)\s*/i, '')
+        .trim()
+      if (cleaned.length < 3) return
+      speak(cleaned, agentId, agent ? agents.indexOf(agent) : 0)
     },
     onDone: (agentId: string) => {
       if (!settings.soundEnabled || !settings.sfxEnabled) return
@@ -519,8 +545,8 @@ export function AgentArcadePanel({
           />
         </div>
 
-        {/* Agent details — slides over on mobile */}
-        {selectedAgent && (
+        {/* Agent details — only shown when no external onAgentSelect handler owns the panel */}
+        {selectedAgent && !onAgentSelect && (
           <div className="absolute right-0 top-0 bottom-0 sm:relative w-full sm:w-64 border-l border-border overflow-y-auto p-3 text-xs space-y-3 bg-background sm:bg-muted/10 z-30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">

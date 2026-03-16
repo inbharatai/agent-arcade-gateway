@@ -6,7 +6,7 @@ const ingestFailures = new Counter('ingest_failures');
 const streamFailures = new Counter('stream_failures');
 const unauthorizedRate = new Rate('unauthorized_rate');
 
-const baseUrl = __ENV.GATEWAY_URL || 'http://localhost:8787';
+const baseUrl = __ENV.GATEWAY_URL || 'http://localhost:47890';
 const sessionId = __ENV.SESSION_ID || 'k6-session';
 const token = __ENV.GATEWAY_TOKEN || '';
 const apiKey = __ENV.GATEWAY_API_KEY || '';

@@ -3,8 +3,8 @@ import { spawn } from 'node:child_process'
 const ROOT = process.cwd()
 const CHECK_EVERY_MS = Number(process.env.ARCADE_WATCHDOG_INTERVAL_MS || 10000)
 const START_COOLDOWN_MS = Number(process.env.ARCADE_WATCHDOG_COOLDOWN_MS || 30000)
-const GATEWAY_URL = process.env.ARCADE_GATEWAY_HEALTH_URL || 'http://localhost:8787/health'
-const WEB_URL = process.env.ARCADE_WEB_HEALTH_URL || 'http://localhost:3000/api/health'
+const GATEWAY_URL = process.env.ARCADE_GATEWAY_HEALTH_URL || 'http://localhost:47890/health'
+const WEB_URL = process.env.ARCADE_WEB_HEALTH_URL || 'http://localhost:47380/api/health'
 
 let lastGatewayStart = 0
 let lastWebStart = 0

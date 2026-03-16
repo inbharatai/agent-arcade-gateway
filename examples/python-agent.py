@@ -18,7 +18,7 @@ from agent_arcade import AgentArcade
 
 
 def main():
-    arcade = AgentArcade(url="http://localhost:8787", session_id="demo-session")
+    arcade = AgentArcade(url="http://localhost:47890", session_id="demo-session")
 
     # Spawn agents
     planner = arcade.spawn(name="Planner", role="manager")
@@ -65,7 +65,7 @@ def main():
 
     time.sleep(1)
     arcade.disconnect()
-    print("Done! Check Agent Arcade at http://localhost:3000")
+    print("Done! Check Agent Arcade at http://localhost:47380")
 
 
 if __name__ == "__main__":

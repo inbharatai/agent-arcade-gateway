@@ -14,7 +14,7 @@ import * as path from 'node:path'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 
-const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:8787'
+const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:47890'
 const SESSION = 'copilot-live'
 const V = 1
 const MAX_RETRY_DELAY = 30_000

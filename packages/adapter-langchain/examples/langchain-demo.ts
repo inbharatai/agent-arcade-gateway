@@ -9,13 +9,13 @@ import { createArcadeCallback } from '../src'
 async function main() {
   // 1. Create the Arcade callback
   const cb = createArcadeCallback({
-    gatewayUrl: 'http://localhost:8787',
+    gatewayUrl: 'http://localhost:47890',
     sessionId: `langchain-demo-${Date.now()}`,
     agentNamePrefix: 'LC',
   })
 
   console.log('Agent Arcade LangChain adapter ready!')
-  console.log('Open http://localhost:3000 to see your agents')
+  console.log('Open http://localhost:47380 to see your agents')
 
   // 2. Use with any LangChain chain:
   //

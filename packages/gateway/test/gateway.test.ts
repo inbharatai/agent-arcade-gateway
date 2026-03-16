@@ -2,12 +2,12 @@
  * Gateway Integration Tests
  *
  * Run with: bun test packages/gateway/test/gateway.test.ts
- * Requires the gateway to be running on localhost:8787
+ * Requires the gateway to be running on localhost:47890
  */
 
 import { describe, test, expect, beforeAll } from 'bun:test'
 
-let BASE = process.env.GATEWAY_URL || 'http://localhost:8787'
+let BASE = process.env.GATEWAY_URL || 'http://localhost:47890'
 const TEST_SESSION = `test-session-${Date.now()}`
 const AUTH_TOKEN = process.env.GATEWAY_AUTH_TOKEN || ''
 const API_KEY = process.env.GATEWAY_API_KEY || ''
@@ -49,7 +49,7 @@ async function ingest(event: Record<string, unknown>) {
 
 beforeAll(async () => {
   if (await canReach(BASE)) return
-  const fallback = 'http://localhost:8787'
+  const fallback = 'http://localhost:47890'
   if (BASE !== fallback && await canReach(fallback)) {
     BASE = fallback
   }

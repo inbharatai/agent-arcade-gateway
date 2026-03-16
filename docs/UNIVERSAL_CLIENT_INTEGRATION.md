@@ -7,7 +7,7 @@ Agent Arcade Gateway supports any client that can send HTTP/WebSocket events: Cu
 Query:
 
 ```bash
-curl http://localhost:8787/v1/capabilities
+curl http://localhost:47890/v1/capabilities
 ```
 
 Response includes:
@@ -26,7 +26,7 @@ Call this once when your client connects to make Arcade immediately show:
 - which agent maps to which model/task
 
 ```bash
-curl -X POST http://localhost:8787/v1/connect \
+curl -X POST http://localhost:47890/v1/connect \
   -H "Content-Type: application/json" \
   -d '{
     "sessionId": "copilot-live",
@@ -53,7 +53,7 @@ Socket clients can also include these fields directly in `subscribe` payload.
 ## 2. Minimal HTTP Ingest (works from any client)
 
 ```bash
-curl -X POST http://localhost:8787/v1/ingest \
+curl -X POST http://localhost:47890/v1/ingest \
   -H "Content-Type: application/json" \
   -H "X-Session-Signature: <signature>" \
   -d '{

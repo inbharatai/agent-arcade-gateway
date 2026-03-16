@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { AgentArcade } from '@agent-arcade/sdk-node'
- *   const arcade = new AgentArcade({ url: 'http://localhost:8787', sessionId: 'my-session' })
+ *   const arcade = new AgentArcade({ url: 'http://localhost:47890', sessionId: 'my-session' })
  *   const agentId = arcade.spawn({ name: 'Coder' })
  *   arcade.state(agentId, 'thinking', { label: 'Planning…' })
  *   arcade.tool(agentId, 'read_file', { label: 'Reading config.ts' })
@@ -38,7 +38,7 @@ interface TelemetryEvent {
 }
 
 export interface ArcadeOptions {
-  /** Gateway URL, e.g. http://localhost:8787 */
+  /** Gateway URL, e.g. http://localhost:47890 */
   url: string
   /** Session identifier — multiple agents can share a session */
   sessionId: string

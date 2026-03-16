@@ -4,7 +4,7 @@
   "session": "my-project",
 
   "gateway": {
-    "port": 8787,
+    "port": 47890,
     "redis": null
   },
 

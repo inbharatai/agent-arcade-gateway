@@ -12,7 +12,7 @@ import { AgentArcade } from '../packages/sdk-node/src/index'
 
 async function main() {
   const arcade = new AgentArcade({
-    url: 'http://localhost:8787',
+    url: 'http://localhost:47890',
     sessionId: 'demo-session',
   })
 
@@ -65,7 +65,7 @@ async function main() {
 
   await sleep(1000)
   arcade.disconnect()
-  console.log('Done! Check Agent Arcade at http://localhost:3000')
+  console.log('Done! Check Agent Arcade at http://localhost:47380')
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }

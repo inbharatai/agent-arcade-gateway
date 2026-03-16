@@ -8,7 +8,7 @@
  * Run: bun run examples/multi-agent-test.ts
  */
 
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:8787'
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:47890'
 const SESSION_ID = `test_multiagent_${Date.now().toString(36)}`
 
 const PROTOCOL_VERSION = 1
@@ -248,7 +248,7 @@ async function main() {
   }
 
   console.log()
-  console.log('  ALL PASSED! Open http://localhost:3000 to see the session.')
+  console.log('  ALL PASSED! Open http://localhost:47380 to see the session.')
   console.log('========================================')
 }
 

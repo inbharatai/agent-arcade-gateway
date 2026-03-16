@@ -129,7 +129,7 @@ export class LogTailer {
 
   constructor(config: LogTailerConfig = {}) {
     this.config = {
-      gatewayUrl: config.gatewayUrl || 'http://localhost:8787',
+      gatewayUrl: config.gatewayUrl || 'http://localhost:47890',
       sessionId: config.sessionId || 'log-tailer',
       logSources: config.logSources || this._getDefaultSources(),
     }
@@ -261,7 +261,7 @@ export class LogTailer {
 
 if (import.meta.main) {
   const tailer = new LogTailer({
-    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:8787',
+    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:47890',
     sessionId: process.env.SESSION_ID || 'log-tailer',
   })
 

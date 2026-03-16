@@ -57,7 +57,7 @@ jobs:
 
       - name: Build web
         env:
-          NEXT_PUBLIC_GATEWAY_URL: http://localhost:8787
+          NEXT_PUBLIC_GATEWAY_URL: http://localhost:47890
           GATEWAY_JWT_SECRET: ci-test-secret
           SESSION_SIGNING_SECRET: ci-sign-secret
           NEXT_PUBLIC_DEFAULT_SESSION_ID: ci-session
@@ -66,11 +66,11 @@ jobs:
 
       - name: Start gateway
         env:
-          PORT: 8787
+          PORT: 47890
           NODE_ENV: test
           REDIS_URL: redis://localhost:6379
           REQUIRE_AUTH: 0
-          ALLOWED_ORIGINS: http://localhost:3000
+          ALLOWED_ORIGINS: http://localhost:47380
           ENABLE_REDIS_ADAPTER: 0
         run: |
           cd packages/gateway
@@ -95,17 +95,17 @@ jobs:
 
       - name: Secure-mode capabilities check
         env:
-          PORT: 8787
+          PORT: 47890
           NODE_ENV: production
           REDIS_URL: redis://localhost:6379
           REQUIRE_AUTH: 1
           JWT_SECRET: ci-prod-jwt-secret
           SESSION_SIGNING_SECRET: ci-prod-sign-secret
-          ALLOWED_ORIGINS: http://localhost:3000
+          ALLOWED_ORIGINS: http://localhost:47380
           ENABLE_REDIS_ADAPTER: 0
         run: |
           pkill -f "bun run src/index.ts" || true
           cd packages/gateway
           bun run src/index.ts &
           sleep 5
-          node -e "(async()=>{const r=await fetch('http://localhost:8787/v1/capabilities'); if(!r.ok){throw new Error('capabilities HTTP '+r.status)}; const c=await r.json(); if(!(c?.auth?.required===true && c?.auth?.sessionSignature===true)){throw new Error('secure capabilities check failed: '+JSON.stringify(c?.auth))}; console.log('SECURE_CAPABILITIES_OK', JSON.stringify(c.auth)); })().catch(e=>{console.error(e.message); process.exit(1);})"
+          node -e "(async()=>{const r=await fetch('http://localhost:47890/v1/capabilities'); if(!r.ok){throw new Error('capabilities HTTP '+r.status)}; const c=await r.json(); if(!(c?.auth?.required===true && c?.auth?.sessionSignature===true)){throw new Error('secure capabilities check failed: '+JSON.stringify(c?.auth))}; console.log('SECURE_CAPABILITIES_OK', JSON.stringify(c.auth)); })().catch(e=>{console.error(e.message); process.exit(1);})"

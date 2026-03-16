@@ -7,7 +7,7 @@
  * Usage:
  *   import { createLlamaIndexHandler } from '@agent-arcade/adapter-llamaindex'
  *   const handler = createLlamaIndexHandler({
- *     gatewayUrl: 'http://localhost:8787',
+ *     gatewayUrl: 'http://localhost:47890',
  *     sessionId: 'my-rag-app',
  *   })
  *   // Set as callback manager in your LlamaIndex service context

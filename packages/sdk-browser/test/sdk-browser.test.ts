@@ -12,7 +12,7 @@ describe('sdk-browser', () => {
 
     try {
       const sdk = AgentArcadeBrowser.init({
-        url: 'http://localhost:8787',
+        url: 'http://localhost:47890',
         sessionId: 'browser-test',
         authToken: 'token-123',
         sessionSignature: 'sig-xyz',
@@ -23,7 +23,7 @@ describe('sdk-browser', () => {
 
       await new Promise(r => setTimeout(r, 5))
       expect(calls.length).toBe(1)
-      expect(calls[0].url).toBe('http://localhost:8787/v1/ingest')
+      expect(calls[0].url).toBe('http://localhost:47890/v1/ingest')
       expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer token-123')
       expect((calls[0].init?.headers as Record<string, string>)['x-session-signature']).toBe('sig-xyz')
     } finally {

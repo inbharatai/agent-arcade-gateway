@@ -46,7 +46,7 @@ Usage:
 # # One line to connect to Agent Arcade!
 # wrapped = arcade_crew(
 #     crew,
-#     gateway_url="http://localhost:8787",
+#     gateway_url="http://localhost:47890",
 #     session_id="crewai-research",
 # )
 #
@@ -56,4 +56,4 @@ Usage:
 
 print("CrewAI + Agent Arcade Demo")
 print("Uncomment the code above to run with a real CrewAI crew")
-print("All agent activity will appear at http://localhost:3000")
+print("All agent activity will appear at http://localhost:47380")

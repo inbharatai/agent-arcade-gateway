@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/watcher",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "Process watcher for Agent Arcade -- auto-detects AI agent processes",
   "main": "src/index.ts",
   "scripts": {

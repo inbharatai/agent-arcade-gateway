@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { createArcadeCallback } from '@agent-arcade/adapter-langchain'
- *   const cb = createArcadeCallback({ gatewayUrl: 'http://localhost:8787', sessionId: 'demo' })
+ *   const cb = createArcadeCallback({ gatewayUrl: 'http://localhost:47890', sessionId: 'demo' })
  *   const result = await chain.invoke({ input: 'Hello' }, { callbacks: [cb] })
  *   cb.disconnect()
  */
@@ -18,7 +18,7 @@ import { AgentArcade } from '@agent-arcade/sdk-node'
 // ---------------------------------------------------------------------------
 
 export interface ArcadeCallbackOptions {
-  /** Gateway URL, e.g. http://localhost:8787 */
+  /** Gateway URL, e.g. http://localhost:47890 */
   gatewayUrl: string
   /** Session identifier */
   sessionId: string
@@ -304,7 +304,7 @@ export class AgentArcadeCallbackHandler {
  * import { createArcadeCallback } from '@agent-arcade/adapter-langchain'
  *
  * const cb = createArcadeCallback({
- *   gatewayUrl: 'http://localhost:8787',
+ *   gatewayUrl: 'http://localhost:47890',
  *   sessionId: 'my-langchain-session',
  * })
  *

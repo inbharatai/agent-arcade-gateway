@@ -6,7 +6,7 @@ Emits Agent Arcade telemetry via Socket.IO or HTTP POST fallback.
 Usage:
     from agent_arcade import AgentArcade
 
-    arcade = AgentArcade(url="http://localhost:8787", session_id="my-session")
+    arcade = AgentArcade(url="http://localhost:47890", session_id="my-session")
     agent_id = arcade.spawn(name="Planner")
     arcade.state(agent_id, "thinking", label="Analyzing requirements…")
     arcade.tool(agent_id, "read_file", label="Reading spec.md")
@@ -51,7 +51,7 @@ class AgentArcade:
 
     def __init__(
         self,
-        url: str = "http://localhost:8787",
+        url: str = "http://localhost:47890",
         session_id: str = "default",
         auth_token: Optional[str] = None,
         auto_connect: bool = True,

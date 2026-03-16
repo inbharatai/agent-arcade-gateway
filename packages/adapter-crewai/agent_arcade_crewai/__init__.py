@@ -9,7 +9,7 @@ Usage:
     from agent_arcade_crewai import arcade_crew
 
     crew = Crew(agents=[...], tasks=[...])
-    wrapped = arcade_crew(crew, gateway_url="http://localhost:8787", session_id="demo")
+    wrapped = arcade_crew(crew, gateway_url="http://localhost:47890", session_id="demo")
     result = wrapped.kickoff()
 """
 
@@ -191,7 +191,7 @@ class ArcadeCrewCallbacks:
 
 def arcade_crew(
     crew: Any,
-    gateway_url: str = "http://localhost:8787",
+    gateway_url: str = "http://localhost:47890",
     session_id: str = "crewai-session",
     auth_token: Optional[str] = None,
 ) -> Any:
@@ -278,14 +278,14 @@ def arcade_crew(
 
 
 def arcade_agent(
-    gateway_url: str = "http://localhost:8787",
+    gateway_url: str = "http://localhost:47890",
     session_id: str = "crewai-session",
     auth_token: Optional[str] = None,
 ) -> Callable:
     """
     Decorator to wrap a CrewAI agent creation function with Arcade telemetry.
 
-    @arcade_agent(gateway_url="http://localhost:8787", session_id="demo")
+    @arcade_agent(gateway_url="http://localhost:47890", session_id="demo")
     def create_researcher():
         return Agent(role="Researcher", goal="Find info", backstory="...")
     """

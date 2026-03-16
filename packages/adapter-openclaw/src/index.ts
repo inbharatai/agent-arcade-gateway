@@ -9,7 +9,7 @@
  *   import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
  *
  *   const claw = wrapOpenClaw(openClawInstance, {
- *     gatewayUrl: 'http://localhost:8787',
+ *     gatewayUrl: 'http://localhost:47890',
  *     sessionId: 'my-session',
  *   })
  *   // OpenClaw runs normally -- all activity is automatically visualized
@@ -18,7 +18,7 @@
  *   import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
  *
  *   const hooks = createOpenClawHooks({
- *     gatewayUrl: 'http://localhost:8787',
+ *     gatewayUrl: 'http://localhost:47890',
  *     sessionId: 'my-session',
  *   })
  *   openClaw.on('brain:think', hooks.onThink)
@@ -33,7 +33,7 @@ import { AgentArcade } from '@agent-arcade/sdk-node'
 // ---------------------------------------------------------------------------
 
 export interface ArcadeOpenClawOptions {
-  /** Gateway URL, e.g. http://localhost:8787 */
+  /** Gateway URL, e.g. http://localhost:47890 */
   gatewayUrl: string
   /** Session identifier */
   sessionId: string
@@ -454,7 +454,7 @@ export function wrapOpenClaw<T extends OpenClawLike>(
  * import { openClawMiddleware } from '@agent-arcade/adapter-openclaw'
  *
  * claw.gateway.use(openClawMiddleware({
- *   gatewayUrl: 'http://localhost:8787',
+ *   gatewayUrl: 'http://localhost:47890',
  *   sessionId: 'production',
  * }))
  * ```

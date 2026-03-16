@@ -8,7 +8,7 @@ LlamaIndex adapter for Agent Arcade. Auto-instruments queries, retrievers, synth
 import { createLlamaIndexHandler } from '@agent-arcade/adapter-llamaindex'
 
 const handler = createLlamaIndexHandler({
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-rag-app',
 })
 

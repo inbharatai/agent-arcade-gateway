@@ -8,7 +8,7 @@
 // import { wrapOpenAI } from '@agent-arcade/adapter-openai'
 //
 // const client = wrapOpenAI(new OpenAI(), {
-//   gatewayUrl: 'http://localhost:8787',
+//   gatewayUrl: 'http://localhost:47890',
 //   sessionId: 'openai-demo',
 // })
 //
@@ -41,4 +41,4 @@
 
 console.log('OpenAI Adapter Demo')
 console.log('Uncomment the code above and add your OpenAI API key to run')
-console.log('All API calls will appear in the Arcade dashboard at http://localhost:3000')
+console.log('All API calls will appear in the Arcade dashboard at http://localhost:47380')

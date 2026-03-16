@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/log-tailer",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "Log tailer for Agent Arcade -- watches AI tool logs and emits events",
   "main": "src/index.ts",
   "scripts": {

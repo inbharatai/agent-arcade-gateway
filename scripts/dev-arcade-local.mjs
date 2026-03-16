@@ -68,7 +68,7 @@ const workspace = resolveWorkspace()
 const children = []
 
 console.log(`[arcade-local] workspace: ${workspace}`)
-console.log('[arcade-local] gateway: http://localhost:8787')
+console.log('[arcade-local] gateway: http://localhost:47890')
 console.log('[arcade-local] dashboard: http://localhost:3100')
 
 children.push(start(
@@ -76,7 +76,7 @@ children.push(start(
   'npx tsx packages/gateway/src/index.ts',
   repoRoot,
   {
-    PORT: '8787',
+    PORT: '47890',
     REQUIRE_AUTH: '0',
     ENABLE_REDIS_ADAPTER: '0',
     ALLOWED_ORIGINS: '*',
@@ -88,7 +88,7 @@ children.push(start(
   'npx next dev --webpack -p 3100',
   path.join(repoRoot, 'packages', 'web'),
   {
-    NEXT_PUBLIC_GATEWAY_URL: 'http://localhost:8787',
+    NEXT_PUBLIC_GATEWAY_URL: 'http://localhost:47890',
   },
 ))
 
@@ -97,7 +97,7 @@ children.push(start(
   `npx tsx examples/copilot-live.ts "${workspace.replace(/\\/g, '/')}"`,
   repoRoot,
   {
-    GATEWAY_URL: 'http://localhost:8787',
+    GATEWAY_URL: 'http://localhost:47890',
   },
 ))
 

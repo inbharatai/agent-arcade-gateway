@@ -6,7 +6,7 @@ import { AgentArcadePanel, useAgentArcadeStore } from '@/lib/agent-arcade'
 
 function EmbedInner() {
   const params = useSearchParams()
-  const gateway = params.get('gateway') || 'http://localhost:8787'
+  const gateway = params.get('gateway') || 'http://localhost:47890'
   const session = params.get('session') || 'default'
   const theme = params.get('theme') || undefined
   const pixels = params.get('pixels') || undefined

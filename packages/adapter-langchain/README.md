@@ -8,7 +8,7 @@ Auto-instruments LangChain applications to emit Agent Arcade telemetry. One line
 import { createArcadeCallback } from '@agent-arcade/adapter-langchain'
 
 const cb = createArcadeCallback({
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-langchain-app',
 })
 

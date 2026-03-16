@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || '8788')
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:8787'
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:47890'
 const SESSION_ID = process.env.SESSION_ID || 'proxy-session'
 
 const TARGETS: Record<string, string> = {

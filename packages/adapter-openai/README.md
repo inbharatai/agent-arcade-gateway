@@ -9,7 +9,7 @@ import OpenAI from 'openai'
 import { wrapOpenAI } from '@agent-arcade/adapter-openai'
 
 const client = wrapOpenAI(new OpenAI(), {
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-openai-app',
 })
 

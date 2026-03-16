@@ -9,7 +9,7 @@ from crewai import Agent, Task, Crew
 from agent_arcade_crewai import arcade_crew
 
 crew = Crew(agents=[...], tasks=[...])
-wrapped = arcade_crew(crew, gateway_url="http://localhost:8787", session_id="my-crew")
+wrapped = arcade_crew(crew, gateway_url="http://localhost:47890", session_id="my-crew")
 result = wrapped.kickoff()
 ```
 

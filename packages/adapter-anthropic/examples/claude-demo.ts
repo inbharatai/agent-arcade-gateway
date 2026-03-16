@@ -8,7 +8,7 @@
 // import { wrapAnthropic } from '@agent-arcade/adapter-anthropic'
 //
 // const client = wrapAnthropic(new Anthropic(), {
-//   gatewayUrl: 'http://localhost:8787',
+//   gatewayUrl: 'http://localhost:47890',
 //   sessionId: 'claude-demo',
 // })
 //
@@ -41,4 +41,4 @@
 
 console.log('Anthropic Claude Adapter Demo')
 console.log('Uncomment the code above and add your API key to run')
-console.log('All API calls will appear in the Arcade dashboard at http://localhost:3000')
+console.log('All API calls will appear in the Arcade dashboard at http://localhost:47380')

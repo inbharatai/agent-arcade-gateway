@@ -9,13 +9,13 @@ agent-arcade.example.com {
   }
 
   @gateway path /socket.io* /v1/* /health /ready /metrics /debug
-  reverse_proxy @gateway gateway:8787 {
+  reverse_proxy @gateway gateway:47890 {
     header_up X-Forwarded-Proto {scheme}
     header_up X-Forwarded-For {remote_host}
     header_up X-Real-IP {remote_host}
   }
 
-  reverse_proxy web:3000 {
+  reverse_proxy web:47380 {
     header_up X-Forwarded-Proto {scheme}
     header_up X-Forwarded-For {remote_host}
     header_up X-Real-IP {remote_host}

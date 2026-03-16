@@ -29,11 +29,12 @@ export function useTelemetryProvider(opts: ProviderOpts) {
   const stateRefreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const store = useAgentArcadeStore()
 
-  // Periodic stale agent cleanup (every 30s, removes agents idle for > 60s)
+  // Periodic stale agent cleanup (every 10s):
+  //   done agents removed after 20s, error after 30s, idle after 45s
   useEffect(() => {
     cleanupIntervalRef.current = setInterval(() => {
-      store.cleanupStaleAgents(60000)
-    }, 30000)
+      store.cleanupStaleAgents(45000)
+    }, 10000)
     return () => {
       if (cleanupIntervalRef.current) clearInterval(cleanupIntervalRef.current)
     }

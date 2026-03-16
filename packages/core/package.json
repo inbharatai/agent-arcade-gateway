@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/core",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "Core protocol types and constants for Agent Arcade",
   "main": "src/index.ts",
   "types": "src/index.ts",

@@ -31,12 +31,12 @@
   <div class="log" id="log"></div>
 
   <h2 style="margin-top:1.5rem;font-size:1.2rem;">Embedded via iframe</h2>
-  <iframe src="http://localhost:3000/embed?session=browser-demo&dark=1"></iframe>
+  <iframe src="http://localhost:47380/embed?session=browser-demo&dark=1"></iframe>
 
   <!-- Load Socket.IO client + browser SDK -->
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script type="module">
-    const GATEWAY = 'http://localhost:8787'
+    const GATEWAY = 'http://localhost:47890'
     const SESSION = 'browser-demo'
     const log = document.getElementById('log')
 

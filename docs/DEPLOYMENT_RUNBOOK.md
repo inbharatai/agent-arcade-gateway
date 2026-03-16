@@ -139,5 +139,5 @@ docker compose logs -f gateway web redis
 npm run prod:logs
 
 # Check local ports
-ss -ltnp | grep -E '8787|3000|6379'
+ss -ltnp | grep -E '47890|3000|6379'
 ```

@@ -14,11 +14,11 @@ import React from 'react'
 
 // ── React Embed Component ───────────────────────────────────────────────────
 export interface AgentArcadeEmbedProps {
-  /** Gateway URL (e.g. http://localhost:8787) */
+  /** Gateway URL (e.g. http://localhost:47890) */
   gatewayUrl: string
   /** Session to visualize */
   sessionId: string
-  /** Web app base URL (e.g. http://localhost:3000) */
+  /** Web app base URL (e.g. http://localhost:47380) */
   webUrl?: string
   /** Auth token */
   authToken?: string
@@ -48,7 +48,7 @@ export function AgentArcadeEmbed({
   darkMode = true,
   className,
 }: AgentArcadeEmbedProps) {
-  const base = webUrl || gatewayUrl.replace(/:\d+$/, ':3000')
+  const base = webUrl || gatewayUrl.replace(/:\d+$/, ':47380')
   const params = new URLSearchParams({
     sessionId,
     gateway: gatewayUrl,

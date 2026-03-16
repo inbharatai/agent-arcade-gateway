@@ -368,18 +368,21 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
 
   reset: () => set({ ...initial, settings: get().settings, narrative: createNarrative() }),
 
-  // Auto-cleanup stale agents (agents with no updates for > staleMs)
-  cleanupStaleAgents: (staleMs = 60000) => {
+  // Auto-cleanup stale agents — removes unused/old agents per state:
+  //   done   → removed after 20s  (task completed, no longer needed)
+  //   error  → removed after 30s  (failed, clear the canvas)
+  //   idle   → removed after staleMs (default 45s, just sitting there)
+  //   other active states → never removed by cleanup (still working)
+  cleanupStaleAgents: (staleMs = 45000) => {
     const now = Date.now()
     set((state) => {
       const agents = new Map(state.agents)
       let removed = 0
       for (const [id, agent] of agents) {
-        // Remove agents that haven't updated in staleMs and are in done/idle state
-        if (now - agent.lastUpdate > staleMs && (agent.state === 'done' || agent.state === 'idle')) {
-          agents.delete(id)
-          removed++
-        }
+        const age = now - agent.lastUpdate
+        if (agent.state === 'done'  && age > 20000) { agents.delete(id); removed++ }
+        else if (agent.state === 'error' && age > 30000) { agents.delete(id); removed++ }
+        else if (agent.state === 'idle'  && age > staleMs) { agents.delete(id); removed++ }
       }
       if (removed === 0) return state
       return { agents, agentsList: Array.from(agents.values()) }

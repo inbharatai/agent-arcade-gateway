@@ -6,7 +6,7 @@ const quick = args.includes('--quick');
 
 const loadDir = path.resolve(process.cwd(), 'scripts', 'load');
 const envList = [
-  ['GATEWAY_URL', process.env.GATEWAY_URL || 'http://localhost:8787'],
+  ['GATEWAY_URL', process.env.GATEWAY_URL || 'http://localhost:47890'],
   ['SESSION_ID', process.env.SESSION_ID || 'load-session'],
   ['GATEWAY_TOKEN', process.env.GATEWAY_TOKEN || ''],
   ['GATEWAY_API_KEY', process.env.GATEWAY_API_KEY || ''],

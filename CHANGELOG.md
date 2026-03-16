@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-03-16
+
+### Added — Phase A: Arcade Console (Natural Language Command Panel)
+
+- **Split Panel Layout** (`components/layout/SplitPanel.tsx`) — Resizable left/right split with draggable divider, localStorage persistence, min 320px console, max 60% viewport. Mobile tab switcher (Arcade | Console). Toggle via Ctrl+` or header button.
+- **ArcadeConsole** (`components/ArcadeConsole/`) — Full natural language AI interface alongside the arcade visualization
+  - **ModelSelector** — Dropdown with Claude Sonnet 4.6, Claude Opus 4.6, GPT-4o, GPT-4o mini, Gemini 1.5 Pro, Gemini 1.5 Flash, Ollama (local, FREE), with per-model cost display, API key inputs, and connection test buttons
+  - **ChatHistory** — Scrollable message thread with streaming typewriter animation, syntax-highlighted code blocks, copy buttons, token/cost metadata per message, and session persistence via localStorage
+  - **InputPanel** — Auto-growing textarea with Ctrl+Enter send, Hinglish/Indian language detection indicator, token count + cost estimator, prompt templates dropdown (8 built-in + custom), language normalization
+  - **OutputPanel** — Tabbed code/files view: extracts code blocks from AI responses with copy/download, detects referenced file paths
+  - **StatsBar** — Live session stats: model name, message count, tokens used, session cost, duration, connected agent count
+  - **CommandPalette** — Ctrl+K modal with slash commands: /fix, /explain, /test, /review, /opt, /docs, /refactor, /debug, /ask, /stop, /pause, /status, /cost, /history, /redirect
+- **AI Provider Integrations** (`lib/providers/`) — Four streaming providers via direct fetch:
+  - `claude.ts` — Anthropic API with SSE streaming, token counting, connection test
+  - `openai.ts` — OpenAI chat completions with streaming and usage tracking
+  - `gemini.ts` — Google Generative Language API with SSE streaming
+  - `ollama.ts` — Local Ollama with model listing (GET /api/tags) and chat streaming
+  - `router.ts` — Unified interface: model catalog, cost calculation, provider dispatch
+- **Multilingual Input** (`lib/i18n/`) — Client-side language detection and Hinglish normalizer:
+  - `detector.ts` — Unicode range detection for 9 Indic scripts + Hinglish pattern matching
+  - `normalizer.ts` — 40+ Hinglish phrase replacements (bana do → create, theek karo → fix, etc.), preserves technical terms (React, JWT, API, etc.)
+- **Session Store** (`lib/session-store.ts`) — localStorage-backed chat sessions: create, save, list, rename, export to markdown, 50-message cap, 20-session limit
+- **Arcade Bridge** (`lib/arcade-bridge.ts`) — Console activity reflected in arcade visualization: console agent spawns, thinking/writing state transitions, code detection, cost updates
+
+### Added — Phase B: Agent Intervention System (Click Any Agent → Full Control)
+
+- **Agent Intervention Hook** (`hooks/useAgentIntervention.ts`) — Per-agent control state, pause/resume/stop/redirect/handoff actions with Socket.IO event emission, confirm dialog pattern for destructive operations
+- **ControlPanel** (`components/AgentIntervention/ControlPanel.tsx`) — Click any agent → control panel appears as overlay below the agent. Shows agent state, task, uptime, AI model. Collapsible.
+- **Controls** (`components/AgentIntervention/Controls.tsx`) — Pause/Resume/Stop buttons with visual state indicators and pulsing PAUSED badge
+- **ActionHistory** (`components/AgentIntervention/ActionHistory.tsx`) — Reverse-chronological timeline of agent actions with type icons, elapsed time, token counts
+- **RedirectPanel** (`components/AgentIntervention/RedirectPanel.tsx`) — Mid-task redirect: type new instruction → agent pivots without losing progress. Quick-fill example redirects. Recent redirect history.
+- **HandoffPanel** (`components/AgentIntervention/HandoffPanel.tsx`) — Transfer task context from one agent to another with optional note
+- **NotificationToast** (`components/AgentIntervention/NotificationToast.tsx`) — Floating bottom-right toasts for agent alerts (warning/success/error/info), auto-dismiss after 6s, click to open control panel. `useNotifications` hook exported.
+- **Notifications** (`lib/notifications.ts`) — Helper functions for stuck/done/error/waiting/cost alert notifications
+
+### Added — Phase C: Integration
+
+- Console `/commands` trigger agent intervention (pause, stop, redirect, status)
+- ControlPanel wired into main page as overlay above arcade visualization
+- Confirm dialogs for destructive operations (stop, handoff)
+- `onAgentSelect` callback from AgentArcadePanel wires into intervention system
+- `connectedAgents` count fed from arcade store to console StatsBar
+- `useArcadeConsole` hook — Ctrl+` keyboard shortcut, arcade bridge initialization
+- `useProvider` hook — localStorage persistence for selected model + API keys
+- `useLanguage` hook — Debounced language detection for input fields
+- Keyboard shortcuts: Ctrl+` (toggle console), Ctrl+K (command palette), Ctrl+Enter (send message)
+- Mobile responsive: tab switcher replaces split panel on screens < 768px
+
+### Added — Phase D: Extended Providers & Settings
+
+- **Mistral AI provider** (`lib/providers/mistral.ts`) — mistral-large and mistral-small models with SSE streaming, token counting, and connection test. Integrated into the model router and cost tracking.
+- **Settings panel** (`components/Settings/`) — 5-tab settings panel: General, Providers, Appearance, Shortcuts, About. API key management with AES-256 encryption at rest.
+- **Voice input** (`components/InputPanel/VoiceInput.tsx`) — Web Speech API integration with language detection, interim results display, and push-to-talk toggle.
+- **AES-256 API key encryption** (`lib/crypto.ts`) — Client-side AES-256-GCM encryption for all stored API keys in localStorage.
+- **20-language detection engine** — Extended `detector.ts` to support 20 languages across Latin, CJK, Cyrillic, Arabic, and Indic script families.
+- **Global translation engine** — Extended `normalizer.ts` with phrase-mapping normalization for Spanish, French, German, Portuguese, Hindi/Hinglish, and other supported languages.
+- **Gateway REST agent control endpoints** — New HTTP endpoints at `/v1/agents/:id/pause`, `/v1/agents/:id/resume`, `/v1/agents/:id/stop`, `/v1/agents/:id/redirect` for programmatic agent control.
+- **100-case language test suite** (`packages/web/test/i18n.test.ts`) — Comprehensive bun test suite covering Indic script detection (hi, bn, ta, te, kn, ml, gu, pa), Hinglish pattern detection, English fallback, Latin-script languages (with TODO markers for full 20-lang detector), Hinglish normalization (action verbs + connectors), and technical term preservation. All tests aligned to current implementation.
+
+### Changed
+
+- **Port assignments** — Gateway runs on `:47890`, web dashboard runs on `:47380` (aligned across all docs and config).
+- `app/page.tsx` — Upgraded to v3.2 layout with SplitPanel, ArcadeConsole, ControlPanel overlay, notification toasts
+- Version bumped to v3.2.0
+
 ## [3.0.0] - 2026-03-15
 
 ### Added — Phase 1: Multi-Framework SDK Integrations
@@ -84,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Infrastructure
 
-- Bun runtime for gateway (port 8787)
+- Bun runtime for gateway (port 47890)
 - Next.js 15 for web visualizer (port 3000)
 - Optional Redis for persistence (graceful degradation to in-memory)
 - SLSA provenance generation for releases

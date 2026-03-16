@@ -21,7 +21,7 @@ interface GitChange {
 interface WatcherConfig {
   /** Directory to watch (must be a git repo) */
   repoPath: string
-  /** Gateway URL (default: http://localhost:8787) */
+  /** Gateway URL (default: http://localhost:47890) */
   gatewayUrl?: string
   /** Session ID */
   sessionId?: string
@@ -103,7 +103,7 @@ export class GitWatcher {
   constructor(config: WatcherConfig) {
     this.config = {
       repoPath: config.repoPath,
-      gatewayUrl: config.gatewayUrl || 'http://localhost:8787',
+      gatewayUrl: config.gatewayUrl || 'http://localhost:47890',
       sessionId: config.sessionId || 'git-watcher',
       interval: config.interval || 5000,
       agentId: config.agentId || `git_${Date.now().toString(36)}`,
@@ -215,7 +215,7 @@ if (import.meta.main) {
   const repoPath = process.argv[2] || process.cwd()
   const watcher = new GitWatcher({
     repoPath,
-    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:8787',
+    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:47890',
     sessionId: process.env.SESSION_ID || 'git-watcher',
   })
 

@@ -7,7 +7,7 @@
  * Usage (ES module):
  *   import { AgentArcadeBrowser } from '@agent-arcade/sdk-browser'
  *   const arcade = AgentArcadeBrowser.init({
- *     url: 'http://localhost:8787',
+ *     url: 'http://localhost:47890',
  *     sessionId: 'demo',
  *   })
  *   const id = arcade.spawn({ name: 'Frontend Bot' })

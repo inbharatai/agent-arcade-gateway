@@ -13,7 +13,7 @@ Usage:
 
     wrap_autogen_agents(
         [assistant, user_proxy],
-        gateway_url="http://localhost:8787",
+        gateway_url="http://localhost:47890",
         session_id="autogen-demo",
     )
     user_proxy.initiate_chat(assistant, message="Write a hello world")
@@ -204,7 +204,7 @@ class ArcadeAutoGenHook:
 
 def wrap_autogen_agents(
     agents: List[Any],
-    gateway_url: str = "http://localhost:8787",
+    gateway_url: str = "http://localhost:47890",
     session_id: str = "autogen-session",
     auth_token: Optional[str] = None,
 ) -> ArcadeAutoGenHook:
@@ -232,7 +232,7 @@ def wrap_autogen_agents(
 
         hook = wrap_autogen_agents(
             [assistant, user_proxy],
-            gateway_url="http://localhost:8787",
+            gateway_url="http://localhost:47890",
             session_id="coding-session",
         )
 
@@ -301,7 +301,7 @@ class ArcadeGroupChat:
         agents = [agent1, agent2, agent3]
         arcade_gc = ArcadeGroupChat(
             agents=agents,
-            gateway_url="http://localhost:8787",
+            gateway_url="http://localhost:47890",
             session_id="group-chat",
         )
         result = arcade_gc.run("Solve this problem together")
@@ -310,7 +310,7 @@ class ArcadeGroupChat:
     def __init__(
         self,
         agents: List[Any],
-        gateway_url: str = "http://localhost:8787",
+        gateway_url: str = "http://localhost:47890",
         session_id: str = "group-chat",
         auth_token: Optional[str] = None,
         max_round: int = 10,

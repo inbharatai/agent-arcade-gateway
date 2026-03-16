@@ -13,7 +13,7 @@ user_proxy = UserProxyAgent("executor")
 
 wrap_autogen_agents(
     [assistant, user_proxy],
-    gateway_url="http://localhost:8787",
+    gateway_url="http://localhost:47890",
     session_id="my-autogen-chat",
 )
 

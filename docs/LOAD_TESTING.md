@@ -18,7 +18,7 @@ Configured in script:
 - Unauthorized rate must remain zero for authenticated runs
 
 ## Prerequisites
-- Running gateway (`http://localhost:8787` by default)
+- Running gateway (`http://localhost:47890` by default)
 - Valid auth for authenticated endpoints:
   - `GATEWAY_TOKEN` (JWT) or
   - `GATEWAY_API_KEY`
@@ -28,7 +28,7 @@ Configured in script:
 ```bash
 docker run --rm -i \
   --network host \
-  -e GATEWAY_URL=http://localhost:8787 \
+  -e GATEWAY_URL=http://localhost:47890 \
   -e SESSION_ID=load-session \
   -e GATEWAY_TOKEN=<token> \
   -e SESSION_SIGNATURE=<sig> \

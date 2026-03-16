@@ -137,7 +137,7 @@ export class ProcessWatcher {
 
   constructor(config: WatcherConfig = {}) {
     this.config = {
-      gatewayUrl: config.gatewayUrl || 'http://localhost:8787',
+      gatewayUrl: config.gatewayUrl || 'http://localhost:47890',
       sessionId: config.sessionId || 'process-watcher',
       interval: config.interval || 2000,
     }
@@ -258,7 +258,7 @@ export class ProcessWatcher {
 
 if (import.meta.main) {
   const watcher = new ProcessWatcher({
-    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:8787',
+    gatewayUrl: process.env.GATEWAY_URL || 'http://localhost:47890',
     sessionId: process.env.SESSION_ID || 'process-watcher',
   })
 

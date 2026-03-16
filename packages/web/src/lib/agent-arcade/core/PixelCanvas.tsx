@@ -84,21 +84,37 @@ function contrastTextColor(bg: string): string {
   return luminance > 0.62 ? '#111827' : '#f8fafc'
 }
 
-function getBubbleText(agent: Agent, fallbackLabel: string): string {
-  // Priority: task description (what user wants) > latest message > label > state
-  if (agent.task && agent.task.trim()) {
-    const model = agent.aiModel ? ` [${agent.aiModel}]` : ''
-    return `${agent.task}${model}`
-  }
+// Generic state labels that don't carry meaningful execution context
+const GENERIC_LABELS = new Set([
+  'idle', 'thinking', 'reading', 'writing', 'tool', 'waiting',
+  'moving', 'error', 'done', 'starting…', 'starting...', '',
+])
+
+function getBubbleText(agent: Agent, fallbackLabel: string, now: number): string {
+  const model = agent.aiModel ? ` [${agent.aiModel}]` : ''
+
+  // 1. Latest message if it's very fresh (< 15s) — shows what was just commanded/said
   const latestMessage = agent.messages[agent.messages.length - 1]
-  if (latestMessage && latestMessage.trim()) {
-    const model = agent.aiModel ? ` [${agent.aiModel}]` : ''
-    return `${latestMessage}${model}`
+  if (latestMessage && latestMessage.trim() && now - agent.lastUpdate < 15000) {
+    return `${latestMessage.trim()}${model}`
   }
+
+  // 2. Dynamic execution label — what the agent is currently doing
+  //    Skip generic single-word state labels; keep specific ones like "Reading auth.ts"
+  if (agent.label && agent.label.trim() && !GENERIC_LABELS.has(agent.label.trim().toLowerCase())) {
+    return `${agent.label.trim()}${model}`
+  }
+
+  // 3. Task description — the user's original request
+  if (agent.task && agent.task.trim()) {
+    return `${agent.task.trim()}${model}`
+  }
+
+  // 4. Any label (even generic) is better than nothing
   if (agent.label && agent.label.trim()) {
-    const model = agent.aiModel ? ` [${agent.aiModel}]` : ''
-    return `${agent.label}${model}`
+    return `${agent.label.trim()}${model}`
   }
+
   return agent.aiModel ? `${fallbackLabel} [${agent.aiModel}]` : fallbackLabel
 }
 
@@ -116,6 +132,7 @@ function getWanderTarget(state: AgentState, deskPos: { x: number; y: number }): 
 export interface CanvasAudioCallbacks {
   onSpawn?: (agentId: string) => void
   onStateChange?: (agentId: string, newState: AgentState) => void
+  onMessage?: (agentId: string, text: string) => void
   onDone?: (agentId: string) => void
   onError?: (agentId: string) => void
   onSelect?: (agentId: string | null) => void
@@ -168,6 +185,12 @@ export function PixelCanvas({
 
   // Screen shake
   const shakeRef = useRef<{ intensity: number; decay: number }>({ intensity: 0, decay: 0 })
+
+  // Autonomous wander timer — tracks when each agent last wandered
+  const lastWanderRef = useRef<Map<string, number>>(new Map())
+
+  // Message tracking — detect new messages and fire onMessage callback
+  const prevMsgCountsRef = useRef<Map<string, number>>(new Map())
 
   // Ambient dust motes
   const motesRef = useRef<DustMote[]>([])
@@ -244,6 +267,22 @@ export function PixelCanvas({
         audioCallbacks?.onSpawn?.(id)
         // Screen shake on spawn
         shakeRef.current = { intensity: 3, decay: 0.92 }
+        // Stagger initial wander so agents don't all move at once on load
+        const hash = id.split('').reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0)
+        lastWanderRef.current.set(id, Date.now() - (hash % 3000))
+      }
+
+      // Fire onMessage when the agent gets a new message
+      const prevMsgCount = prevMsgCountsRef.current.get(id) ?? 0
+      const curMsgCount = c.agent.messages.length
+      if (curMsgCount > prevMsgCount) {
+        prevMsgCountsRef.current.set(id, curMsgCount)
+        const latestMsg = c.agent.messages[curMsgCount - 1]
+        if (latestMsg && latestMsg.trim()) {
+          audioCallbacks?.onMessage?.(id, latestMsg.trim())
+        }
+      } else if (prevMsgCount === 0 && curMsgCount === 0) {
+        prevMsgCountsRef.current.set(id, 0)
       }
 
       const prevState = prevStates.get(id)
@@ -315,6 +354,28 @@ export function PixelCanvas({
           const shake = shakeRef.current
           shake.intensity *= shake.decay
           if (shake.intensity < 0.1) shake.intensity = 0
+
+          // Autonomous wander: every 4–8s agents in active states take a small stroll
+          for (const c of chars) {
+            const ms = moveStatesRef.current.get(c.agent.id)
+            if (!ms || ms.moving) continue
+            const state = c.agent.state
+            if (state === 'done' || state === 'idle' || state === 'waiting' || state === 'error') continue
+            const lastWander = lastWanderRef.current.get(c.agent.id) ?? 0
+            // Each agent gets a unique interval offset so they don't all move at once
+            const hash = c.agent.id.split('').reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 0)
+            const interval = 4000 + (hash % 4000) // 4–8 s
+            if (now - lastWander < interval) continue
+            lastWanderRef.current.set(c.agent.id, now)
+            // Pick a small random wander target near current position
+            const fromGrid = { x: Math.round(ms.pixelX / tileSize), y: Math.round(ms.pixelY / tileSize) }
+            const dx = (hash % 3) - 1          // -1, 0, or 1
+            const dy = ((hash >> 4) % 3) - 1
+            const tx = clamp(fromGrid.x + dx + (Math.random() > 0.5 ? 1 : -1), 1, GRID_W - 2)
+            const ty = clamp(fromGrid.y + dy, 1, GRID_H - 2)
+            const path = findPath(fromGrid, { x: tx, y: ty })
+            if (path.length >= 2) startMovement(ms, path, tileSize)
+          }
         }
 
         for (const [id, progress] of spawnAnimRef.current) {
@@ -565,13 +626,15 @@ export function PixelCanvas({
               ctx.shadowBlur = 0
             }
 
-            // Speech bubble
-            const showBubble =
+            // Speech bubble — always show when agent has something to say
+            const hasActiveContent =
               c.agent.state !== 'idle' ||
-              (c.agent.messages.length > 0 && now - c.agent.lastUpdate < 9000) ||
-              isSelected
+              c.agent.task != null ||
+              (c.agent.messages.length > 0 && now - c.agent.lastUpdate < 15000) ||
+              (c.agent.label && !GENERIC_LABELS.has(c.agent.label.trim().toLowerCase()))
+            const showBubble = hasActiveContent || isSelected
             if (showBubble) {
-              const bubbleText = getBubbleText(c.agent, vis.label).slice(0, 48)
+              const bubbleText = getBubbleText(c.agent, vis.label, now).slice(0, 52)
               const isThought = c.agent.state === 'thinking'
               drawBubble(ctx, drawX, drawY - tileSize * 0.88, bubbleText, theme, tileSize, isThought, tick)
             }

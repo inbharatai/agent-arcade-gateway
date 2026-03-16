@@ -9,7 +9,31 @@
 const COOLDOWN_MS = 3000
 const lastSpoke = new Map<string, number>()
 let speaking = false
+let unlocked = false
 const queue: Array<{ text: string; agentIndex: number; agentId: string }> = []
+
+/**
+ * Attempt to unlock speechSynthesis without a click by speaking a zero-volume
+ * silent utterance. Chrome requires a user gesture, but this succeeds on
+ * Firefox, Safari, and Chrome when the page loads with prior user engagement.
+ * Also called automatically on first pointerdown/keydown so voice starts
+ * immediately on the very first interaction without waiting for a full click.
+ */
+export function unlockVoice() {
+  if (typeof speechSynthesis === 'undefined' || unlocked) return
+  try {
+    // Load voices (async in Chrome — must be triggered)
+    speechSynthesis.getVoices()
+
+    // Speak a silent placeholder to satisfy Chrome's autoplay policy
+    const u = new SpeechSynthesisUtterance('\u200B') // zero-width space
+    u.volume = 0
+    u.rate = 2
+    u.onend = () => { unlocked = true; processQueue() }
+    u.onerror = () => { unlocked = true } // error = still unlocked for next call
+    speechSynthesis.speak(u)
+  } catch { /* ignore */ }
+}
 
 function processQueue() {
   if (speaking || queue.length === 0) return

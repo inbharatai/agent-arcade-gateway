@@ -19,7 +19,7 @@ module.exports = {
       script: 'src/index.ts',
       interpreter: 'bun',
       env: {
-        PORT: 8787,
+        PORT: 47890,
         ALLOWED_ORIGINS: '*',
         RATE_MAX: 60,
         RATE_WINDOW_MS: 1000,
@@ -74,7 +74,7 @@ module.exports = {
       interpreter: 'npx',
       interpreter_args: 'tsx',
       env: {
-        GATEWAY_URL: 'http://localhost:8787',
+        GATEWAY_URL: 'http://localhost:47890',
       },
       autorestart: true,
       max_restarts: 100,

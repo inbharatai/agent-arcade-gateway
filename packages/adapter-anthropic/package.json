@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-anthropic",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "description": "Anthropic Claude SDK adapter for Agent Arcade -- auto-instruments streaming, tool use, thinking",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

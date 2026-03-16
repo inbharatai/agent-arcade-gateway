@@ -1,5 +1,5 @@
-const webBase = process.env.WEB_URL || "http://localhost:3000";
-const gatewayBase = process.env.GATEWAY_URL || "http://localhost:8787";
+const webBase = process.env.WEB_URL || "http://localhost:47380";
+const gatewayBase = process.env.GATEWAY_URL || "http://localhost:47890";
 const sessionId = process.env.SESSION_ID || `copilot-live-${Date.now().toString(36)}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

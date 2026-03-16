@@ -9,6 +9,6 @@ COPY packages/gateway/ ./
 # Ensure a healthcheck tool is available
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 8787
-ENV PORT=8787
+EXPOSE 47890
+ENV PORT=47890
 CMD ["bun", "src/index.ts"]

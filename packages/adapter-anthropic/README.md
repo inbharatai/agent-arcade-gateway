@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { wrapAnthropic } from '@agent-arcade/adapter-anthropic'
 
 const client = wrapAnthropic(new Anthropic(), {
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-claude-app',
 })
 
