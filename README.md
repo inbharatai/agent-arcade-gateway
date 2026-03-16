@@ -11,6 +11,10 @@
 [![Version](https://img.shields.io/badge/Version-3.2.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
+[![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Agent_Control-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--industry-first)
+[![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deep-ai-brain-observability)
+[![Zero Config](https://img.shields.io/badge/Zero_Config-No_API_Keys-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
+
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
 <br />
@@ -117,6 +121,132 @@ The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP P
 
 ---
 
+## 💚 WhatsApp Agent Control — Industry First
+
+<div align="center">
+
+<img src="docs/assets/whatsapp-control.svg" alt="WhatsApp Agent Control Flow" width="100%" />
+
+</div>
+
+<br />
+
+> **Scan a QR code. Control any AI agent from your personal WhatsApp.** No Twilio. No paid APIs. No phone number to buy. Just your existing WhatsApp — for free.
+
+This is not a chatbot. This is a **universal AI agent remote control** that works over WhatsApp. Pause a Claude Code session from your couch. Redirect an OpenClaw agent while commuting. Stop a runaway LangChain chain from your phone. Every AI tool connected to Agent Arcade is controllable from WhatsApp — the same way you'd text a friend.
+
+<table>
+<tr>
+<td width="50%">
+
+### How It Works
+
+1. **Start the QR client** — one command
+   ```bash
+   GATEWAY_URL=http://localhost:47890 \
+     bun run packages/whatsapp-client/src/index.ts
+   ```
+2. **Scan the QR** — it appears in your terminal AND in the Arcade dashboard (Settings → WhatsApp)
+3. **Send commands** — from your personal WhatsApp, just like texting
+
+The QR client uses [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys) — a lightweight, open-source WhatsApp Web library. No Twilio account. No monthly fees. Scan once, and the session persists across restarts.
+
+</td>
+<td width="50%">
+
+### Commands
+
+| Message You Send | What Happens |
+|:----------------|:------------|
+| `help` | Lists all commands |
+| `list my-session` | Shows all agents with live state |
+| `pause my-session agent-001` | Freezes agent mid-task |
+| `resume my-session agent-001` | Unfreezes agent |
+| `stop my-session agent-001` | Terminates agent |
+| `redirect my-session agent-001: use JWT` | Redirects with new instruction |
+| `status my-session` | Session overview with costs |
+
+**Security:** `WHATSAPP_ALLOWED_NUMBERS` restricts who can send commands. Leave empty to allow any number (development mode).
+
+</td>
+</tr>
+</table>
+
+<details>
+<summary><strong>🔧 WhatsApp Environment Variables</strong></summary>
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GATEWAY_URL` | `http://localhost:47890` | Which gateway to control |
+| `WHATSAPP_AUTH_DIR` | `./.whatsapp-auth` | Session credentials (persists across restarts) |
+| `WHATSAPP_CLIENT_PORT` | `47891` | Internal QR server port |
+| `WHATSAPP_ALLOWED_NUMBERS` | *(empty = all)* | Comma-separated E.164 numbers allowed to send commands |
+| `WHATSAPP_GATEWAY_TOKEN` | — | Optional gateway auth token |
+
+</details>
+
+---
+
+## 🐙 OpenClaw — Deep AI Brain Observability
+
+<div align="center">
+
+<img src="docs/assets/openclaw-integration.svg" alt="OpenClaw + Agent Arcade Integration" width="100%" />
+
+</div>
+
+<br />
+
+> **OpenClaw is the most deeply integrated framework in Agent Arcade.** Every cognitive layer — Brain, Skills, Memory, Heartbeat, and Channels — is tracked in real-time with full event granularity.
+
+While most frameworks get basic start/end tracking, OpenClaw gets **full ReAct loop visibility**: you can see exactly when the agent thinks, plans, acts, observes, and responds. Each skill execution spawns a child agent on the dashboard. Memory reads and writes appear as tool events. Heartbeat tasks show as persistent child agents. And channel messages (WhatsApp, Slack, Discord) flow through the dashboard in real-time.
+
+<table>
+<tr>
+<td width="50%">
+
+### One-Line Integration
+
+```typescript
+import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
+
+const claw = wrapOpenClaw(openClawInstance, {
+  gatewayUrl: 'http://localhost:47890',
+  sessionId: 'openclaw-app',
+})
+// Everything is tracked automatically
+```
+
+That's it. No configuration, no event wiring, no callback registration. The adapter monkey-patches OpenClaw's internal emitters and forwards every event to the gateway.
+
+</td>
+<td width="50%">
+
+### What Gets Tracked
+
+| OpenClaw Component | Tracked Events | Dashboard View |
+|:-------------------|:--------------|:--------------|
+| 🧠 **Brain** | think, plan, act, observe, respond, error | Agent states: thinking → tool → writing |
+| 🔧 **Skills** | start, end, error | Child agent per skill execution |
+| 💾 **Memory** | read, write, search | Tool events with payload |
+| 💓 **Heartbeat** | start, end | Persistent child agent per scheduled task |
+| 🌐 **Channels** | receive, send (WhatsApp/Slack) | Message flow in real-time |
+
+</td>
+</tr>
+</table>
+
+### OpenClaw + WhatsApp = Full Bidirectional Visibility
+
+When your OpenClaw agent processes WhatsApp messages, the Arcade dashboard shows the **complete message flow** — who sent what, which skill handled it, what memory was accessed, and what response was generated. Combined with the standalone WhatsApp QR client, you get two powers:
+
+| Direction | What You See |
+|:----------|:------------|
+| **📱 → 🤖 Control** | Send commands from WhatsApp → Gateway routes to any agent (pause, stop, redirect) |
+| **🤖 → 📱 Observe** | OpenClaw processes a WhatsApp message → Brain thinks → Skill fires → Response sent → all visible in dashboard |
+
+---
+
 ## 🎮 Live Dashboard
 
 <div align="center">
@@ -194,37 +324,9 @@ curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/redirect \
 curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/stop
 ```
 
-### WhatsApp Control — Works with Every Connected Tool
+### 💚 WhatsApp Control
 
-Scan a QR code once, control **any agent from any framework** via your personal WhatsApp — no Twilio, no API keys, no paid account. Uses your existing WhatsApp via [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys). Works with Claude Code, OpenAI, OpenClaw, LangChain, CrewAI — any tool connected to the gateway.
-
-```bash
-# Start the WhatsApp client
-GATEWAY_URL=http://localhost:47890 bun run packages/whatsapp-client/src/index.ts
-```
-
-The QR code prints in your terminal **and** appears in the Arcade dashboard under **Settings → WhatsApp**. Scan it with your phone: WhatsApp → Settings → Linked Devices → Link a Device.
-
-Once paired, send any of these commands from your personal WhatsApp:
-
-| Command | Effect |
-|---------|--------|
-| `help` | List all available commands |
-| `list my-session` | Show all agents in a session with live state |
-| `status my-session` | Same as list |
-| `pause my-session agent-001` | Freeze agent mid-task |
-| `resume my-session agent-001` | Unfreeze agent |
-| `stop my-session agent-001` | Terminate agent |
-| `redirect my-session agent-001: use PostgreSQL not MySQL` | Redirect with new instruction |
-
-**Setup env vars** (`packages/whatsapp-client/.env`):
-```bash
-GATEWAY_URL=http://localhost:47890        # Which gateway to control
-WHATSAPP_AUTH_DIR=./.whatsapp-auth        # Session credentials (scan once — persists across restarts)
-WHATSAPP_CLIENT_PORT=47891                # Internal QR server port
-WHATSAPP_ALLOWED_NUMBERS=+447700900000   # Who can send commands — comma-separated (empty = any)
-WHATSAPP_GATEWAY_TOKEN=                   # Optional gateway auth token
-```
+Control any agent from your personal WhatsApp — [see the full WhatsApp section above](#-whatsapp-agent-control--industry-first) for setup, commands, and architecture.
 
 ---
 
@@ -406,18 +508,14 @@ user_proxy.initiate_chat(assistant, message="Write a web scraper")
 ```typescript
 import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
 
-// Auto-instruments Brain (ReAct loop), Skills, Memory, and Heartbeat
 const claw = wrapOpenClaw(openClawInstance, {
   gatewayUrl: 'http://localhost:47890',
   sessionId: 'openclaw-app',
 })
-
-// Everything tracked automatically — including WhatsApp channel messages:
-// brain:think, brain:act, skill:start/end, memory:read/write,
-// channel:receive (WhatsApp/Slack), channel:send
+// Brain, Skills, Memory, Heartbeat, Channels — all tracked automatically
 ```
 
-**OpenClaw + WhatsApp:** When your OpenClaw agent processes messages from WhatsApp (via `channel:receive` / `channel:send` events), the Arcade dashboard shows the full message flow in real-time — who sent what, which skill handled it, and what response was generated. Combined with the standalone WhatsApp QR client, you get complete bi-directional visibility: **control agents from WhatsApp** and **see OpenClaw's WhatsApp activity in the dashboard**.
+> **OpenClaw is the most deeply integrated framework in Agent Arcade.** See the [full OpenClaw deep-dive above](#-openclaw--deep-ai-brain-observability) for the complete event map, WhatsApp bidirectional visibility, and architecture diagram.
 
 ### Node.js SDK (Manual)
 
