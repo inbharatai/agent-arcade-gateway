@@ -40,7 +40,28 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
                     └── Any HTTP API ──┘                            + Intervention
 ```
 
-**Zero configuration to start watching agents.** No API keys needed for observability — just start the gateway, connect your agents, and watch them work. API keys are only needed if you use the optional [AI Chat Console](#ai-chat-console).
+**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use.
+
+### Why Agent Arcade?
+
+| Problem | Agent Arcade Solution |
+|---------|----------------------|
+| "I can't see what my AI agents are doing" | Live pixel-art visualization with speech bubbles showing every action |
+| "I don't know how much my agents cost" | Real-time cost tracking for 29 models across 6 providers |
+| "My agent is stuck and I can't intervene" | Pause, redirect, stop, or hand off any agent mid-task |
+| "I need different control surfaces" | REST API + WhatsApp + Dashboard + CLI — control from anywhere |
+| "Each framework needs different tooling" | One platform for Claude Code, OpenAI, LangChain, CrewAI, and 8 more |
+| "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
+
+### How It Works
+
+```
+1. Start Agent Arcade          →  npm run dev:arcade
+2. Use your AI tool normally   →  Claude Code, Cursor, your Python app — anything
+3. Watch the magic             →  http://localhost:47380
+```
+
+The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console Chat shares the same API keys from your environment — observatory, console, and arcade are one unified system.
 
 ---
 
@@ -71,18 +92,18 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 
 ![Agent Arcade Console](docs/screenshots/aa-03-console.png)
 
-*Built-in AI chat panel — ask questions about your running agents, get explanations, direct the session — powered by Claude Sonnet 4.6 (gateway-first, no API key needed in browser)*
+*Built-in AI chat panel — ask questions about your running agents, get explanations, direct the session — zero configuration, auto-detects your existing API keys*
 
 </div>
 
 ### Console Features
 
-- **Claude Sonnet 4.6** pre-selected — switch to GPT-4o, Gemini, Mistral from the dropdown
+- **Zero-config auto-detection** — the Console auto-detects `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your shell environment. No separate configuration needed — the observatory and the console are one unified system.
+- **Claude Sonnet 4.6** pre-selected — switch to GPT-4o, Gemini, Mistral, or Ollama (local/free) from the dropdown
 - **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
 - **Export conversation** — save the full chat as markdown
-- **Gateway-first keys** — set `ANTHROPIC_API_KEY` once in `packages/gateway/.env` and the console auto-connects (optional — only needed if you want to use the chat console)
 - **Ctrl+Enter to send** — keyboard-driven workflow
-- **Templates (Ctrl+K)** — quick command presets
+- **Slash commands (Ctrl+K)** — `/fix`, `/explain`, `/test`, `/review`, `/opt`, `/docs`, `/refactor`, `/debug`, `/cost`, `/pause`, `/stop`, `/redirect`
 
 ---
 
@@ -121,9 +142,9 @@ curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/redirect \
 curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/stop
 ```
 
-### WhatsApp Control
+### WhatsApp Control — Works with Every Connected Tool
 
-Scan a QR code once, control agents from your personal WhatsApp — no Twilio, no API keys, no paid account. Uses your existing WhatsApp via [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys).
+Scan a QR code once, control **any agent from any framework** via your personal WhatsApp — no Twilio, no API keys, no paid account. Uses your existing WhatsApp via [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys). Works with Claude Code, OpenAI, OpenClaw, LangChain, CrewAI — any tool connected to the gateway.
 
 ```bash
 # Start the WhatsApp client
@@ -162,7 +183,7 @@ The ⚙️ Settings panel (6 tabs) is accessible from the toolbar:
 | Tab | What It Controls |
 |-----|-----------------|
 | **Console** | Default AI model, token count display, cost estimates, history retention |
-| **Providers** | Enter Anthropic / OpenAI / Gemini / Mistral API keys — stored AES-256 encrypted |
+| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto ✓" when keys are inherited from environment. Optional manual override with AES-256 encrypted storage. |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
 | **WhatsApp** | QR code scanner to pair your personal WhatsApp — scan once, control agents from your phone |
@@ -205,23 +226,9 @@ npm run dev:web        # Dashboard on :47380
 http://localhost:47380
 ```
 
-That's it. **No API keys needed.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. Your agents already have their own API keys — Agent Arcade just watches the telemetry.
+That's it. **No API keys to configure.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. The AI Chat Console also works automatically — it inherits API keys from your shell environment (the same `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. that your AI tools already use). Observatory, Console, and Arcade are one unified system.
 
-### 4. (Optional) Enable the AI Chat Console
-
-If you want to use the built-in chat console to talk to AI models from the dashboard, add keys to `packages/gateway/.env`:
-
-```bash
-# packages/gateway/.env — OPTIONAL, only for the Console Chat feature
-ANTHROPIC_API_KEY=sk-ant-...      # Enables Claude in the console
-# OPENAI_API_KEY=sk-...           # Enables GPT-4o in the console
-# GEMINI_API_KEY=...              # Enables Gemini in the console
-# MISTRAL_API_KEY=...             # Enables Mistral in the console
-```
-
-Set once → every browser session auto-uses it. No per-client configuration needed.
-
-### 5. Hook into Claude Code (optional — you're using it RIGHT NOW)
+### 4. (Optional) Hook into Claude Code
 
 ```bash
 npx @agent-arcade/cli hook claude-code
@@ -455,6 +462,23 @@ Budget warning at 80% of configured threshold in dashboard. Configurable cost th
 
 ---
 
+## What Makes Agent Arcade Unique
+
+| Innovation | Description |
+|-----------|-------------|
+| **Pixel-Art Visualization** | Every agent is a unique procedurally-generated character (15 classes, 13 animation frames, per-pixel shading). Model-based coloring: Claude agents are purple, GPT agents are green, Gemini is blue. 100% canvas-drawn — zero external assets. |
+| **WhatsApp Agent Control** | Scan a QR code, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. Works with every connected framework — OpenClaw, Claude Code, LangChain, all of them. |
+| **Zero-Config Console** | The Chat Console inherits API keys directly from your shell environment. No `.env` files. No Settings page. Start the gateway in the same terminal as your AI tool and it just works. |
+| **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
+| **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
+| **RPG Gamification** | 32 achievements, 12 XP levels (Novice → Godlike), streak multiplier up to 3.0x. Leaderboards across 5 categories. Achievement toasts with confetti animation. |
+| **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
+| **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
+| **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
+| **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -478,6 +502,7 @@ flowchart LR
     CC2[Cost Calculator]
     NR[Notification Router]
     ST[Session Store]
+    CP[Chat Proxy]
   end
 
   subgraph Dashboard["Web Dashboard :47380"]
@@ -489,9 +514,17 @@ flowchart LR
     RP[Session Replay]
   end
 
-  Adapters -->|POST /v1/ingest| Core
+  subgraph Control["Control Surfaces"]
+    WA[WhatsApp QR Client :47891]
+    API[REST API]
+    CLI[CLI Slash Commands]
+  end
+
+  Adapters -->|Socket.IO / HTTP| Core
   ZeroCode -->|POST /v1/ingest| Core
   Core -->|SSE + Socket.IO| Dashboard
+  Control -->|HTTP /v1/agents| Core
+  Core -.->|Slack / Discord / Email| NR
 ```
 
 ---
@@ -629,11 +662,11 @@ npm run prod:start
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| **Console Chat Keys** *(optional — only needed for the AI Chat Console, not for observability)* | | |
-| `ANTHROPIC_API_KEY` | — | Enables Claude in the console chat |
-| `OPENAI_API_KEY` | — | Enables GPT-4o in the console chat |
-| `GEMINI_API_KEY` | — | Enables Gemini in the console chat |
-| `MISTRAL_API_KEY` | — | Enables Mistral in the console chat |
+| **AI Provider Keys** *(auto-inherited from your shell — no manual setup needed)* | | |
+| `ANTHROPIC_API_KEY` | — | Auto-detected from environment. Enables Claude in the Console and cost tracking. |
+| `OPENAI_API_KEY` | — | Auto-detected from environment. Enables GPT-4o in the Console. |
+| `GEMINI_API_KEY` | — | Auto-detected from environment. Enables Gemini in the Console. |
+| `MISTRAL_API_KEY` | — | Auto-detected from environment. Enables Mistral in the Console. |
 | `PORT` | `47890` | Gateway port |
 | `REQUIRE_AUTH` | `0` | Enable JWT auth |
 | `JWT_SECRET` | — | Auth token signing |
@@ -659,11 +692,15 @@ npm run prod:start
 
 | Feature | Details |
 |---------|---------|
-| JWT auth | Optional — `REQUIRE_AUTH=1` |
-| AES-256 encryption | API keys encrypted in localStorage |
-| CORS | Configurable allowlist |
-| Input validation | Names ≤200, labels ≤500, messages ≤4000 chars |
-| Rate limiting | Flood and payload-size protection |
+| **JWT auth** | Optional — `REQUIRE_AUTH=1`. HS256-signed tokens with revocation support. |
+| **API key isolation** | AI provider keys never leave the server. The Console proxies through the gateway — no browser-side key exposure. |
+| **AES-256 encryption** | Optional client-side API keys encrypted with AES-256-GCM in localStorage |
+| **CORS** | Configurable allowlist with ReDoS-safe regex validation |
+| **Input validation** | Names ≤200, labels ≤500, messages ≤4000 chars. Body size limit: 1MB. |
+| **Rate limiting** | Per-IP (120 req/s), per-token (240 req/s), and session flood protection (600/s) |
+| **Session signing** | HMAC-SHA256 session signatures in production. Prevents cross-session access. |
+| **Proxy safety** | `TRUST_PROXY=1` required to honour `X-Forwarded-For` — prevents IP spoofing by default |
+| **Error sanitization** | Upstream AI API errors are stripped of API keys before returning to clients |
 
 ---
 
@@ -691,9 +728,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
 
-**Agent Arcade v3.2 — See every AI agent. Track every token. Level up.**
+### Agent Arcade v3.2 — See every AI agent. Track every token. Control from anywhere. Level up.
 
-*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · OpenClaw · Mistral · Ollama · Cursor · Copilot*
+**237 tests passing** · **21 packages** · **10 framework adapters** · **29 model cost profiles** · **32 achievements**
+
+*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · OpenClaw · Mistral · Ollama · Cursor · Copilot · Aider · DeepSeek*
 
 [Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
 

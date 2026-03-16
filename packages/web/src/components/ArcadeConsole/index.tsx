@@ -353,17 +353,11 @@ export function ArcadeConsole({
         </button>
       </div>
 
-      {/* API key missing — show setup nudge instead of blocking error */}
+      {/* Provider not yet detected — nudge to start the gateway alongside the AI tool */}
       {!apiKeys[selectedModel.provider] && !serverProviders[selectedModel.provider] && selectedModel.provider !== 'ollama' && messages.length === 0 && !error && (
         <div className="shrink-0 mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center gap-2">
-          <span>🔑</span>
-          <span className="flex-1">Add <code className="bg-black/30 px-1 rounded font-mono">ANTHROPIC_API_KEY</code> to gateway <code className="bg-black/30 px-1 rounded font-mono">.env</code> for auto-connect — or enter a key below.</span>
-          <button
-            onClick={() => { setSettingsTab('providers'); setSettingsOpen(true) }}
-            className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-200 shrink-0 font-medium"
-          >
-            Add Key →
-          </button>
+          <span>🔗</span>
+          <span className="flex-1">Start <code className="bg-black/30 px-1 rounded font-mono">agent-arcade start</code> in the same shell as your AI tool — the Console auto-detects API keys from your environment.</span>
         </div>
       )}
 

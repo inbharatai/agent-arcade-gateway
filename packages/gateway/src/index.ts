@@ -24,7 +24,9 @@ const JWT_SECRET = process.env.JWT_SECRET || ''
 const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || JWT_SECRET
 
 // ── AI Chat Proxy ─────────────────────────────────────────────────────────────
-// API keys for the console chat feature — set once in gateway env, used by all clients
+// Zero-config: the gateway inherits API keys from the shell environment.
+// When you run `agent-arcade start` alongside your AI tool, the Console
+// automatically picks up ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.
 const CHAT_ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY  || ''
 const CHAT_ANTHROPIC_URL  = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
 const CHAT_OPENAI_KEY     = process.env.OPENAI_API_KEY     || ''
@@ -1608,7 +1610,7 @@ const httpServer = createServer(async (req, res) => {
     }
 
     if (provider === 'claude') {
-      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured on gateway. Set it in gateway .env and restart.' })
+      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.' })
       const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
         method: 'POST',
         headers: {
@@ -1649,7 +1651,7 @@ const httpServer = createServer(async (req, res) => {
     if (provider === 'openai' || provider === 'mistral') {
       const key = provider === 'openai' ? CHAT_OPENAI_KEY : CHAT_MISTRAL_KEY
       const baseUrl = provider === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
-      if (!key) return jsonRes(res, 401, { error: `${provider.toUpperCase()}_API_KEY not configured on gateway.` })
+      if (!key) return jsonRes(res, 401, { error: `${provider.toUpperCase()}_API_KEY not detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.` })
       const upstream = await fetch(`${baseUrl}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },

@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server'
 
 /**
- * Server-side chat proxy route.
+ * Server-side chat proxy route — zero configuration required.
  *
- * Priority order for API keys:
- *   1. Gateway /v1/chat  — the gateway server has the keys (set once, shared by all clients)
- *   2. Local env vars    — ANTHROPIC_API_KEY etc. in .env.local
+ * API keys are inherited automatically from the shell environment:
+ *   1. Gateway /v1/chat  — gateway process inherits keys from the same shell as your AI tool
+ *   2. Local env vars    — fallback if gateway is unreachable
  *
- * This means users NEVER need to enter API keys in the browser.
- * Just configure the gateway (or .env.local) once.
+ * When you start Agent Arcade in the same terminal as Claude Code, Cursor,
+ * or any AI tool, the Console auto-detects ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.
+ * No separate configuration needed — the observatory and the console are one system.
  */
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:47890'
@@ -77,14 +78,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
     if (!apiKey) {
       return Response.json({
-        error: [
-          'No Anthropic API key found.',
-          'Fix options (pick one):',
-          '  1. Run: agent-arcade start  (auto-detects key from your shell)',
-          '  2. Add ANTHROPIC_API_KEY=sk-ant-... to packages/gateway/.env',
-          '  3. Add ANTHROPIC_API_KEY=sk-ant-... to packages/web/.env.local',
-          '  4. Enter your key in Settings → Providers in the console',
-        ].join('\n'),
+        error: 'No Anthropic API key detected. Run `agent-arcade start` in the same shell as your AI tool — API keys are inherited automatically from your environment.',
       }, { status: 401 })
     }
 
@@ -119,7 +113,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = provider === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
     if (!apiKey) {
       return Response.json({
-        error: `No API key configured. Add ${provider.toUpperCase()}_API_KEY to the gateway .env`,
+        error: `No ${provider} API key detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.`,
       }, { status: 401 })
     }
 
@@ -146,7 +140,7 @@ export async function POST(req: NextRequest) {
   if (provider === 'gemini') {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
-      return Response.json({ error: 'GEMINI_API_KEY not configured on server' }, { status: 401 })
+      return Response.json({ error: 'No Gemini API key detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.' }, { status: 401 })
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`
     const upstream = await fetch(url, {
