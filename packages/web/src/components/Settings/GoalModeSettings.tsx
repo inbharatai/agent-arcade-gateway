@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { GoalSettings } from '@/lib/goal-engine/types'
 import { DEFAULT_GOAL_SETTINGS } from '@/lib/goal-engine/types'
 
@@ -21,11 +21,7 @@ function saveSettings(s: GoalSettings) {
 }
 
 export function GoalModeSettings() {
-  const [settings, setSettings] = useState<GoalSettings>(DEFAULT_GOAL_SETTINGS)
-
-  useEffect(() => {
-    setSettings(loadSettings())
-  }, [])
+  const [settings, setSettings] = useState<GoalSettings>(() => loadSettings())
 
   const update = <K extends keyof GoalSettings>(key: K, value: GoalSettings[K]) => {
     setSettings(prev => {

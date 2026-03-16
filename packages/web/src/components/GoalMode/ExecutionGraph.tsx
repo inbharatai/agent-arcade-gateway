@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { GoalState, TaskExecution, TaskStatus } from '@/lib/goal-engine/types'
 
 interface ExecutionGraphProps {
@@ -38,17 +38,23 @@ function formatElapsed(ms: number): string {
   return m > 0 ? `${m}m ${sec}s` : `${sec}s`
 }
 
-function isStuck(task: TaskExecution, stuckMs = 180_000): boolean {
+function isStuck(task: TaskExecution, now: number, stuckMs = 180_000): boolean {
   if (task.status !== 'running' || !task.startedAt) return false
-  return Date.now() - task.startedAt > stuckMs
+  return now - task.startedAt > stuckMs
 }
 
 export function ExecutionGraph({ goal, onPauseAll, onResumeAll, onStopAll, onTaskAction }: ExecutionGraphProps) {
   const [expandedLog, setExpandedLog] = useState(true)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const completedCount = Object.values(goal.tasks).filter(t => t.status === 'complete').length
   const totalCount = Object.keys(goal.tasks).length
-  const elapsed = goal.startedAt ? Date.now() - goal.startedAt : 0
+  const elapsed = goal.startedAt ? now - goal.startedAt : 0
 
   return (
     <div className="space-y-5">
@@ -104,6 +110,7 @@ export function ExecutionGraph({ goal, onPauseAll, onResumeAll, onStopAll, onTas
                     key={task.id}
                     task={task}
                     onAction={onTaskAction}
+                    now={now}
                   />
                 ))}
               </div>
@@ -152,12 +159,14 @@ export function ExecutionGraph({ goal, onPauseAll, onResumeAll, onStopAll, onTas
 function TaskExecutionCard({
   task,
   onAction,
+  now,
 }: {
   task: TaskExecution
   onAction: (taskId: string, action: string, args?: any) => void
+  now: number
 }) {
-  const stuck = isStuck(task)
-  const elapsed = task.startedAt ? Date.now() - task.startedAt : 0
+  const stuck = isStuck(task, now)
+  const elapsed = task.startedAt ? now - task.startedAt : 0
 
   return (
     <div

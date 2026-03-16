@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { GoalState, TaskExecution } from '@/lib/goal-engine/types'
 
 interface TaskReviewProps {
@@ -21,6 +21,13 @@ function formatDuration(ms: number): string {
 export function TaskReview({ goal, phaseIndex, onApprovePhase, onRequestChanges, isFinal }: TaskReviewProps) {
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({})
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (goal.completedAt) return // no need to tick if already complete
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [goal.completedAt])
 
   const phase = goal.phases[phaseIndex]
   const phaseTasks = phase ? phase.taskIds.map(id => goal.tasks[id]).filter(Boolean) : []
@@ -29,7 +36,7 @@ export function TaskReview({ goal, phaseIndex, onApprovePhase, onRequestChanges,
   const totalElapsed = goal.startedAt && goal.completedAt
     ? goal.completedAt - goal.startedAt
     : goal.startedAt
-      ? Date.now() - goal.startedAt
+      ? now - goal.startedAt
       : 0
 
   const totalFilesCreated = allTasks.reduce((sum, t) => sum + (t.filesCreated?.length || 0), 0)
