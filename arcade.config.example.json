@@ -1,6 +1,6 @@
 {
   "$schema": "https://agent-arcade.dev/config-schema.json",
-  "version": "3.0.0",
+  "version": "3.2.0",
   "session": "my-project",
 
   "gateway": {
@@ -9,7 +9,7 @@
   },
 
   "web": {
-    "port": 3000
+    "port": 47380
   },
 
   "agents": [

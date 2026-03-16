@@ -56,7 +56,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 
 ### What You See on the Canvas
 
-- **Pixel-art agents** — each AI worker rendered as a unique character based on their model (Claude → purple, GPT-4 → green, Gemini → blue, Mistral → teal)
+- **Pixel-art agents** — each AI worker rendered as a unique character based on their model (Claude → purple, GPT/OpenAI → green, Gemini → blue, Mistral → navy, Ollama → neon-green, Copilot → blue, Cursor → orange)
 - **Live speech bubbles** — real-time task labels (e.g. "Designing microservices layout...", "Running Jest tests...", "Deploying to production...")
 - **State indicators** — thinking 🤔, writing ✍️, tool use 🔧, done ✅, error ❌
 - **Progress bars** — per-agent task completion
@@ -71,13 +71,13 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 
 ![Agent Arcade Console](docs/screenshots/aa-03-console.png)
 
-*Built-in AI chat panel — ask questions about your running agents, get explanations, direct the session — powered by Claude Sonnet 4.5 (gateway-first, no API key needed in browser)*
+*Built-in AI chat panel — ask questions about your running agents, get explanations, direct the session — powered by Claude Sonnet 4.6 (gateway-first, no API key needed in browser)*
 
 </div>
 
 ### Console Features
 
-- **Claude Sonnet 4.5** pre-selected — switch to GPT-4o, Gemini, Mistral from the dropdown
+- **Claude Sonnet 4.6** pre-selected — switch to GPT-4o, Gemini, Mistral from the dropdown
 - **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
 - **Export conversation** — save the full chat as markdown
 - **Gateway-first keys** — set `ANTHROPIC_API_KEY` once in `packages/gateway/.env`, the console auto-connects. No key prompts in the browser.
@@ -109,23 +109,55 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 ### REST API Control
 
 ```bash
-# Pause any agent
-curl -X POST http://localhost:47890/v1/agents/agent-001/pause
+# Pause any agent  (format: /v1/agents/:sessionId/:agentId/:action)
+curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/pause
 
 # Redirect with new instruction
-curl -X POST http://localhost:47890/v1/agents/agent-001/redirect \
+curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/redirect \
   -H "Content-Type: application/json" \
   -d '{"instruction": "Focus on the authentication module first"}'
 
 # Stop completely
-curl -X POST http://localhost:47890/v1/agents/agent-001/stop
+curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/stop
+```
+
+### WhatsApp Control
+
+Scan a QR code once, control agents from your personal WhatsApp — no Twilio, no API keys, no paid account. Uses your existing WhatsApp via [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys).
+
+```bash
+# Start the WhatsApp client
+GATEWAY_URL=http://localhost:47890 bun run packages/whatsapp-client/src/index.ts
+```
+
+The QR code prints in your terminal **and** appears in the Arcade dashboard under **Settings → WhatsApp**. Scan it with your phone: WhatsApp → Settings → Linked Devices → Link a Device.
+
+Once paired, send any of these commands from your personal WhatsApp:
+
+| Command | Effect |
+|---------|--------|
+| `help` | List all available commands |
+| `list my-session` | Show all agents in a session with live state |
+| `status my-session` | Same as list |
+| `pause my-session agent-001` | Freeze agent mid-task |
+| `resume my-session agent-001` | Unfreeze agent |
+| `stop my-session agent-001` | Terminate agent |
+| `redirect my-session agent-001: use PostgreSQL not MySQL` | Redirect with new instruction |
+
+**Setup env vars** (`packages/whatsapp-client/.env`):
+```bash
+GATEWAY_URL=http://localhost:47890        # Which gateway to control
+WHATSAPP_AUTH_DIR=./.whatsapp-auth        # Session credentials (scan once — persists across restarts)
+WHATSAPP_CLIENT_PORT=47891                # Internal QR server port
+WHATSAPP_ALLOWED_NUMBERS=+447700900000   # Who can send commands — comma-separated (empty = any)
+WHATSAPP_GATEWAY_TOKEN=                   # Optional gateway auth token
 ```
 
 ---
 
 ## Settings Panel
 
-The ⚙️ Settings panel (5 tabs) is accessible from the toolbar:
+The ⚙️ Settings panel (6 tabs) is accessible from the toolbar:
 
 | Tab | What It Controls |
 |-----|-----------------|
@@ -133,6 +165,7 @@ The ⚙️ Settings panel (5 tabs) is accessible from the toolbar:
 | **Providers** | Enter Anthropic / OpenAI / Gemini / Mistral API keys — stored AES-256 encrypted |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
+| **WhatsApp** | QR code scanner to pair your personal WhatsApp — scan once, control agents from your phone |
 | **About** | Version info, gateway connection status |
 
 ---
@@ -239,7 +272,7 @@ const client = wrapAnthropic(new Anthropic(), {
 
 // Streaming, tool use blocks, extended thinking — all tracked automatically
 const message = await client.messages.create({
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Explain quantum computing' }],
 })
@@ -303,6 +336,24 @@ wrap_autogen_agents([assistant, user_proxy],
 user_proxy.initiate_chat(assistant, message="Write a web scraper")
 ```
 
+### OpenClaw — Full Brain + Skills + Memory + WhatsApp
+
+```typescript
+import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
+
+// Auto-instruments Brain (ReAct loop), Skills, Memory, and Heartbeat
+const claw = wrapOpenClaw(openClawInstance, {
+  gatewayUrl: 'http://localhost:47890',
+  sessionId: 'openclaw-app',
+})
+
+// Everything tracked automatically — including WhatsApp channel messages:
+// brain:think, brain:act, skill:start/end, memory:read/write,
+// channel:receive (WhatsApp/Slack), channel:send
+```
+
+**OpenClaw + WhatsApp:** When your OpenClaw agent processes messages from WhatsApp (via `channel:receive` / `channel:send` events), the Arcade dashboard shows the full message flow in real-time — who sent what, which skill handled it, and what response was generated. Combined with the standalone WhatsApp QR client, you get complete bi-directional visibility: **control agents from WhatsApp** and **see OpenClaw's WhatsApp activity in the dashboard**.
+
 ### Node.js SDK (Manual)
 
 ```typescript
@@ -346,8 +397,9 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 | **LlamaIndex** | `@agent-arcade/adapter-llamaindex` | Callback handler |
 | **CrewAI** | `agent-arcade-crewai` | `arcade_crew(crew)` |
 | **AutoGen** | `agent-arcade-autogen` | `wrap_autogen_agents(agents)` |
+| **OpenClaw** | `@agent-arcade/adapter-openclaw` | `wrapOpenClaw(instance)` |
 | **Any AI API** | `@agent-arcade/proxy` | Change base URL only |
-| **Cursor / Aider** | `@agent-arcade/watcher` | Process auto-detection |
+| **Cursor / Aider / Copilot** | `@agent-arcade/watcher` | Process auto-detection |
 | **Ollama** | `@agent-arcade/watcher` | Process auto-detection |
 
 ---
@@ -386,13 +438,13 @@ Real-time cost tracking for 25+ AI models:
 
 | Provider | Models |
 |----------|--------|
-| **Anthropic** | Claude Opus 4, Sonnet 4.5, Haiku 3.5 |
+| **Anthropic** | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5 |
 | **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3-mini |
 | **Google** | Gemini 2.0 Flash, 1.5 Pro |
 | **Mistral** | Mistral Large, Medium, Small |
 | **Local** | Ollama (free) |
 
-Budget alerts at 80% and 95% of configured threshold. Export cost reports as JSON.
+Budget warning at 80% of configured threshold in dashboard. Configurable cost threshold notifications via Slack/Discord/Email. Export cost reports as JSON.
 
 ---
 
@@ -447,12 +499,23 @@ flowchart LR
 | GET | `/v1/state?sessionId=` | Session snapshot (for SSE refresh) |
 | GET | `/v1/capabilities` | Server capabilities |
 | GET | `/health` | Health check |
-| POST | `/v1/agents/:id/pause` | Pause agent |
-| POST | `/v1/agents/:id/resume` | Resume agent |
-| POST | `/v1/agents/:id/stop` | Stop agent |
-| POST | `/v1/agents/:id/redirect` | Redirect agent `{ instruction }` |
+| POST | `/v1/agents/:sessionId/:agentId/pause` | Pause agent |
+| POST | `/v1/agents/:sessionId/:agentId/resume` | Resume agent |
+| POST | `/v1/agents/:sessionId/:agentId/stop` | Stop agent |
+| POST | `/v1/agents/:sessionId/:agentId/redirect` | Redirect agent `{ instruction }` |
 | GET | `/v1/chat/providers` | List available AI providers |
 | POST | `/v1/chat` | Proxy AI chat request |
+| GET | `/v1/whatsapp/status` | QR-mode connection status `{ status, qr? }` |
+| GET | `/v1/whatsapp/qr.png` | QR code image (PNG) for dashboard display |
+| POST | `/v1/connect` | Register external client connection |
+| POST | `/v1/session-token` | Issue a signed session token |
+| POST | `/v1/auth/revoke` | Revoke a JWT token |
+| GET | `/v1/agents/:sessionId/:agentId/state` | Get agent state snapshot |
+| GET | `/v1/agents/:sessionId/:agentId/history` | Get agent action history |
+| GET | `/v1/session/:sessionId/agents` | List all agents in a session |
+| GET | `/v1/session/:sessionId/cost` | Per-agent cost breakdown for a session |
+| GET | `/ready` | Readiness probe (for k8s) |
+| GET | `/metrics` | Prometheus-format metrics |
 
 ### Event Protocol
 
@@ -479,7 +542,9 @@ flowchart LR
 | `writing` | Writing code or content |
 | `reading` | Reading files or context |
 | `tool` | Executing a tool |
+| `waiting` | Waiting for human input |
 | `idle` | Waiting for work |
+| `moving` | Transitioning between tasks |
 | `error` | Error occurred |
 | `done` | Task completed |
 
@@ -494,14 +559,16 @@ agent-arcade-gateway/
 │   ├── web/                 # Next.js dashboard (canvas, console, settings, intervention)
 │   ├── proxy/               # Zero-code AI API proxy (Bun)
 │   ├── cli/                 # CLI tool (init, start, demo, hook claude-code)
+│   ├── core/                # Canonical protocol types and constants
 │   ├── embed/               # React embed widget + URL builder
 │   │
-│   ├── adapter-openai/      # OpenAI SDK wrapper
+│   ├── adapter-openai/      # OpenAI SDK wrapper (streaming + tool calls)
 │   ├── adapter-anthropic/   # Anthropic SDK wrapper (streaming + tool use)
 │   ├── adapter-langchain/   # LangChain callback handler
 │   ├── adapter-llamaindex/  # LlamaIndex callback handler
 │   ├── adapter-crewai/      # CrewAI Python adapter
 │   ├── adapter-autogen/     # AutoGen Python adapter
+│   ├── adapter-openclaw/    # OpenClaw integration adapter
 │   │
 │   ├── sdk-node/            # Node.js client SDK
 │   ├── sdk-browser/         # Browser client SDK
@@ -510,7 +577,8 @@ agent-arcade-gateway/
 │   ├── watcher/             # AI process auto-detector (Claude, Cursor, Aider, Ollama)
 │   ├── git-watcher/         # Git index change watcher
 │   ├── log-tailer/          # AI log file parser
-│   └── notifications/       # Slack / Discord / Email / WhatsApp alerts
+│   ├── notifications/       # Slack / Discord / Email alerts
+│   └── whatsapp-client/     # QR-code WhatsApp client (Baileys) — scan once, control from phone
 │
 ├── docs/screenshots/        # Real screenshots from live sessions
 ├── scripts/                 # Load testing, simulation, dev tools
@@ -523,13 +591,17 @@ agent-arcade-gateway/
 
 ```bash
 # Full CI pipeline
-npm run ci           # lint → typecheck → build → test (152 tests)
+npm run ci           # lint → typecheck → build → test
 
 # Individual suites
-npm run test:gateway  # 25 gateway tests
-npm run test:sdk      # SDK tests
+npm run test:gateway  # Gateway tests (gateway.test.ts + agent-lifecycle.test.ts + whatsapp.test.ts)
+npm run test:store    # Web/store tests (125 tests)
+npm run test:sdk      # SDK tests (sdk-node + sdk-browser)
 npm run lint:web      # ESLint
 npm run typecheck:web # TypeScript
+
+# Adapter tests
+bun test packages/adapter-openai/src/index.test.ts  # 14 OpenAI adapter tests
 ```
 
 ---
@@ -557,6 +629,20 @@ npm run prod:start
 | `REQUIRE_AUTH` | `0` | Enable JWT auth |
 | `JWT_SECRET` | — | Auth token signing |
 | `ALLOWED_ORIGINS` | `*` | CORS allowlist |
+| **Notifications** | | |
+| `SLACK_WEBHOOK_URL` | — | Slack incoming webhook URL |
+| `DISCORD_WEBHOOK_URL` | — | Discord webhook URL |
+| `SMTP_HOST` | `smtp.gmail.com` | Email SMTP host |
+| `SMTP_PORT` | `587` | Email SMTP port |
+| `SMTP_USER` | — | Email SMTP username |
+| `SMTP_PASS` | — | Email SMTP password |
+| `NOTIFY_EMAIL_TO` | — | Alert recipient email address |
+| `NOTIFY_COST_THRESHOLD` | `5` | USD cost threshold for cost alerts |
+| **WhatsApp QR Mode** | | |
+| `WHATSAPP_AUTH_DIR` | `./.whatsapp-auth` | Directory to persist Baileys session credentials |
+| `WHATSAPP_CLIENT_PORT` | `47891` | Port for the QR code HTTP server |
+| `WHATSAPP_ALLOWED_NUMBERS` | — | Comma-separated E.164 numbers allowed to send commands (empty = all) |
+| `WHATSAPP_GATEWAY_TOKEN` | — | Auth token the QR client uses when calling gateway endpoints |
 
 ---
 
@@ -576,7 +662,7 @@ npm run prod:start
 
 1. Fork the repository
 2. Create a feature branch
-3. Run `npm run ci` to verify all 152 tests pass
+3. Run `npm run ci` to verify all tests pass
 4. Open a pull request
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
@@ -598,7 +684,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 **Agent Arcade v3.2 — See every AI agent. Track every token. Level up.**
 
-*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · Mistral · Ollama*
+*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · OpenClaw · Mistral · Ollama · Cursor · Copilot*
 
 [Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
 

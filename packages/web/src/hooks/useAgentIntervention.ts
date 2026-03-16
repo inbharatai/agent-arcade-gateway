@@ -48,7 +48,8 @@ export function useAgentIntervention(config: InterventionConfig) {
 
   // Cleanup on unmount — prevent Map entries from surviving component lifecycle
   useEffect(() => {
-    return () => { agentStatesRef.current.clear() }
+    const ref = agentStatesRef.current
+    return () => { ref.clear() }
   }, [])
 
   // Post an event to the gateway via HTTP ingest (used for message/handoff events that
@@ -98,10 +99,12 @@ export function useAgentIntervention(config: InterventionConfig) {
       })
     }
     return agentStates.get(agentId)!
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const refreshState = useCallback(() => {
     setControlStates(new Map(agentStates))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const selectAgent = useCallback((agentId: string | null) => {
@@ -186,6 +189,7 @@ export function useAgentIntervention(config: InterventionConfig) {
 
   const getAgentState = useCallback((agentId: string) => {
     return agentStates.get(agentId) || null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return {

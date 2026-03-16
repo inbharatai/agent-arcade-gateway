@@ -1,9 +1,9 @@
 {
   "name": "agent-arcade-web",
-  "version": "1.0.0",
+  "version": "3.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3009",
+    "dev": "next dev -p 47380",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."

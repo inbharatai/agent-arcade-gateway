@@ -38,7 +38,7 @@ import {
   DESK_POSITIONS, assignDesk, findPath, createMovementState,
   startMovement, tickMovement, MovementState,
 } from '../movement'
-import { getCharacterSheet, stateToFrame, SPRITE_SIZE, PIXEL_CONFIGS, CHARACTER_CLASSES } from '../sprites'
+import { getCharacterSheet, stateToFrame, SPRITE_SIZE, PIXEL_CONFIGS, CHARACTER_CLASSES, modelToCharacterClass } from '../sprites'
 import { ParticleSystem } from './particles'
 import { lerp, easeInOut, easeOutBounce, pulse, clamp01, smoothStep } from './tween'
 
@@ -235,7 +235,7 @@ export function PixelCanvas({
         gridY: desk.y,
         deskX: assignDesk(i).x,
         deskY: assignDesk(i).y,
-        charClass: agent.characterClass || CHARACTER_CLASSES[i % CHARACTER_CLASSES.length],
+        charClass: agent.characterClass || modelToCharacterClass(agent.aiModel) || CHARACTER_CLASSES[i % CHARACTER_CLASSES.length],
       }
     })
   }, [agents])

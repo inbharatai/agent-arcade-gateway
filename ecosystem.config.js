@@ -21,7 +21,7 @@ module.exports = {
       env: {
         PORT: 47890,
         ALLOWED_ORIGINS: '*',
-        RATE_MAX: 60,
+        RATE_MAX_IP: 120,
         RATE_WINDOW_MS: 1000,
         MAX_EVENTS: 200,
         NODE_ENV: 'production',
@@ -51,7 +51,7 @@ module.exports = {
       script: 'node_modules/.bin/next',
       args: 'start',
       env: {
-        PORT: 3000,
+        PORT: 47380,
         NODE_ENV: 'production',
       },
       autorestart: true,

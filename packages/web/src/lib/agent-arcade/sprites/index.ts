@@ -93,6 +93,30 @@ export const CHARACTER_PALETTES: Record<string, {
 export const SPRITE_SIZE = 32
 export const CHARACTER_CLASSES = Object.keys(CHARACTER_PALETTES)
 
+/**
+ * Map an AI model name to a character class for model-based coloring.
+ * Claude → reviewer (purple), GPT/OpenAI → researcher (green),
+ * Gemini → analyst (blue), Mistral → strategist (teal/navy),
+ * Ollama/local → hacker (neon green), DeepSeek → operator (orange),
+ * Copilot → developer (blue), unknown → undefined (fallback to round-robin).
+ */
+export function modelToCharacterClass(aiModel?: string): string | undefined {
+  if (!aiModel) return undefined
+  const m = aiModel.toLowerCase()
+  if (m.includes('claude') || m.includes('anthropic'))  return 'reviewer'
+  if (m.includes('gpt') || m.includes('openai') || m.includes('o1') || m.includes('o3') || m.includes('o4'))  return 'researcher'
+  if (m.includes('gemini') || m.includes('google'))     return 'analyst'
+  if (m.includes('mistral') || m.includes('mixtral'))    return 'strategist'
+  if (m.includes('ollama') || m.includes('llama') || m.includes('local')) return 'hacker'
+  if (m.includes('deepseek'))                            return 'operator'
+  if (m.includes('copilot'))                             return 'developer'
+  if (m.includes('cursor'))                              return 'engineer'
+  if (m.includes('crewai') || m.includes('crew'))        return 'commander'
+  if (m.includes('langchain'))                           return 'builder'
+  if (m.includes('autogen'))                             return 'mentor'
+  return undefined
+}
+
 /** Pixel-level configs */
 export interface PixelConfig {
   scale: number

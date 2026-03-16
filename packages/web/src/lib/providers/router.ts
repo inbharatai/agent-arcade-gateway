@@ -19,9 +19,9 @@ export interface ModelOption {
 
 export const MODEL_OPTIONS: ModelOption[] = [
   // Anthropic Claude — use canonical Anthropic model IDs
-  { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', provider: 'claude', inputCostPer1M: 3, outputCostPer1M: 15, description: 'Fast, capable' },
-  { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', provider: 'claude', inputCostPer1M: 15, outputCostPer1M: 75, description: 'Most capable' },
-  { id: 'claude-haiku-3-5', name: 'Claude Haiku 3.5', provider: 'claude', inputCostPer1M: 0.8, outputCostPer1M: 4, description: 'Fastest & cheapest' },
+  { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'claude', inputCostPer1M: 3, outputCostPer1M: 15, description: 'Latest, fast & capable' },
+  { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', provider: 'claude', inputCostPer1M: 15, outputCostPer1M: 75, description: 'Most capable' },
+  { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', provider: 'claude', inputCostPer1M: 0.8, outputCostPer1M: 4, description: 'Fastest & cheapest' },
   // OpenAI
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', inputCostPer1M: 2.5, outputCostPer1M: 10, description: 'OpenAI flagship' },
   { id: 'gpt-4o-mini', name: 'GPT-4o mini', provider: 'openai', inputCostPer1M: 0.15, outputCostPer1M: 0.60, description: 'Fast & cheap' },

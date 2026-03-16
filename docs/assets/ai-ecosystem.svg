@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" font-family="'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bgEco" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="100%" stop-color="#0a1a2e"/>
+    </linearGradient>
+    <linearGradient id="centerGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8b5cf640"/>
+      <stop offset="100%" stop-color="#6366f120"/>
+    </linearGradient>
+    <linearGradient id="openai" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10a37f"/>
+      <stop offset="100%" stop-color="#0d8c6d"/>
+    </linearGradient>
+    <linearGradient id="anthropic" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d4a574"/>
+      <stop offset="100%" stop-color="#c49060"/>
+    </linearGradient>
+    <linearGradient id="openclaw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff6b35"/>
+      <stop offset="100%" stop-color="#e85d26"/>
+    </linearGradient>
+    <linearGradient id="langchain" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c3c3c"/>
+      <stop offset="100%" stop-color="#2d5a5a"/>
+    </linearGradient>
+    <linearGradient id="crewai" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff4444"/>
+      <stop offset="100%" stop-color="#cc3333"/>
+    </linearGradient>
+    <linearGradient id="autogen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0078d4"/>
+      <stop offset="100%" stop-color="#005a9e"/>
+    </linearGradient>
+    <linearGradient id="llamaindex" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="google" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4285f4"/>
+      <stop offset="100%" stop-color="#3367d6"/>
+    </linearGradient>
+    <linearGradient id="ollama" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e0e0"/>
+    </linearGradient>
+    <filter id="glowEco">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="600" fill="url(#bgEco)" rx="12"/>
+
+  <!-- Subtle grid -->
+  <g stroke="#ffffff04" stroke-width="0.5">
+    <line x1="0" y1="100" x2="960" y2="100"/><line x1="0" y1="200" x2="960" y2="200"/>
+    <line x1="0" y1="300" x2="960" y2="300"/><line x1="0" y1="400" x2="960" y2="400"/>
+    <line x1="0" y1="500" x2="960" y2="500"/>
+    <line x1="160" y1="0" x2="160" y2="600"/><line x1="320" y1="0" x2="320" y2="600"/>
+    <line x1="480" y1="0" x2="480" y2="600"/><line x1="640" y1="0" x2="640" y2="600"/>
+    <line x1="800" y1="0" x2="800" y2="600"/>
+  </g>
+
+  <!-- Title -->
+  <text x="480" y="35" text-anchor="middle" fill="#c4b5fd" font-size="16" font-weight="800" letter-spacing="4">AGENT ARCADE — AI ECOSYSTEM</text>
+  <text x="480" y="55" text-anchor="middle" fill="#64748b" font-size="11">One platform. Every AI framework. Complete observability.</text>
+
+  <!-- CENTER: Agent Arcade Hub -->
+  <circle cx="480" cy="300" r="85" fill="url(#centerGlow)" stroke="#8b5cf6" stroke-width="2" filter="url(#softGlow)"/>
+  <circle cx="480" cy="300" r="70" fill="#0a0a1af0" stroke="#8b5cf680"/>
+  <text x="480" y="278" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">🕹️ AGENT</text>
+  <text x="480" y="296" text-anchor="middle" fill="#c4b5fd" font-size="13" font-weight="800">ARCADE</text>
+  <text x="480" y="316" text-anchor="middle" fill="#8b5cf6" font-size="9" font-weight="600">Gateway + Dashboard</text>
+  <text x="480" y="332" text-anchor="middle" fill="#64748b" font-size="8">Gamification • Costs • Replay</text>
+
+  <!-- Connection lines (drawn first, behind nodes) -->
+  <!-- OpenAI -->
+  <line x1="200" y1="140" x2="415" y2="250" stroke="#10a37f50" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- Anthropic -->
+  <line x1="480" y1="130" x2="480" y2="230" stroke="#d4a57450" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- OpenClaw -->
+  <line x1="760" y1="140" x2="545" y2="250" stroke="#ff6b3550" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- LangChain -->
+  <line x1="130" y1="300" x2="395" y2="300" stroke="#2d5a5a50" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- CrewAI -->
+  <line x1="830" y1="300" x2="565" y2="300" stroke="#ff444450" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- LlamaIndex -->
+  <line x1="200" y1="460" x2="415" y2="350" stroke="#7c3aed50" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- AutoGen -->
+  <line x1="480" y1="470" x2="480" y2="370" stroke="#0078d450" stroke-width="2" stroke-dasharray="6,4"/>
+  <!-- Google/Gemini -->
+  <line x1="760" y1="460" x2="545" y2="350" stroke="#4285f450" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <!-- Flow arrows (small triangles on lines) -->
+  <polygon points="420,255 410,250 415,260" fill="#10a37f80"/>
+  <polygon points="480,235 475,245 485,245" fill="#d4a57480"/>
+  <polygon points="540,255 545,265 550,250" fill="#ff6b3580"/>
+  <polygon points="400,297 400,303 390,300" fill="#2d5a5a80"/>
+  <polygon points="560,297 560,303 570,300" fill="#ff444480"/>
+  <polygon points="420,345 410,350 415,340" fill="#7c3aed80"/>
+  <polygon points="475,365 485,365 480,375" fill="#0078d480"/>
+  <polygon points="540,345 545,340 550,355" fill="#4285f480"/>
+
+  <!-- ═══ AI FRAMEWORK NODES ═══ -->
+
+  <!-- 1. OpenAI (top-left) -->
+  <rect x="115" y="100" width="170" height="80" rx="10" fill="#0d1117" stroke="#10a37f" stroke-width="1.5"/>
+  <circle cx="145" cy="125" r="14" fill="url(#openai)"/>
+  <text x="145" y="130" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">AI</text>
+  <text x="170" y="125" fill="#10a37f" font-size="12" font-weight="700">OpenAI</text>
+  <text x="135" y="145" fill="#94a3b8" font-size="8">GPT-4o • o1 • Assistants API</text>
+  <text x="135" y="160" fill="#6ee7b7" font-size="8">wrapOpenAI(client) — 1 line</text>
+  <text x="135" y="173" fill="#64748b" font-size="7">Streaming • Tools • Vision</text>
+
+  <!-- 2. Anthropic/Claude (top-center) -->
+  <rect x="370" y="80" width="220" height="80" rx="10" fill="#0d1117" stroke="#d4a574" stroke-width="1.5"/>
+  <circle cx="400" cy="105" r="14" fill="url(#anthropic)"/>
+  <text x="400" y="110" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">A</text>
+  <text x="425" y="105" fill="#d4a574" font-size="12" font-weight="700">Anthropic / Claude</text>
+  <text x="385" y="125" fill="#94a3b8" font-size="8">Claude Opus 4 • Sonnet 4 • Claude Code</text>
+  <text x="385" y="140" fill="#fcd34d" font-size="8">wrapAnthropic(client) — 1 line</text>
+  <text x="385" y="153" fill="#64748b" font-size="7">Extended Thinking • Tool Use • Streaming</text>
+
+  <!-- 3. OpenClaw (top-right) -->
+  <rect x="675" y="100" width="170" height="80" rx="10" fill="#0d1117" stroke="#ff6b35" stroke-width="2"/>
+  <circle cx="705" cy="125" r="14" fill="url(#openclaw)"/>
+  <text x="705" y="130" text-anchor="middle" fill="#fff" font-size="12">🐾</text>
+  <text x="730" y="125" fill="#ff6b35" font-size="12" font-weight="700">OpenClaw</text>
+  <text x="690" y="145" fill="#94a3b8" font-size="8">Brain • Skills • Memory • Heartbeat</text>
+  <text x="690" y="160" fill="#fb923c" font-size="8">wrapOpenClaw(claw) — 1 line</text>
+  <text x="690" y="173" fill="#64748b" font-size="7">163K ⭐ • 5,700+ plugins • ReAct</text>
+
+  <!-- 4. LangChain (middle-left) -->
+  <rect x="40" y="260" width="170" height="80" rx="10" fill="#0d1117" stroke="#2d5a5a" stroke-width="1.5"/>
+  <circle cx="70" cy="285" r="14" fill="url(#langchain)"/>
+  <text x="70" y="290" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">🦜</text>
+  <text x="95" y="285" fill="#5eead4" font-size="12" font-weight="700">LangChain</text>
+  <text x="55" y="305" fill="#94a3b8" font-size="8">Chains • Agents • RAG • Tools</text>
+  <text x="55" y="320" fill="#5eead4" font-size="8">Callback handler integration</text>
+  <text x="55" y="333" fill="#64748b" font-size="7">TypeScript + Python</text>
+
+  <!-- 5. CrewAI (middle-right) -->
+  <rect x="750" y="260" width="170" height="80" rx="10" fill="#0d1117" stroke="#ff4444" stroke-width="1.5"/>
+  <circle cx="780" cy="285" r="14" fill="url(#crewai)"/>
+  <text x="780" y="290" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">👥</text>
+  <text x="805" y="285" fill="#ff6b6b" font-size="12" font-weight="700">CrewAI</text>
+  <text x="765" y="305" fill="#94a3b8" font-size="8">Crews • Agents • Tasks • Roles</text>
+  <text x="765" y="320" fill="#fca5a5" font-size="8">arcade_crew(crew) decorator</text>
+  <text x="765" y="333" fill="#64748b" font-size="7">Python • Multi-agent crews</text>
+
+  <!-- 6. LlamaIndex (bottom-left) -->
+  <rect x="115" y="420" width="170" height="80" rx="10" fill="#0d1117" stroke="#7c3aed" stroke-width="1.5"/>
+  <circle cx="145" cy="445" r="14" fill="url(#llamaindex)"/>
+  <text x="145" y="450" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">🦙</text>
+  <text x="170" y="445" fill="#a78bfa" font-size="12" font-weight="700">LlamaIndex</text>
+  <text x="130" y="465" fill="#94a3b8" font-size="8">Indexes • Query • RAG pipelines</text>
+  <text x="130" y="480" fill="#c4b5fd" font-size="8">Callback handler integration</text>
+  <text x="130" y="493" fill="#64748b" font-size="7">TypeScript + Python</text>
+
+  <!-- 7. AutoGen (bottom-center) -->
+  <rect x="370" y="440" width="220" height="80" rx="10" fill="#0d1117" stroke="#0078d4" stroke-width="1.5"/>
+  <circle cx="400" cy="465" r="14" fill="url(#autogen)"/>
+  <text x="400" y="470" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">MS</text>
+  <text x="425" y="465" fill="#60a5fa" font-size="12" font-weight="700">AutoGen (Microsoft)</text>
+  <text x="385" y="485" fill="#94a3b8" font-size="8">Multi-agent conversations • Code exec</text>
+  <text x="385" y="500" fill="#93c5fd" font-size="8">wrap_autogen_agents(agents)</text>
+  <text x="385" y="513" fill="#64748b" font-size="7">Python • Group chats • Code sandbox</text>
+
+  <!-- 8. Google Gemini (bottom-right) -->
+  <rect x="675" y="420" width="170" height="80" rx="10" fill="#0d1117" stroke="#4285f4" stroke-width="1.5"/>
+  <circle cx="705" cy="445" r="14" fill="url(#google)"/>
+  <text x="705" y="450" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">G</text>
+  <text x="730" y="445" fill="#60a5fa" font-size="12" font-weight="700">Gemini</text>
+  <text x="690" y="465" fill="#94a3b8" font-size="8">Gemini 2.0 • 1.5 Pro • Flash</text>
+  <text x="690" y="480" fill="#93c5fd" font-size="8">Via Zero-Code Proxy</text>
+  <text x="690" y="493" fill="#64748b" font-size="7">Any language • No SDK needed</text>
+
+  <!-- ═══ BOTTOM BAR — Platform capabilities ═══ -->
+  <rect x="40" y="555" width="880" height="35" rx="6" fill="#0d0d2080" stroke="#8b5cf630"/>
+  <text x="480" y="577" text-anchor="middle" fill="#94a3b8" font-size="10">
+    <tspan fill="#8b5cf6" font-weight="700">🕹️ Live Dashboard</tspan>
+    <tspan fill="#475569"> · </tspan>
+    <tspan fill="#f59e0b" font-weight="700">⭐ 32 Achievements</tspan>
+    <tspan fill="#475569"> · </tspan>
+    <tspan fill="#10b981" font-weight="700">📈 12 XP Levels</tspan>
+    <tspan fill="#475569"> · </tspan>
+    <tspan fill="#ef4444" font-weight="700">💰 Cost Tracking</tspan>
+    <tspan fill="#475569"> · </tspan>
+    <tspan fill="#60a5fa" font-weight="700">⏪ Session Replay</tspan>
+    <tspan fill="#475569"> · </tspan>
+    <tspan fill="#a78bfa" font-weight="700">🔔 Multi-Channel Alerts</tspan>
+  </text>
+
+  <!-- Floating labels for "Also supported" -->
+  <rect x="15" y="180" width="85" height="50" rx="6" fill="#0d1117" stroke="#ffffff15"/>
+  <text x="57" y="200" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="600">+ Ollama</text>
+  <text x="57" y="215" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="600">+ Mistral</text>
+  <text x="57" y="228" text-anchor="middle" fill="#64748b" font-size="7">via Proxy</text>
+
+  <rect x="860" y="180" width="85" height="50" rx="6" fill="#0d1117" stroke="#ffffff15"/>
+  <text x="902" y="200" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="600">+ DeepSeek</text>
+  <text x="902" y="215" text-anchor="middle" fill="#94a3b8" font-size="8" font-weight="600">+ Any HTTP</text>
+  <text x="902" y="228" text-anchor="middle" fill="#64748b" font-size="7">via Proxy</text>
+</svg>

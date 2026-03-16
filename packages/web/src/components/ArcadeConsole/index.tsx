@@ -69,7 +69,7 @@ export function ArcadeConsole({
   const [showOutput, setShowOutput] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'console' | 'providers' | 'language' | 'appearance' | 'about'>('console')
+  const [settingsTab, setSettingsTab] = useState<'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'about'>('console')
   const [sessionStart] = useState(Date.now())
   const abortRef = useRef<AbortController | null>(null)
 

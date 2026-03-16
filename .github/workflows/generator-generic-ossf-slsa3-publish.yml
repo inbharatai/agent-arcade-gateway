@@ -25,33 +25,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ========================================================
-      #
-      # Step 1: Build your artifacts.
-      #
-      # ========================================================
-      - name: Build artifacts
-        run: |
-            # These are some amazing artifacts.
-            echo "artifact1" > artifact1
-            echo "artifact2" > artifact2
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      # ========================================================
-      #
-      # Step 2: Add a step to generate the provenance subjects
-      #         as shown below. Update the sha256 sum arguments
-      #         to include all binaries that you generate
-      #         provenance for.
-      #
-      # ========================================================
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build gateway artifact
+        run: |
+          cd packages/gateway && bun install
+          tar czf ../../agent-arcade-gateway.tar.gz src/ package.json bun.lock*
+
+      - name: Build web artifact
+        run: |
+          cd packages/web && npm ci
+          NEXT_PUBLIC_GATEWAY_URL=http://localhost:47890 npx next build
+          tar czf ../../agent-arcade-web.tar.gz .next/standalone .next/static public package.json
+
       - name: Generate subject for provenance
         id: hash
         run: |
           set -euo pipefail
-
-          # List the artifacts the provenance will refer to.
-          files=$(ls artifact*)
-          # Generate the subjects (base64 encoded).
+          files="agent-arcade-gateway.tar.gz agent-arcade-web.tar.gz"
           echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
 
   provenance:

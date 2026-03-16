@@ -62,9 +62,11 @@ export interface CostReport {
 
 const PRICING: ModelPricing[] = [
   // Anthropic
+  { name: 'claude-sonnet-4-6', provider: 'anthropic', inputPer1M: 3, outputPer1M: 15, isLocal: false },
+  { name: 'claude-opus-4-6', provider: 'anthropic', inputPer1M: 15, outputPer1M: 75, isLocal: false },
+  { name: 'claude-haiku-4-5', provider: 'anthropic', inputPer1M: 0.80, outputPer1M: 4, isLocal: false },
   { name: 'claude-sonnet-4', provider: 'anthropic', inputPer1M: 3, outputPer1M: 15, isLocal: false },
   { name: 'claude-opus-4', provider: 'anthropic', inputPer1M: 15, outputPer1M: 75, isLocal: false },
-  { name: 'claude-haiku-3.5', provider: 'anthropic', inputPer1M: 0.80, outputPer1M: 4, isLocal: false },
   { name: 'claude-3.5-sonnet', provider: 'anthropic', inputPer1M: 3, outputPer1M: 15, isLocal: false },
   { name: 'claude-3-opus', provider: 'anthropic', inputPer1M: 15, outputPer1M: 75, isLocal: false },
 
@@ -133,7 +135,7 @@ function findPricing(model: string): ModelPricing | null {
   if (fuzzy) return fuzzy
 
   // Provider detection fallback
-  if (normalized.includes('claude')) return PRICING.find(p => p.name === 'claude-sonnet-4') || null
+  if (normalized.includes('claude')) return PRICING.find(p => p.name === 'claude-sonnet-4-6') || null
   if (normalized.includes('gpt')) return PRICING.find(p => p.name === 'gpt-4o') || null
   if (normalized.includes('gemini')) return PRICING.find(p => p.name === 'gemini-2.5-flash') || null
   if (normalized.includes('llama') || normalized.includes('ollama')) return PRICING.find(p => p.name === 'llama-3') || null

@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AES-256 API key encryption** (`lib/crypto.ts`) — Client-side AES-256-GCM encryption for all stored API keys in localStorage.
 - **20-language detection engine** — Extended `detector.ts` to support 20 languages across Latin, CJK, Cyrillic, Arabic, and Indic script families.
 - **Global translation engine** — Extended `normalizer.ts` with phrase-mapping normalization for Spanish, French, German, Portuguese, Hindi/Hinglish, and other supported languages.
-- **Gateway REST agent control endpoints** — New HTTP endpoints at `/v1/agents/:id/pause`, `/v1/agents/:id/resume`, `/v1/agents/:id/stop`, `/v1/agents/:id/redirect` for programmatic agent control.
+- **Gateway REST agent control endpoints** — New HTTP endpoints at `/v1/agents/:sessionId/:agentId/pause`, `/v1/agents/:sessionId/:agentId/resume`, `/v1/agents/:sessionId/:agentId/stop`, `/v1/agents/:sessionId/:agentId/redirect` for programmatic agent control.
 - **100-case language test suite** (`packages/web/test/i18n.test.ts`) — Comprehensive bun test suite covering Indic script detection (hi, bn, ta, te, kn, ml, gu, pa), Hinglish pattern detection, English fallback, Latin-script languages (with TODO markers for full 20-lang detector), Hinglish normalization (action verbs + connectors), and technical term preservation. All tests aligned to current implementation.
 
 ### Changed
@@ -150,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Infrastructure
 
 - Bun runtime for gateway (port 47890)
-- Next.js 15 for web visualizer (port 3000)
+- Next.js 15 for web visualizer (port 47380)
 - Optional Redis for persistence (graceful degradation to in-memory)
 - SLSA provenance generation for releases
 
@@ -159,8 +159,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard authentication
 - Multi-tenant support
 - Historical event replay
-- Prometheus metrics export
 
+[3.2.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.0.0...v3.2.0
+[3.0.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v1.0.0...v2.1.0
 [1.0.0]: https://github.com/inbharatai/agent-arcade-gateway/releases/tag/v1.0.0
-[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.2.0...HEAD

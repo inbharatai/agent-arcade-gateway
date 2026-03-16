@@ -80,8 +80,20 @@ jobs:
       - name: Gateway integration tests
         run: bun test packages/gateway/test/gateway.test.ts
 
+      - name: Gateway agent-lifecycle tests
+        run: bun test packages/gateway/test/agent-lifecycle.test.ts
+
+      - name: Gateway WhatsApp tests
+        run: bun test packages/gateway/test/whatsapp.test.ts
+
       - name: Store unit tests
         run: cd packages/web && bun test test/store.test.ts
+
+      - name: i18n language tests
+        run: cd packages/web && bun test test/i18n.test.ts
+
+      - name: OpenAI adapter tests
+        run: bun test packages/adapter-openai/src/index.test.ts
 
       - name: SDK tests
         run: |

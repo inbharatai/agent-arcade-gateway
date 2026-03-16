@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from 'jose'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient, RedisClientType } from 'redis'
 import { Server, Socket } from 'socket.io'
+import { NotificationRouter, NotificationConfig } from '../../notifications/src/index'
 
 interface SSEClient {
   id: string
@@ -58,6 +59,45 @@ const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean)
+
+// ── Notification Router ───────────────────────────────────────────────────────
+// Fires Slack / Discord / Email alerts for agent errors, cost thresholds, and
+// "waiting" events. WhatsApp alerts are delivered via the QR-code client
+// (packages/whatsapp-client) which connects via Baileys — no Twilio needed.
+function buildNotificationRouter(): NotificationRouter {
+  const channels: NotificationConfig['channels'] = []
+
+  if (process.env.SLACK_WEBHOOK_URL)
+    channels.push({ type: 'slack', enabled: true, webhookUrl: process.env.SLACK_WEBHOOK_URL })
+
+  if (process.env.DISCORD_WEBHOOK_URL)
+    channels.push({ type: 'discord', enabled: true, discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL })
+
+  if (process.env.SMTP_USER && process.env.NOTIFY_EMAIL_TO)
+    channels.push({
+      type: 'email', enabled: true,
+      smtpHost:  process.env.SMTP_HOST || 'smtp.gmail.com',
+      smtpPort:  Number(process.env.SMTP_PORT || '587'),
+      smtpUser:  process.env.SMTP_USER,
+      smtpPass:  process.env.SMTP_PASS,
+      emailTo:   process.env.NOTIFY_EMAIL_TO,
+    })
+
+  const costThreshold = Number(process.env.NOTIFY_COST_THRESHOLD || '5')
+
+  return new NotificationRouter({
+    channels,
+    rules: [
+      { type: 'agent_error',      threshold: undefined,     channels: ['slack', 'discord', 'email'], enabled: true },
+      { type: 'cost_threshold',   threshold: costThreshold, channels: ['slack', 'email'],            enabled: true },
+      { type: 'agent_waiting',    threshold: undefined,     channels: ['slack'],                     enabled: true },
+      { type: 'session_complete', threshold: undefined,     channels: ['slack'],                     enabled: false },
+    ],
+    rateLimitMs: 60_000,
+  })
+}
+
+const notificationRouter = buildNotificationRouter()
 
 // ---- Types ------------------------------------------------------------------
 type EventType =
@@ -737,6 +777,11 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       if (typeof p.task === 'string') agent.task = p.task
       agent.lastUpdate = ev.ts
       await storage.upsertAgent(ev.sessionId, agent)
+      // Fire WhatsApp/Slack/Discord/Email alert when agent enters error state
+      if (nextState === 'error') {
+        const errorMsg = typeof p.label === 'string' ? p.label : 'Unknown error'
+        notificationRouter.alertAgentError(agent.id, agent.name, ev.sessionId, errorMsg).catch(() => {})
+      }
       break
     }
     case 'agent.tool': {
@@ -757,13 +802,18 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
     case 'agent.message': {
       agent = await ensureAgent()
       const p = ev.payload as Record<string, unknown>
-      if (p.level === 'waiting' || p.requiresInput) agent.state = 'waiting'
+      const needsInput = p.level === 'waiting' || p.requiresInput
+      if (needsInput) agent.state = 'waiting'
       const msgText = String(p.text || '').slice(0, 4000)
       agent.messages.push(msgText)
       // Cap messages to prevent unbounded memory growth
       if (agent.messages.length > 1000) agent.messages = agent.messages.slice(-500)
       agent.lastUpdate = ev.ts
       await storage.upsertAgent(ev.sessionId, agent)
+      // Fire WhatsApp/Slack alert when agent is waiting for human input
+      if (needsInput) {
+        notificationRouter.alertAgentWaiting(agent.id, agent.name, ev.sessionId).catch(() => {})
+      }
       break
     }
     case 'agent.link': {
@@ -1403,6 +1453,37 @@ const httpServer = createServer(async (req, res) => {
 
     // No sub-action matched within agent route
     return jsonRes(res, 404, { error: 'Not found' })
+  }
+
+  // ── QR-code WhatsApp client status endpoints ──────────────────────────────
+  // These proxy status from the standalone @agent-arcade/whatsapp-client process
+  // which runs on port 47891 by default (or WHATSAPP_CLIENT_PORT).
+  // The web dashboard polls GET /v1/whatsapp/status to render the QR code
+  // or "Connected" badge in the Settings → WhatsApp tab.
+
+  if (url.pathname === '/v1/whatsapp/status' && req.method === 'GET') {
+    const clientPort = process.env.WHATSAPP_CLIENT_PORT || '47891'
+    try {
+      const resp = await fetch(`http://localhost:${clientPort}/status`, { signal: AbortSignal.timeout(2000) })
+      const data = await resp.json()
+      return jsonRes(res, 200, data)
+    } catch {
+      return jsonRes(res, 200, { status: 'disconnected', message: 'whatsapp-client not running — start with: bun run packages/whatsapp-client/src/index.ts' })
+    }
+  }
+
+  if (url.pathname === '/v1/whatsapp/qr.png' && req.method === 'GET') {
+    const clientPort = process.env.WHATSAPP_CLIENT_PORT || '47891'
+    try {
+      const resp = await fetch(`http://localhost:${clientPort}/qr.png`, { signal: AbortSignal.timeout(2000) })
+      if (!resp.ok) { res.writeHead(204); res.end(); return }
+      const buf = Buffer.from(await resp.arrayBuffer())
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': String(buf.length) })
+      res.end(buf)
+    } catch {
+      res.writeHead(204); res.end()
+    }
+    return
   }
 
   // GET /v1/session/:sessionId/agents

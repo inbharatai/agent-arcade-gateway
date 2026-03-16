@@ -90,6 +90,10 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
             arcade.state(agentId, 'writing', { label: 'Streaming...' })
             return stream
           }
+          // Accumulate tool calls from stream deltas to emit at end
+          const streamedToolNames: string[] = []
+          let streamFinishReason: string | null = null
+
           stream[Symbol.asyncIterator] = function () {
             const iter = originalIterator()
             return {
@@ -97,6 +101,22 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
                 const result = await iter.next()
                 if (!result.done) {
                   tokenCount++
+                  const delta = result.value?.choices?.[0]
+                  if (delta?.finish_reason) streamFinishReason = delta.finish_reason
+
+                  // Accumulate tool call names from streaming deltas
+                  const toolCallDeltas: any[] = delta?.delta?.tool_calls || []
+                  for (const tc of toolCallDeltas) {
+                    if (tc.function?.name && !streamedToolNames.includes(tc.function.name)) {
+                      streamedToolNames.push(tc.function.name)
+                    }
+                  }
+                  // Legacy function_call streaming
+                  const fnName = delta?.delta?.function_call?.name
+                  if (fnName && !streamedToolNames.includes(fnName)) {
+                    streamedToolNames.push(fnName)
+                  }
+
                   if (tokenCount === 1) {
                     arcade.state(agentId, 'writing', { label: 'Generating...' })
                   } else if (tokenCount % 20 === 0) {
@@ -106,6 +126,12 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
                     })
                   }
                 } else {
+                  // Emit tool events discovered during streaming
+                  if (streamedToolNames.length > 0 || streamFinishReason === 'tool_calls' || streamFinishReason === 'function_call') {
+                    for (const name of streamedToolNames) {
+                      arcade.tool(agentId, name, { label: `Calling ${name}` })
+                    }
+                  }
                   arcade.end(agentId, { reason: `Streamed ${tokenCount} chunks`, success: true })
                 }
                 return result
@@ -121,7 +147,28 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
           const tokenInfo = usage
             ? `${usage.total_tokens} tokens (prompt: ${usage.prompt_tokens}, completion: ${usage.completion_tokens})`
             : 'complete'
-          arcade.state(agentId, 'writing', { label: 'Generating response' })
+
+          // Emit tool events for function calling / tools API (non-streaming)
+          const choice = (result as any).choices?.[0]
+          const finishReason = choice?.finish_reason
+          if (finishReason === 'tool_calls' || finishReason === 'function_call') {
+            // Modern tools API: message.tool_calls[]
+            const toolCalls: any[] = choice?.message?.tool_calls || []
+            for (const tc of toolCalls) {
+              const toolName = tc.function?.name || tc.type || 'tool'
+              arcade.tool(agentId, toolName, { label: `Calling ${toolName}` })
+            }
+            // Legacy function_call format
+            const fnCall = choice?.message?.function_call
+            if (fnCall) {
+              const fnName = fnCall.name || 'function'
+              arcade.tool(agentId, fnName, { label: `Calling ${fnName}` })
+            }
+            arcade.state(agentId, 'tool', { label: `Tool call${toolCalls.length > 1 ? `s (${toolCalls.length})` : ''}` })
+          } else {
+            arcade.state(agentId, 'writing', { label: 'Generating response' })
+          }
+
           arcade.end(agentId, { reason: tokenInfo, success: true })
           return result
         }
