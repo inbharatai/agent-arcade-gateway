@@ -43,7 +43,7 @@ function error(msg: string) { log(`${c.red}\u2717${c.reset} ${msg}`) }
 // Version
 // ---------------------------------------------------------------------------
 
-const VERSION = '3.0.0'
+const VERSION = '3.2.0'
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -83,7 +83,6 @@ async function cmdInit() {
 
   // Check for Python AI packages
   try {
-    execSync('pip list --format=json 2>/dev/null || pip3 list --format=json 2>/dev/null', { encoding: 'utf-8' })
     const pipList = execSync('pip list --format=json 2>/dev/null || pip3 list --format=json', { encoding: 'utf-8' })
     const packages = JSON.parse(pipList) as Array<{ name: string }>
     const names = packages.map(p => p.name.toLowerCase())
@@ -102,12 +101,15 @@ async function cmdInit() {
     }
   } catch { /* pip not available */ }
 
-  // Check for Ollama
+  // Check for Ollama (with timeout so CLI doesn't hang)
   try {
-    await fetch('http://localhost:11434/api/tags')
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 2000)
+    await fetch('http://localhost:11434/api/tags', { signal: ctrl.signal })
+    clearTimeout(timer)
     success('Found Ollama running')
     agents.push({ type: 'ollama', autoDetect: true })
-  } catch { /* not running */ }
+  } catch { /* not running or timed out */ }
 
   if (agents.length === 0) {
     warn('No AI tools detected. You can add them manually to arcade.config.json')
@@ -117,7 +119,7 @@ async function cmdInit() {
   const config = {
     version: '3.0.0',
     session: process.cwd().split(/[/\\]/).pop() || 'my-project',
-    gateway: { port: 8787 },
+    gateway: { port: 47890 },
     web: { port: 3000 },
     agents,
     alerts: {
@@ -136,27 +138,87 @@ async function cmdInit() {
 async function cmdStart() {
   log(`\n${c.cyan}${c.bold}Agent Arcade${c.reset} ${c.dim}v${VERSION}${c.reset}\n`)
 
+  // ── Auto-create gateway .env if missing ───────────────────────────────
+  const gatewayEnvPath = join(process.cwd(), 'packages', 'gateway', '.env')
+  if (!existsSync(gatewayEnvPath)) {
+    warn('No gateway .env found — creating development config...')
+    const detectedKeys: string[] = []
+    if (process.env.ANTHROPIC_API_KEY) detectedKeys.push(`ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}`)
+    if (process.env.OPENAI_API_KEY)    detectedKeys.push(`OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`)
+    if (process.env.GEMINI_API_KEY)    detectedKeys.push(`GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`)
+    if (process.env.MISTRAL_API_KEY)   detectedKeys.push(`MISTRAL_API_KEY=${process.env.MISTRAL_API_KEY}`)
+
+    const devEnv = [
+      '# Agent Arcade Gateway — Development Config (auto-generated)',
+      'NODE_ENV=development',
+      'PORT=47890',
+      'REQUIRE_AUTH=0',
+      'ENABLE_REDIS_ADAPTER=0',
+      'RETENTION_SECONDS=86400',
+      'MAX_EVENTS=1000',
+      'REPLAY_COUNT=100',
+      'ALLOWED_ORIGINS=http://localhost:47380,http://localhost:3000,http://localhost:3001',
+      'ENABLE_INTERNAL_ROUTES=1',
+      '',
+      '# AI Provider Keys (auto-detected from your environment)',
+      ...(detectedKeys.length > 0 ? detectedKeys : ['# ANTHROPIC_API_KEY=sk-ant-...']),
+      '',
+    ].join('\n')
+
+    writeFileSync(gatewayEnvPath, devEnv)
+    success(`Created ${c.bold}packages/gateway/.env${c.reset} (development mode)`)
+    if (detectedKeys.length > 0) {
+      success(`Auto-detected ${detectedKeys.length} API key(s) from your environment`)
+    } else {
+      warn('No API keys detected. Add ANTHROPIC_API_KEY to packages/gateway/.env for console chat.')
+    }
+    log('')
+  }
+
+  // ── Also create web .env.local if missing ─────────────────────────────
+  const webEnvPath = join(process.cwd(), 'packages', 'web', '.env.local')
+  if (!existsSync(webEnvPath)) {
+    const webEnv = [
+      '# Agent Arcade Web — Development Config (auto-generated)',
+      'NEXT_PUBLIC_GATEWAY_URL=http://localhost:47890',
+      'NEXT_PUBLIC_DEFAULT_SESSION=dev-session',
+      '',
+    ].join('\n')
+    writeFileSync(webEnvPath, webEnv)
+    success(`Created ${c.bold}packages/web/.env.local${c.reset}`)
+  }
+
   const children: ReturnType<typeof spawn>[] = []
 
+  // Shared env — pass current shell env + gateway url to all children
+  const sharedEnv = {
+    ...process.env,
+    NEXT_PUBLIC_GATEWAY_URL: 'http://localhost:47890',
+  }
+
   // Start gateway
-  info('Starting gateway on :8787...')
+  info('Starting gateway on :47890...')
   const gateway = spawn('bun', ['run', 'packages/gateway/src/index.ts'], {
     stdio: 'pipe',
     cwd: process.cwd(),
-    env: { ...process.env },
+    env: sharedEnv,
   })
   children.push(gateway)
   gateway.stdout?.on('data', (d: Buffer) => {
     const msg = d.toString().trim()
     if (msg) log(`${c.dim}[gateway]${c.reset} ${msg}`)
   })
+  gateway.stderr?.on('data', (d: Buffer) => {
+    const msg = d.toString().trim()
+    if (msg && !msg.includes('ExperimentalWarning')) log(`${c.red}[gateway]${c.reset} ${msg}`)
+  })
 
   // Start web
-  info('Starting dashboard on :3000...')
+  info('Starting dashboard on :47380...')
   const web = spawn('npm', ['run', 'dev'], {
     stdio: 'pipe',
     cwd: join(process.cwd(), 'packages', 'web'),
-    env: { ...process.env },
+    env: sharedEnv,
     shell: true,
   })
   children.push(web)
@@ -175,7 +237,7 @@ async function cmdStart() {
         const proxy = spawn('bun', ['run', 'packages/proxy/src/index.ts'], {
           stdio: 'pipe',
           cwd: process.cwd(),
-          env: { ...process.env },
+          env: sharedEnv,
         })
         children.push(proxy)
       }
@@ -183,8 +245,9 @@ async function cmdStart() {
   }
 
   log('')
-  success(`Gateway:   ${c.cyan}http://localhost:8787${c.reset}`)
-  success(`Dashboard: ${c.cyan}http://localhost:3000${c.reset}`)
+  success(`Gateway:   ${c.cyan}http://localhost:47890${c.reset}`)
+  success(`Dashboard: ${c.cyan}http://localhost:47380${c.reset}`)
+  info(`Console chat: ${process.env.ANTHROPIC_API_KEY ? `${c.green}auto-connected (Claude)${c.reset}` : `${c.yellow}add ANTHROPIC_API_KEY to gateway .env${c.reset}`}`)
   log(`\n${c.dim}Press Ctrl+C to stop all services${c.reset}\n`)
 
   // Graceful shutdown
@@ -201,7 +264,7 @@ async function cmdStatus() {
   log(`\n${c.cyan}${c.bold}Agent Arcade Status${c.reset}\n`)
 
   try {
-    const res = await fetch('http://localhost:8787/health')
+    const res = await fetch('http://localhost:47890/health')
     const health = await res.json() as any
 
     success(`Gateway: ${c.green}online${c.reset}`)
@@ -214,7 +277,7 @@ async function cmdStatus() {
   }
 
   try {
-    await fetch('http://localhost:3000')
+    await fetch('http://localhost:47380')
     success(`Dashboard: ${c.green}online${c.reset}`)
   } catch {
     error('Dashboard: offline')
@@ -227,7 +290,7 @@ async function cmdDemo() {
   log(`\n${c.cyan}${c.bold}Agent Arcade Demo Mode${c.reset}\n`)
   log(`${c.dim}Simulating a multi-agent AI session...${c.reset}\n`)
 
-  const gatewayUrl = 'http://localhost:8787'
+  const gatewayUrl = 'http://localhost:47890'
   const sessionId = `demo-${Date.now()}`
 
   function emit(type: string, agentId: string, payload: Record<string, unknown>) {
@@ -322,7 +385,7 @@ async function cmdDemo() {
   success('Claude Sonnet finished')
 
   log(`\n${c.green}${c.bold}Demo complete!${c.reset}`)
-  log(`${c.dim}Open ${c.cyan}http://localhost:3000${c.dim} to see the replay${c.reset}\n`)
+  log(`${c.dim}Open ${c.cyan}http://localhost:47380${c.dim} to see the replay${c.reset}\n`)
 }
 
 async function cmdHookClaudeCode() {
@@ -330,60 +393,171 @@ async function cmdHookClaudeCode() {
 
   const claudeDir = join(homedir(), '.claude')
   if (!existsSync(claudeDir)) {
-    error(`Claude Code config not found at ${claudeDir}`)
-    return
+    mkdirSync(claudeDir, { recursive: true })
+    warn(`Created ${claudeDir} (Claude Code not detected but hooks installed)`)
   }
 
   const hooksDir = join(claudeDir, 'hooks')
-  if (!existsSync(hooksDir)) {
-    mkdirSync(hooksDir, { recursive: true })
-  }
+  if (!existsSync(hooksDir)) mkdirSync(hooksDir, { recursive: true })
 
-  // Pre-tool hook
+  // ── Shell hook scripts ──────────────────────────────────────────────────
+
+  // Pre-tool hook — reads tool input from stdin (JSON), emits agent.tool + agent.state(tool)
   const preToolHook = `#!/bin/bash
-# Agent Arcade Pre-Tool Hook
-# Emits agent.state(tool) when Claude Code uses a tool
-TOOL_NAME="$1"
-GATEWAY_URL="\${ARCADE_GATEWAY:-http://localhost:8787}"
-SESSION_ID="\${ARCADE_SESSION:-claude-code}"
-AGENT_ID="\${ARCADE_AGENT:-claude_code_$$}"
+# Agent Arcade PreToolUse Hook
+# Receives: tool name as arg, full JSON input on stdin
+# Claude Code invokes this before EVERY tool call automatically.
+GATEWAY="\${ARCADE_GATEWAY:-http://localhost:47890}"
+SESSION="\${ARCADE_SESSION:-claude-code}"
+TOOL_NAME="\${CLAUDE_TOOL_NAME:-\$1}"
+AGENT_ID="claude_\${CLAUDE_PARENT_PROCESS_ID:-$$}"
+TS=$(node -e 'process.stdout.write(String(Date.now()))' 2>/dev/null || python3 -c 'import time; print(int(time.time()*1000))' 2>/dev/null || echo 0)
 
-curl -s -X POST "$GATEWAY_URL/v1/ingest" \\
-  -H "Content-Type: application/json" \\
-  -d "{\\"v\\":1,\\"ts\\":$(date +%s)000,\\"sessionId\\":\\"$SESSION_ID\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.tool\\",\\"payload\\":{\\"name\\":\\"$TOOL_NAME\\",\\"label\\":\\"Using $TOOL_NAME\\"}}" \\
-  2>/dev/null || true
+# Emit spawn if not already done (gateway deduplicates)
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.spawn\\",\\"payload\\":{\\"name\\":\\"Claude Code\\",\\"role\\":\\"assistant\\",\\"aiModel\\":\\"claude\\",\\"source\\":\\"hooks\\"}}" >/dev/null 2>&1 || true
+
+# Emit tool event
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.tool\\",\\"payload\\":{\\"name\\":\\"$TOOL_NAME\\",\\"label\\":\\"$TOOL_NAME\\"}}" >/dev/null 2>&1 || true
+
+# Emit state(tool)
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.state\\",\\"payload\\":{\\"state\\":\\"tool\\",\\"label\\":\\"Using $TOOL_NAME\\"}}" >/dev/null 2>&1 || true
+
+exit 0
 `
 
-  // Post-tool hook
+  // Post-tool hook — emits agent.state(thinking|error) based on exit code
   const postToolHook = `#!/bin/bash
-# Agent Arcade Post-Tool Hook
-# Emits agent.state(thinking) after tool completes
-TOOL_NAME="$1"
-EXIT_CODE="$2"
-GATEWAY_URL="\${ARCADE_GATEWAY:-http://localhost:8787}"
-SESSION_ID="\${ARCADE_SESSION:-claude-code}"
-AGENT_ID="\${ARCADE_AGENT:-claude_code_$$}"
+# Agent Arcade PostToolUse Hook
+# Claude Code invokes this after EVERY tool call with exit code.
+GATEWAY="\${ARCADE_GATEWAY:-http://localhost:47890}"
+SESSION="\${ARCADE_SESSION:-claude-code}"
+TOOL_NAME="\${CLAUDE_TOOL_NAME:-\$1}"
+EXIT_CODE="\${CLAUDE_TOOL_EXIT_CODE:-\$2}"
+AGENT_ID="claude_\${CLAUDE_PARENT_PROCESS_ID:-$$}"
+TS=$(node -e 'process.stdout.write(String(Date.now()))' 2>/dev/null || python3 -c 'import time; print(int(time.time()*1000))' 2>/dev/null || echo 0)
 
 STATE="thinking"
-LABEL="Tool $TOOL_NAME complete"
-if [ "$EXIT_CODE" != "0" ]; then
+LABEL="$TOOL_NAME done"
+if [ "\${EXIT_CODE}" != "0" ] && [ -n "\${EXIT_CODE}" ]; then
   STATE="error"
-  LABEL="Tool $TOOL_NAME failed (exit $EXIT_CODE)"
+  LABEL="$TOOL_NAME failed (exit \${EXIT_CODE})"
 fi
 
-curl -s -X POST "$GATEWAY_URL/v1/ingest" \\
-  -H "Content-Type: application/json" \\
-  -d "{\\"v\\":1,\\"ts\\":$(date +%s)000,\\"sessionId\\":\\"$SESSION_ID\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.state\\",\\"payload\\":{\\"state\\":\\"$STATE\\",\\"label\\":\\"$LABEL\\"}}" \\
-  2>/dev/null || true
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.state\\",\\"payload\\":{\\"state\\":\\"$STATE\\",\\"label\\":\\"$LABEL\\"}}" >/dev/null 2>&1 || true
+
+exit 0
 `
 
-  writeFileSync(join(hooksDir, 'pre-tool.sh'), preToolHook, { mode: 0o755 })
-  writeFileSync(join(hooksDir, 'post-tool.sh'), postToolHook, { mode: 0o755 })
+  // Notification hook — emits agent.message when Claude sends a notification
+  const notificationHook = `#!/bin/bash
+# Agent Arcade Notification Hook
+# Fired when Claude Code shows a notification to the user.
+GATEWAY="\${ARCADE_GATEWAY:-http://localhost:47890}"
+SESSION="\${ARCADE_SESSION:-claude-code}"
+AGENT_ID="claude_\${CLAUDE_PARENT_PROCESS_ID:-$$}"
+MSG=\$(cat | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','')[:200])" 2>/dev/null || echo "Notification")
+TS=$(node -e 'process.stdout.write(String(Date.now()))' 2>/dev/null || echo 0)
 
-  success(`Created ${c.bold}pre-tool.sh${c.reset} hook`)
-  success(`Created ${c.bold}post-tool.sh${c.reset} hook`)
-  log(`\n${c.dim}Hooks installed at ${hooksDir}${c.reset}`)
-  log(`${c.dim}Claude Code will now emit events to Agent Arcade${c.reset}\n`)
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.message\\",\\"payload\\":{\\"text\\":\\"$MSG\\",\\"level\\":\\"info\\"}}" >/dev/null 2>&1 || true
+
+exit 0
+`
+
+  // Stop hook — emits agent.end when Claude Code session stops
+  const stopHook = `#!/bin/bash
+# Agent Arcade Stop Hook
+# Fired when Claude Code finishes a task or the user ends the session.
+GATEWAY="\${ARCADE_GATEWAY:-http://localhost:47890}"
+SESSION="\${ARCADE_SESSION:-claude-code}"
+AGENT_ID="claude_\${CLAUDE_PARENT_PROCESS_ID:-$$}"
+TS=$(node -e 'process.stdout.write(String(Date.now()))' 2>/dev/null || echo 0)
+
+curl -sf -X POST "$GATEWAY/v1/ingest" -H 'Content-Type: application/json' -d "{\\"v\\":1,\\"ts\\":$TS,\\"sessionId\\":\\"$SESSION\\",\\"agentId\\":\\"$AGENT_ID\\",\\"type\\":\\"agent.end\\",\\"payload\\":{\\"reason\\":\\"Session stopped\\",\\"success\\":true}}" >/dev/null 2>&1 || true
+
+exit 0
+`
+
+  const preToolPath  = join(hooksDir, 'arcade-pre-tool.sh')
+  const postToolPath = join(hooksDir, 'arcade-post-tool.sh')
+  const notifyPath   = join(hooksDir, 'arcade-notification.sh')
+  const stopPath     = join(hooksDir, 'arcade-stop.sh')
+
+  writeFileSync(preToolPath,  preToolHook,       { mode: 0o755 })
+  writeFileSync(postToolPath, postToolHook,      { mode: 0o755 })
+  writeFileSync(notifyPath,   notificationHook,  { mode: 0o755 })
+  writeFileSync(stopPath,     stopHook,          { mode: 0o755 })
+
+  success(`Created ${c.bold}arcade-pre-tool.sh${c.reset}`)
+  success(`Created ${c.bold}arcade-post-tool.sh${c.reset}`)
+  success(`Created ${c.bold}arcade-notification.sh${c.reset}`)
+  success(`Created ${c.bold}arcade-stop.sh${c.reset}`)
+
+  // ── Register hooks in ~/.claude/settings.json ──────────────────────────
+  const settingsPath = join(claudeDir, 'settings.json')
+  let settings: any = {}
+  if (existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, 'utf-8'))
+    } catch {
+      warn(`Could not parse ${settingsPath} — creating fresh hooks config`)
+      settings = {}
+    }
+  }
+
+  // Merge arcade hooks into existing settings
+  const arcadeHooks = {
+    PreToolUse: [
+      {
+        matcher: '.*',
+        hooks: [{ type: 'command', command: preToolPath }],
+      },
+    ],
+    PostToolUse: [
+      {
+        matcher: '.*',
+        hooks: [{ type: 'command', command: postToolPath }],
+      },
+    ],
+    Notification: [
+      {
+        hooks: [{ type: 'command', command: notifyPath }],
+      },
+    ],
+    Stop: [
+      {
+        hooks: [{ type: 'command', command: stopPath }],
+      },
+    ],
+  }
+
+  // Remove any previous arcade hooks, then add current ones
+  if (!settings.hooks) settings.hooks = {}
+  for (const [eventType, hookArr] of Object.entries(arcadeHooks)) {
+    const existing = (settings.hooks[eventType] || []) as any[]
+    // Remove old arcade entries
+    const filtered = existing.filter((h: any) =>
+      !h.hooks?.some((hh: any) => typeof hh.command === 'string' && hh.command.includes('arcade-'))
+    )
+    settings.hooks[eventType] = [...filtered, ...hookArr]
+  }
+
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
+  success(`Registered hooks in ${c.bold}~/.claude/settings.json${c.reset}`)
+
+  log(`
+${c.green}${c.bold}Claude Code hooks installed!${c.reset}
+
+${c.dim}Every tool call Claude Code makes will now appear live in your Agent Arcade dashboard.${c.reset}
+
+  Gateway:    ${c.cyan}http://localhost:47890${c.reset}
+  Dashboard:  ${c.cyan}http://localhost:47380${c.reset}
+
+${c.dim}Environment variables (optional — defaults shown):${c.reset}
+  ARCADE_GATEWAY=${c.cyan}http://localhost:47890${c.reset}
+  ARCADE_SESSION=${c.cyan}claude-code${c.reset}
+
+${c.dim}To uninstall: remove arcade-*.sh entries from ~/.claude/settings.json${c.reset}
+`)
 }
 
 function cmdHelp() {
@@ -397,21 +571,31 @@ ${c.bold}Commands:${c.reset}
   ${c.cyan}start${c.reset}             Start gateway + dashboard + watchers
   ${c.cyan}status${c.reset}            Show running services and connected agents
   ${c.cyan}demo${c.reset}              Run realistic multi-agent simulation
-  ${c.cyan}hook claude-code${c.reset}  Set up Claude Code telemetry hooks
+  ${c.cyan}hook claude-code${c.reset}  Install Claude Code hooks via ~/.claude/settings.json
   ${c.cyan}version${c.reset}           Show version
   ${c.cyan}help${c.reset}              Show this help
 
 ${c.bold}Examples:${c.reset}
 
-  ${c.dim}# Quick start${c.reset}
+  ${c.dim}# 1. Quick start — launch everything${c.reset}
   agent-arcade init
   agent-arcade start
 
-  ${c.dim}# Try the demo${c.reset}
+  ${c.dim}# 2. Hook Claude Code (you're using it right now!)${c.reset}
+  agent-arcade hook claude-code
+
+  ${c.dim}# 3. Try the demo (4 simulated agents)${c.reset}
   agent-arcade demo
 
-  ${c.dim}# Auto-hook Claude Code${c.reset}
-  agent-arcade hook claude-code
+  ${c.dim}# 4. Check running services${c.reset}
+  agent-arcade status
+
+${c.bold}Gateway-first API key setup:${c.reset}
+
+  Add your key ONCE to ${c.cyan}packages/gateway/.env${c.reset}:
+    ${c.dim}ANTHROPIC_API_KEY=sk-ant-...${c.reset}
+
+  All clients (console, adapters, CLI) auto-connect — no per-client config.
 
 ${c.dim}Docs: https://github.com/inbharatai/agent-arcade-gateway${c.reset}
 `)

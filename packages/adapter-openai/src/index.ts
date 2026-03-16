@@ -9,7 +9,7 @@
  *   import { wrapOpenAI } from '@agent-arcade/adapter-openai'
  *
  *   const client = wrapOpenAI(new OpenAI(), {
- *     gatewayUrl: 'http://localhost:8787',
+ *     gatewayUrl: 'http://localhost:47890',
  *     sessionId: 'my-session',
  *   })
  *   // Now use client normally -- all calls are automatically visualized
@@ -23,7 +23,7 @@ import { AgentArcade } from '@agent-arcade/sdk-node'
 // ---------------------------------------------------------------------------
 
 export interface ArcadeOpenAIOptions {
-  /** Gateway URL, e.g. http://localhost:8787 */
+  /** Gateway URL, e.g. http://localhost:47890 */
   gatewayUrl: string
   /** Session identifier */
   sessionId: string
@@ -84,8 +84,12 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
           const stream = await originalCreate(params, reqOpts)
           let tokenCount = 0
 
-          // Wrap the async iterator
-          const originalIterator = stream[Symbol.asyncIterator].bind(stream)
+          // Wrap the async iterator (guard against SDKs that don't expose it)
+          const originalIterator = stream[Symbol.asyncIterator]?.bind(stream)
+          if (!originalIterator) {
+            arcade.state(agentId, 'writing', { label: 'Streaming...' })
+            return stream
+          }
           stream[Symbol.asyncIterator] = function () {
             const iter = originalIterator()
             return {
@@ -238,7 +242,7 @@ export function wrapOpenAI<T extends Record<string, any>>(client: T, options: Ar
  * import { createOpenAIProxy } from '@agent-arcade/adapter-openai'
  *
  * const client = createOpenAIProxy('sk-...', {
- *   gatewayUrl: 'http://localhost:8787',
+ *   gatewayUrl: 'http://localhost:47890',
  *   sessionId: 'demo',
  * })
  *

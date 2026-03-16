@@ -12,7 +12,7 @@ interface SSEClient {
 }
 
 // ---- Config -----------------------------------------------------------------
-const PORT = Number.parseInt(process.env.PORT || '8787', 10)
+const PORT = Number.parseInt(process.env.PORT || '47890', 10)
 const NODE_ENV = process.env.NODE_ENV || 'development'
 const PROTOCOL_VERSION = 1
 const REDIS_URL = process.env.REDIS_URL || ''
@@ -21,6 +21,18 @@ const REQUIRE_AUTH = process.env.REQUIRE_AUTH
   : NODE_ENV === 'production'
 const JWT_SECRET = process.env.JWT_SECRET || ''
 const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || JWT_SECRET
+
+// ── AI Chat Proxy ─────────────────────────────────────────────────────────────
+// API keys for the console chat feature — set once in gateway env, used by all clients
+const CHAT_ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY  || ''
+const CHAT_ANTHROPIC_URL  = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
+const CHAT_OPENAI_KEY     = process.env.OPENAI_API_KEY     || ''
+const CHAT_GEMINI_KEY     = process.env.GEMINI_API_KEY     || ''
+const CHAT_MISTRAL_KEY    = process.env.MISTRAL_API_KEY    || ''
+
+const CHAT_SYSTEM_PROMPT = `You are an expert assistant inside Agent Arcade — a universal AI agent cockpit.
+Help the user understand and direct the AI agents visible in the current session.
+Be concise and helpful. When writing code use markdown code blocks.`
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || (NODE_ENV === 'production' ? '' : '*'))
   .split(',')
   .map(s => s.trim())
@@ -1131,6 +1143,355 @@ const httpServer = createServer(async (req, res) => {
     return
   }
 
+  // ---- Agent & session management endpoints ----------------------------------
+
+  // Helper: parse /v1/agents/:sessionId/:agentId[/:action] paths
+  const agentRouteMatch = url.pathname.match(
+    /^\/v1\/agents\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/
+  )
+
+  if (agentRouteMatch) {
+    const [, routeSessionId, rawAgentId, routeAction] = agentRouteMatch
+    const routeAgentId = decodeURIComponent(rawAgentId)
+
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, routeSessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+
+    // GET /v1/agents/:sessionId/:agentId/state
+    if (req.method === 'GET' && routeAction === 'state') {
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+      return jsonRes(res, 200, {
+        agentId: agent.id,
+        state: agent.state,
+        label: agent.label,
+        progress: agent.progress,
+        isPaused: agent.state === 'waiting',
+        lastUpdate: agent.lastUpdate,
+      })
+    }
+
+    // GET /v1/agents/:sessionId/:agentId/history
+    if (req.method === 'GET' && routeAction === 'history') {
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+      return jsonRes(res, 200, { agentId: agent.id, actions: agent.messages })
+    }
+
+    // POST /v1/agents/:sessionId/:agentId/pause
+    if (req.method === 'POST' && routeAction === 'pause') {
+      if (!requiresRole(principal, ['publisher'])) {
+        return jsonRes(res, 403, { error: 'Forbidden' })
+      }
+      const rlKey = `${routeSessionId}:${routeAgentId}:pause`
+      if (!(await allowRate('agent-action', rlKey, 10, 60_000))) {
+        return jsonRes(res, 429, { error: 'Rate limited' })
+      }
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+      agent.state = 'waiting'
+      agent.lastUpdate = Date.now()
+      await storage.upsertAgent(routeSessionId, agent)
+      const ev: TelemetryEvent = {
+        v: PROTOCOL_VERSION,
+        ts: Date.now(),
+        sessionId: routeSessionId,
+        agentId: routeAgentId,
+        type: 'agent.state',
+        payload: { state: 'waiting' },
+      }
+      io.to(`session:${routeSessionId}`).emit('event', ev)
+      broadcastSseEvent(routeSessionId, ev)
+      return jsonRes(res, 200, { ok: true })
+    }
+
+    // POST /v1/agents/:sessionId/:agentId/resume
+    if (req.method === 'POST' && routeAction === 'resume') {
+      if (!requiresRole(principal, ['publisher'])) {
+        return jsonRes(res, 403, { error: 'Forbidden' })
+      }
+      const rlKey = `${routeSessionId}:${routeAgentId}:resume`
+      if (!(await allowRate('agent-action', rlKey, 10, 60_000))) {
+        return jsonRes(res, 429, { error: 'Rate limited' })
+      }
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+      agent.state = 'thinking'
+      agent.lastUpdate = Date.now()
+      await storage.upsertAgent(routeSessionId, agent)
+      const ev: TelemetryEvent = {
+        v: PROTOCOL_VERSION,
+        ts: Date.now(),
+        sessionId: routeSessionId,
+        agentId: routeAgentId,
+        type: 'agent.state',
+        payload: { state: 'thinking' },
+      }
+      io.to(`session:${routeSessionId}`).emit('event', ev)
+      broadcastSseEvent(routeSessionId, ev)
+      return jsonRes(res, 200, { ok: true })
+    }
+
+    // POST /v1/agents/:sessionId/:agentId/stop
+    if (req.method === 'POST' && routeAction === 'stop') {
+      if (!requiresRole(principal, ['publisher'])) {
+        return jsonRes(res, 403, { error: 'Forbidden' })
+      }
+      const rlKey = `${routeSessionId}:${routeAgentId}:stop`
+      if (!(await allowRate('agent-action', rlKey, 10, 60_000))) {
+        return jsonRes(res, 429, { error: 'Rate limited' })
+      }
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+      agent.state = 'done'
+      agent.lastUpdate = Date.now()
+      await storage.upsertAgent(routeSessionId, agent)
+      const ev: TelemetryEvent = {
+        v: PROTOCOL_VERSION,
+        ts: Date.now(),
+        sessionId: routeSessionId,
+        agentId: routeAgentId,
+        type: 'agent.end',
+        payload: { reason: 'Stopped via API' },
+      }
+      io.to(`session:${routeSessionId}`).emit('event', ev)
+      broadcastSseEvent(routeSessionId, ev)
+      return jsonRes(res, 200, { ok: true })
+    }
+
+    // POST /v1/agents/:sessionId/:agentId/redirect
+    if (req.method === 'POST' && routeAction === 'redirect') {
+      if (!requiresRole(principal, ['publisher'])) {
+        return jsonRes(res, 403, { error: 'Forbidden' })
+      }
+      const rlKey = `${routeSessionId}:${routeAgentId}:redirect`
+      if (!(await allowRate('agent-action', rlKey, 10, 60_000))) {
+        return jsonRes(res, 429, { error: 'Rate limited' })
+      }
+      const agent = await storage.getAgent(routeSessionId, routeAgentId)
+      if (!agent) return jsonRes(res, 404, { error: 'Not found' })
+
+      let instruction = ''
+      try {
+        const body = JSON.parse(await readBody(req)) as Record<string, unknown>
+        instruction = typeof body.instruction === 'string' ? body.instruction.slice(0, 4000) : ''
+      } catch {
+        return jsonRes(res, 400, { error: 'Invalid payload' })
+      }
+      if (!instruction) return jsonRes(res, 400, { error: 'instruction is required' })
+
+      agent.state = 'thinking'
+      agent.messages.push(instruction)
+      if (agent.messages.length > 1000) agent.messages = agent.messages.slice(-500)
+      agent.lastUpdate = Date.now()
+      await storage.upsertAgent(routeSessionId, agent)
+
+      const stateEv: TelemetryEvent = {
+        v: PROTOCOL_VERSION,
+        ts: Date.now(),
+        sessionId: routeSessionId,
+        agentId: routeAgentId,
+        type: 'agent.state',
+        payload: { state: 'thinking' },
+      }
+      const msgEv: TelemetryEvent = {
+        v: PROTOCOL_VERSION,
+        ts: Date.now(),
+        sessionId: routeSessionId,
+        agentId: routeAgentId,
+        type: 'agent.message',
+        payload: { text: instruction, level: 'redirect' },
+      }
+      io.to(`session:${routeSessionId}`).emit('event', stateEv)
+      io.to(`session:${routeSessionId}`).emit('event', msgEv)
+      broadcastSseEvent(routeSessionId, stateEv)
+      broadcastSseEvent(routeSessionId, msgEv)
+      return jsonRes(res, 200, { ok: true })
+    }
+
+    // No sub-action matched within agent route
+    return jsonRes(res, 404, { error: 'Not found' })
+  }
+
+  // GET /v1/session/:sessionId/agents
+  const sessionAgentsMatch = url.pathname.match(/^\/v1\/session\/([^/]+)\/agents$/)
+  if (req.method === 'GET' && sessionAgentsMatch) {
+    const [, routeSessionId] = sessionAgentsMatch
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, routeSessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    const agents = await storage.getAgents(routeSessionId)
+    return jsonRes(res, 200, {
+      sessionId: routeSessionId,
+      agents,
+      count: agents.length,
+    })
+  }
+
+  // GET /v1/session/:sessionId/cost
+  const sessionCostMatch = url.pathname.match(/^\/v1\/session\/([^/]+)\/cost$/)
+  if (req.method === 'GET' && sessionCostMatch) {
+    const [, routeSessionId] = sessionCostMatch
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, routeSessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    const agents = await storage.getAgents(routeSessionId)
+    const events = await storage.getReplay(routeSessionId, MAX_EVENTS)
+    let totalCost = 0
+    const agentCostMap = new Map<string, number>()
+    for (const ev of events) {
+      const p = ev.payload as Record<string, unknown>
+      const cost = typeof p.cost === 'number' ? p.cost : 0
+      if (cost > 0) {
+        totalCost += cost
+        agentCostMap.set(ev.agentId, (agentCostMap.get(ev.agentId) || 0) + cost)
+      }
+    }
+    const agentBreakdown = agents.map(a => ({
+      agentId: a.id,
+      name: a.name,
+      cost: agentCostMap.get(a.id) || 0,
+    }))
+    return jsonRes(res, 200, {
+      sessionId: routeSessionId,
+      totalCost,
+      agentBreakdown,
+    })
+  }
+
+  // GET /v1/state — session snapshot (used by SSE fallback for periodic refresh)
+  if (req.method === 'GET' && url.pathname === '/v1/state') {
+    const sessionId = url.searchParams.get('sessionId') || ''
+    if (!sessionId) return jsonRes(res, 400, { error: 'sessionId required' })
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, sessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    const snap = await sessionSnapshot(sessionId)
+    return jsonRes(res, 200, snap)
+  }
+
+  // GET /v1/chat/providers — which AI providers are configured on this gateway
+  if (req.method === 'GET' && url.pathname === '/v1/chat/providers') {
+    return jsonRes(res, 200, {
+      providers: {
+        claude:  !!CHAT_ANTHROPIC_KEY,
+        openai:  !!CHAT_OPENAI_KEY,
+        gemini:  !!CHAT_GEMINI_KEY,
+        mistral: !!CHAT_MISTRAL_KEY,
+      },
+    })
+  }
+
+  // POST /v1/chat — proxy AI chat requests so clients don't need their own API keys
+  if (req.method === 'POST' && url.pathname === '/v1/chat') {
+    let body: { messages: Array<{ role: string; content: string }>; model: string; provider: string }
+    try {
+      body = JSON.parse(await readBody(req))
+    } catch {
+      return jsonRes(res, 400, { error: 'Invalid JSON' })
+    }
+
+    const { messages, model, provider } = body
+
+    if (provider === 'claude') {
+      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured on gateway. Set it in gateway .env and restart.' })
+      const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': CHAT_ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: model || 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          stream: true,
+          system: CHAT_SYSTEM_PROMPT,
+          messages: messages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+        }),
+      }).catch((err: Error) => { throw new Error(`Upstream fetch failed: ${err.message}`) })
+
+      if (!upstream.ok) {
+        const err = await upstream.json().catch(() => ({ error: { message: upstream.statusText } })) as Record<string, unknown>
+        const errMsg = (err?.error as Record<string, unknown>)?.message || `API error: ${upstream.status}`
+        return jsonRes(res, upstream.status, { error: errMsg })
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+        'Access-Control-Allow-Origin': '*',
+      })
+      upstream.body?.pipeTo(new WritableStream({
+        write(chunk) { res.write(chunk) },
+        close() { res.end() },
+        abort() { res.end() },
+      })).catch(() => res.end())
+      return
+    }
+
+    if (provider === 'openai' || provider === 'mistral') {
+      const key = provider === 'openai' ? CHAT_OPENAI_KEY : CHAT_MISTRAL_KEY
+      const baseUrl = provider === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
+      if (!key) return jsonRes(res, 401, { error: `${provider.toUpperCase()}_API_KEY not configured on gateway.` })
+      const upstream = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: model,
+          stream: true,
+          messages: [{ role: 'system', content: CHAT_SYSTEM_PROMPT }, ...messages],
+        }),
+      }).catch((err: Error) => { throw new Error(`Upstream fetch failed: ${err.message}`) })
+
+      if (!upstream.ok) {
+        const err = await upstream.json().catch(() => ({ error: { message: upstream.statusText } })) as Record<string, unknown>
+        return jsonRes(res, upstream.status, { error: (err?.error as Record<string, unknown>)?.message || `API error: ${upstream.status}` })
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+        'Access-Control-Allow-Origin': '*',
+      })
+      upstream.body?.pipeTo(new WritableStream({
+        write(chunk) { res.write(chunk) },
+        close() { res.end() },
+        abort() { res.end() },
+      })).catch(() => res.end())
+      return
+    }
+
+    return jsonRes(res, 400, { error: `Provider '${provider}' not supported for chat.` })
+  }
+
   return jsonRes(res, 404, { error: 'Not found' })
 })
 
@@ -1254,6 +1615,19 @@ io.on('connection', async (socket: Socket) => {
     } catch {
       metrics.publishRejected++
       socket.emit('error', { message: 'Event rejected' })
+    }
+  })
+
+  // refresh — client requests a fresh session snapshot (every 10s keepalive)
+  socket.on('refresh', async (data: { sessionId?: string }) => {
+    const sid = data?.sessionId || activeSessionId
+    if (!sid) return
+    if (!canAccessSession(principal, sid)) return
+    try {
+      const snap = await sessionSnapshot(sid)
+      socket.emit('state', snap)
+    } catch {
+      // Non-fatal — client will retry
     }
   })
 

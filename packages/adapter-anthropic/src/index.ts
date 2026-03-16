@@ -9,7 +9,7 @@
  *   import { wrapAnthropic } from '@agent-arcade/adapter-anthropic'
  *
  *   const client = wrapAnthropic(new Anthropic(), {
- *     gatewayUrl: 'http://localhost:8787',
+ *     gatewayUrl: 'http://localhost:47890',
  *     sessionId: 'my-session',
  *   })
  *   const msg = await client.messages.create({ model: 'claude-sonnet-4-20250514', ... })
@@ -22,7 +22,7 @@ import { AgentArcade } from '@agent-arcade/sdk-node'
 // ---------------------------------------------------------------------------
 
 export interface ArcadeAnthropicOptions {
-  /** Gateway URL, e.g. http://localhost:8787 */
+  /** Gateway URL, e.g. http://localhost:47890 */
   gatewayUrl: string
   /** Session identifier */
   sessionId: string
@@ -260,7 +260,7 @@ export function wrapAnthropic<T extends Record<string, any>>(client: T, options:
  * import { createAnthropicProxy } from '@agent-arcade/adapter-anthropic'
  *
  * const client = createAnthropicProxy('sk-ant-...', {
- *   gatewayUrl: 'http://localhost:8787',
+ *   gatewayUrl: 'http://localhost:47890',
  *   sessionId: 'demo',
  * })
  *

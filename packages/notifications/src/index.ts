@@ -153,16 +153,51 @@ async function sendEmail(config: ChannelConfig, alert: AlertEvent): Promise<void
   }
 }
 
+/**
+ * WhatsApp notification via Twilio WhatsApp API.
+ * Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM env vars.
+ * Falls back to console log if Twilio credentials are not set.
+ */
 async function sendWhatsApp(phoneNumber: string, alert: AlertEvent): Promise<void> {
-  // WhatsApp integration via whatsapp-web.js requires persistent session
-  // For now, log the message -- users can integrate with Twilio or whatsapp-web.js
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken  = process.env.TWILIO_AUTH_TOKEN
+  const fromNumber = process.env.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886'
+
   const msg = `${getSeverityEmoji(alert.severity)} *${alert.title}*\n${alert.message}`
-  if (alert.agentName) console.log(`Agent: ${alert.agentName}`)
-  console.log(`[WhatsApp → ${phoneNumber}] ${msg}`)
-  // TODO: Integrate with whatsapp-web.js or Twilio API
-  // For Twilio:
-  // const twilio = require('twilio')(accountSid, authToken)
-  // await twilio.messages.create({ body: msg, from: 'whatsapp:+14155238886', to: `whatsapp:${phoneNumber}` })
+
+  if (accountSid && authToken) {
+    // Twilio WhatsApp API
+    try {
+      const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            From: fromNumber,
+            To:   `whatsapp:${phoneNumber}`,
+            Body: msg,
+          }).toString(),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText })) as any
+        console.warn(`WhatsApp notification failed: ${err.message || res.status}`)
+      }
+    } catch (e) {
+      console.warn(`WhatsApp notification error: ${e}`)
+    }
+  } else {
+    // Credentials not configured — log to console so alerts aren't silently dropped
+    console.warn(
+      `[Agent Arcade] WhatsApp alert (not sent — set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN):\n` +
+      `  → ${phoneNumber}: ${msg}`
+    )
+  }
 }
 
 function getSeverityEmoji(severity: string): string {

@@ -8,111 +8,132 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.0.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.2.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
 <br />
 
-![Agent Arcade v3.0](docs/assets/arcade-retro-theme.png)
+![Agent Arcade Live Demo](docs/screenshots/agent-arcade-demo.gif)
 
-*Multi-agent session: OpenAI, Claude, OpenClaw, LangChain, and CrewAI agents collaborating — live cost tracking, XP leveling, and achievement unlocks*
+*Live session: 20+ agents — Claude Code, OpenAI, Gemini, Mistral — collaborating with real-time XP leveling, cost tracking, and intervention controls*
 
 </div>
 
 ---
+
+## What Is Agent Arcade?
+
+Agent Arcade is a **universal AI agent cockpit** — a live command center that lets you watch, debug, and control any AI agent, from any framework, in real-time. Think of it as the game dashboard your AI agents didn't know they needed.
+
+> **One platform. Every AI framework. Zero code changes required.**
+
+```
+                    ┌── Claude Code ──┐
+                    ├── OpenAI ────────┤
+                    ├── Anthropic ─────┤
+ Your AI Agents ────├── LangChain ─────┼───▶  Agent Arcade  ───▶  Live Dashboard
+                    ├── CrewAI ─────────┤      Gateway               + XP Leveling
+                    ├── Cursor / Aider ─┤      :47890                + Cost Tracking
+                    ├── Ollama / Mistral┤                            + Achievements
+                    └── Any HTTP API ──┘                            + Intervention
+```
+
+**Gateway-first API key design:** set your API key **once** in the gateway `.env` — every connected client auto-uses it. No per-client configuration needed.
+
+---
+
+## Live Dashboard
 
 <div align="center">
 
-### Now with OpenClaw Integration
+![Agent Arcade Dashboard](docs/screenshots/aa-01-dashboard-hd.png)
 
-<img src="docs/assets/openclaw-integration.svg" alt="OpenClaw + Agent Arcade Integration" width="800" />
-
-*Full observability into OpenClaw's Brain, Skills, Memory, Heartbeat, and Channel systems — one line of code*
+*20+ concurrent agents visualized as pixel-art characters — each with live speech bubbles, tool states, XP bars, and cost tracking*
 
 </div>
 
+### What You See on the Canvas
+
+- **Pixel-art agents** — each AI worker rendered as a unique character based on their model (Claude → purple, GPT-4 → green, Gemini → blue, Mistral → teal)
+- **Live speech bubbles** — real-time task labels (e.g. "Designing microservices layout...", "Running Jest tests...", "Deploying to production...")
+- **State indicators** — thinking 🤔, writing ✍️, tool use 🔧, done ✅, error ❌
+- **Progress bars** — per-agent task completion
+- **XP & cost** — session totals in the status bar (1385 XP · 15 🏆 · $0.17)
+- **CONNECTED badge** — live WebSocket/SSE status to the gateway
+
 ---
+
+## AI Chat Console
 
 <div align="center">
 
-[![Open Issues](https://img.shields.io/github/issues/inbharatai/agent-arcade-gateway?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/inbharatai/agent-arcade-gateway?style=flat-square)](https://github.com/inbharatai/agent-arcade-gateway/pulls)
-[![CI](https://img.shields.io/github/actions/workflow/status/inbharatai/agent-arcade-gateway/ci.yml?style=flat-square&label=CI)](https://github.com/inbharatai/agent-arcade-gateway/actions)
-[![Security](https://img.shields.io/badge/Security-Policy-blue?style=flat-square)](SECURITY.md)
-[![Contributing](https://img.shields.io/badge/Contributing-Guide-success?style=flat-square)](CONTRIBUTING.md)
+![Agent Arcade Console](docs/screenshots/aa-03-console.png)
+
+*Built-in AI chat panel — ask questions about your running agents, get explanations, direct the session — powered by Claude Sonnet 4.5 (gateway-first, no API key needed in browser)*
 
 </div>
 
+### Console Features
+
+- **Claude Sonnet 4.5** pre-selected — switch to GPT-4o, Gemini, Mistral from the dropdown
+- **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
+- **Export conversation** — save the full chat as markdown
+- **Gateway-first keys** — set `ANTHROPIC_API_KEY` once in `packages/gateway/.env`, the console auto-connects. No key prompts in the browser.
+- **Ctrl+Enter to send** — keyboard-driven workflow
+- **Templates (Ctrl+K)** — quick command presets
+
 ---
 
-## Why Agent Arcade?
+## Agent Intervention System
 
-Most AI observability tools give you logs after the fact. Agent Arcade gives you a **live command center** — see every agent, every tool call, every token spent, **as it happens**.
+<div align="center">
 
-> **One platform. Every AI framework. Zero code changes.**
+![Agent Intervention Panel](docs/screenshots/aa-05-intervention.png)
 
+*Click any agent → get full intervention controls: Pause/Stop, redirect with a new task, or hand off to another agent*
+
+</div>
+
+### What You Can Do
+
+| Control | Action |
+|---------|--------|
+| **⏸ Pause** | Freeze the agent mid-task, inspect state |
+| **⏹ Stop** | Terminate the agent immediately |
+| **Redirect** | Send a new direction (free-text or quick preset) |
+| **Hand Off** | Reassign the task to a different agent |
+| **Presets** | One-click common redirections ("Use JWT instead of sessions", "Add TypeScript strict mode", "Skip tests for now", "Use PostgreSQL not MySQL") |
+
+### REST API Control
+
+```bash
+# Pause any agent
+curl -X POST http://localhost:47890/v1/agents/agent-001/pause
+
+# Redirect with new instruction
+curl -X POST http://localhost:47890/v1/agents/agent-001/redirect \
+  -H "Content-Type: application/json" \
+  -d '{"instruction": "Focus on the authentication module first"}'
+
+# Stop completely
+curl -X POST http://localhost:47890/v1/agents/agent-001/stop
 ```
-                    ┌─── OpenAI ───┐
-                    ├── Anthropic ──┤
-                    ├── OpenClaw ───┤
- Your AI Agents ────├── LangChain ──┼───▶ Agent Arcade ───▶ Live Dashboard
-                    ├── CrewAI ─────┤       Gateway           + Achievements
-                    ├── AutoGen ────┤       + Proxy           + XP System
-                    ├── LlamaIndex ─┤       + Watchers        + Cost Tracking
-                    └── Any HTTP AI ┘                         + Replay
-```
 
 ---
 
-## What's New in v3.0
+## Settings Panel
 
-<table>
-<tr>
-<td>
+The ⚙️ Settings panel (5 tabs) is accessible from the toolbar:
 
-### Plug & Play Adapters
-7 framework adapters — wrap any AI SDK in one line
-
-### Zero-Code Proxy
-Change your base URL, get full telemetry. No SDK needed.
-
-### Gamification Engine
-32 achievements, 12 XP levels, streaks, leaderboards
-
-</td>
-<td>
-
-### Cost Intelligence
-Real-time spend tracking for 25+ models with budget alerts
-
-### Session Replay
-Record, playback, seek, and share debugging sessions
-
-### Multi-Channel Alerts
-Slack, Discord, Email, WhatsApp notifications
-
-</td>
-</tr>
-</table>
-
----
-
-## Supported Frameworks
-
-| Framework | Package | Integration | Language |
-|-----------|---------|-------------|----------|
-| **OpenAI** | `@agent-arcade/adapter-openai` | `wrapOpenAI(client)` — one line | TypeScript |
-| **Anthropic/Claude** | `@agent-arcade/adapter-anthropic` | `wrapAnthropic(client)` — one line | TypeScript |
-| **OpenClaw** | `@agent-arcade/adapter-openclaw` | `wrapOpenClaw(claw)` — one line | TypeScript |
-| **LangChain** | `@agent-arcade/adapter-langchain` | Callback handler | TypeScript |
-| **LlamaIndex** | `@agent-arcade/adapter-llamaindex` | Callback handler | TypeScript |
-| **CrewAI** | `agent-arcade-crewai` | `arcade_crew(crew)` decorator | Python |
-| **AutoGen** | `agent-arcade-autogen` | `wrap_autogen_agents(agents)` | Python |
-| **Any AI API** | `@agent-arcade/proxy` | Just change your base URL | Any |
-| **Claude Code** | `@agent-arcade/cli` | `agent-arcade hook claude-code` | Shell |
-| **Aider / Cursor** | `@agent-arcade/watcher` | Auto-detected from processes | Any |
+| Tab | What It Controls |
+|-----|-----------------|
+| **Console** | Default AI model, token count display, cost estimates, history retention |
+| **Providers** | Enter Anthropic / OpenAI / Gemini / Mistral API keys — stored AES-256 encrypted |
+| **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
+| **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
+| **About** | Version info, gateway connection status |
 
 ---
 
@@ -125,50 +146,66 @@ Slack, Discord, Email, WhatsApp notifications
 | [Bun](https://bun.sh) | 1.3+ |
 | [Node.js](https://nodejs.org) | 20+ |
 
-### Option A: CLI (Recommended)
+### 1. Clone & Install
 
 ```bash
-# Install and start everything
-npx @agent-arcade/cli init
-npx @agent-arcade/cli start
-
-# Run an interactive demo with 4 simulated agents
-npx @agent-arcade/cli demo
-```
-
-### Option B: Manual Setup
-
-```bash
-# Clone and install
 git clone https://github.com/inbharatai/agent-arcade-gateway.git
 cd agent-arcade-gateway
 npm ci
 cd packages/gateway && bun install && cd ../..
-cd packages/web && npm ci && cd ../..
-
-# Start services (two terminals)
-npm run dev:gateway    # Gateway on :8787
-npm run dev:web        # Dashboard on :3000
 ```
 
-### Option C: One Command
+### 2. Configure API Key (once — all clients share it)
 
 ```bash
-npm run dev:arcade
+# packages/gateway/.env
+ANTHROPIC_API_KEY=sk-ant-...
+# OPENAI_API_KEY=sk-...
+# GEMINI_API_KEY=...
+# MISTRAL_API_KEY=...
 ```
 
-### Open the Dashboard
+### 3. Start Everything
 
-| Endpoint | URL |
-|----------|-----|
-| **Dashboard** | http://localhost:3000 |
-| **Gateway Health** | http://localhost:8787/health |
-| **Gateway Capabilities** | http://localhost:8787/v1/capabilities |
-| **AI Proxy** | http://localhost:8788 |
+```bash
+# Option A: one command
+npm run dev:arcade
+
+# Option B: two terminals
+npm run dev:gateway    # Gateway on :47890
+npm run dev:web        # Dashboard on :47380
+```
+
+### 4. Open the Dashboard
+
+```
+http://localhost:47380
+```
+
+### 5. Hook into Claude Code (optional — you're using it RIGHT NOW)
+
+```bash
+npx @agent-arcade/cli hook claude-code
+```
+
+This registers hooks in `~/.claude/settings.json` — every tool call Claude Code makes (Bash, Edit, Read, Write, etc.) appears live in your Arcade dashboard. No code changes. Just run one command.
 
 ---
 
-## Integration Examples
+## Framework Integrations
+
+### Claude Code Hooks — Zero Configuration
+
+```bash
+# Install hooks — registers PreToolUse/PostToolUse/Notification/Stop in ~/.claude/settings.json
+agent-arcade hook claude-code
+```
+
+From that point, every Claude Code tool invocation shows up in the dashboard:
+- **PreToolUse** → spawns agent card + emits `agent.tool` event
+- **PostToolUse** → updates state (thinking if success, error if failure)
+- **Notification** → emits `agent.message` for user-facing updates
+- **Stop** → emits `agent.end` with task summary
 
 ### OpenAI — One Line
 
@@ -177,14 +214,15 @@ import OpenAI from 'openai'
 import { wrapOpenAI } from '@agent-arcade/adapter-openai'
 
 const client = wrapOpenAI(new OpenAI(), {
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-app',
 })
 
-// Use OpenAI exactly as before — telemetry is automatic
+// Use exactly as before — streaming, tool use, and function calling all tracked
 const response = await client.chat.completions.create({
   model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
 })
 ```
 
@@ -195,49 +233,19 @@ import Anthropic from '@anthropic-ai/sdk'
 import { wrapAnthropic } from '@agent-arcade/adapter-anthropic'
 
 const client = wrapAnthropic(new Anthropic(), {
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'my-app',
 })
 
-// All calls — streaming, tool use, extended thinking — tracked automatically
+// Streaming, tool use blocks, extended thinking — all tracked automatically
 const message = await client.messages.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-5',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Explain quantum computing' }],
 })
 ```
 
-### OpenClaw — One Line
-
-```typescript
-import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
-
-const claw = wrapOpenClaw(openClawInstance, {
-  gatewayUrl: 'http://localhost:8787',
-  sessionId: 'my-claw',
-})
-
-// OpenClaw runs normally — Brain, Skills, Memory, Heartbeat all visualized
-// Every ReAct loop step, skill execution, and memory operation appears live
-```
-
-Or use event hooks for granular control:
-
-```typescript
-import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
-
-const hooks = createOpenClawHooks({
-  gatewayUrl: 'http://localhost:8787',
-  sessionId: 'my-claw',
-})
-
-claw.on('brain:think', hooks.onThink)
-claw.on('brain:act', hooks.onAct)
-claw.on('skill:start', hooks.onSkillStart)
-claw.on('skill:end', hooks.onSkillEnd)
-```
-
-### Zero-Code Proxy — Any Language
+### Zero-Code Proxy — Any Language, No SDK Changes
 
 ```bash
 # Start the proxy
@@ -261,11 +269,10 @@ Supported proxy targets: **OpenAI, Anthropic, Google Gemini, Ollama, Mistral**
 import { createArcadeCallback } from '@agent-arcade/adapter-langchain'
 
 const callback = createArcadeCallback({
-  gatewayUrl: 'http://localhost:8787',
+  gatewayUrl: 'http://localhost:47890',
   sessionId: 'langchain-app',
 })
 
-// Pass as callback to any LangChain chain, agent, or tool
 const result = await chain.invoke({ input: "..." }, { callbacks: [callback] })
 ```
 
@@ -276,8 +283,8 @@ from crewai import Crew, Agent, Task
 from agent_arcade_crewai import arcade_crew
 
 crew = Crew(agents=[...], tasks=[...])
-crew = arcade_crew(crew, gateway_url="http://localhost:8787", session_id="crewai-app")
-crew.kickoff()  # All agent/task lifecycle events tracked automatically
+crew = arcade_crew(crew, gateway_url="http://localhost:47890", session_id="crewai-app")
+crew.kickoff()
 ```
 
 ### AutoGen (Python)
@@ -290,7 +297,7 @@ assistant = AssistantAgent("coder", llm_config={...})
 user_proxy = UserProxyAgent("user", code_execution_config={...})
 
 wrap_autogen_agents([assistant, user_proxy],
-    gateway_url="http://localhost:8787",
+    gateway_url="http://localhost:47890",
     session_id="autogen-app"
 )
 user_proxy.initiate_chat(assistant, message="Write a web scraper")
@@ -301,7 +308,7 @@ user_proxy.initiate_chat(assistant, message="Write a web scraper")
 ```typescript
 import { AgentArcade } from '@agent-arcade/sdk-node'
 
-const arcade = new AgentArcade({ url: 'http://localhost:8787', sessionId: 'my-session' })
+const arcade = new AgentArcade({ url: 'http://localhost:47890', sessionId: 'my-session' })
 
 const agentId = arcade.spawn({ name: 'My Agent', role: 'coder' })
 arcade.state(agentId, 'thinking', { label: 'Planning...' })
@@ -311,122 +318,81 @@ arcade.end(agentId, { reason: 'Task complete', success: true })
 arcade.disconnect()
 ```
 
-### Python SDK (Manual)
+### Embed Widget
 
-```python
-from agent_arcade import AgentArcade
+```tsx
+import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
-arcade = AgentArcade(url="http://localhost:8787", session_id="my-session")
-
-agent_id = arcade.spawn(name="My Agent", role="coder")
-arcade.state(agent_id, "thinking", label="Planning...")
-arcade.tool(agent_id, "read_file", path="src/main.py")
-arcade.state(agent_id, "writing", label="Implementing feature")
-arcade.end(agent_id, reason="Task complete", success=True)
-arcade.disconnect()
+<AgentArcadeEmbed
+  gatewayUrl="http://localhost:47890"
+  sessionId="my-session"
+  width="100%"
+  height={600}
+  theme="office"
+  darkMode={true}
+/>
 ```
 
 ---
 
-## OpenClaw Integration Guide
+## All Supported Frameworks
 
-OpenClaw (163K GitHub stars) is the hottest open-source AI agent framework in 2026. Agent Arcade provides **first-class integration** with all 5 OpenClaw components.
+| Framework | Package | Method |
+|-----------|---------|--------|
+| **Claude Code** | `@agent-arcade/cli` | `agent-arcade hook claude-code` — hooks `~/.claude/settings.json` |
+| **OpenAI** | `@agent-arcade/adapter-openai` | `wrapOpenAI(client)` |
+| **Anthropic** | `@agent-arcade/adapter-anthropic` | `wrapAnthropic(client)` |
+| **LangChain** | `@agent-arcade/adapter-langchain` | Callback handler |
+| **LlamaIndex** | `@agent-arcade/adapter-llamaindex` | Callback handler |
+| **CrewAI** | `agent-arcade-crewai` | `arcade_crew(crew)` |
+| **AutoGen** | `agent-arcade-autogen` | `wrap_autogen_agents(agents)` |
+| **Any AI API** | `@agent-arcade/proxy` | Change base URL only |
+| **Cursor / Aider** | `@agent-arcade/watcher` | Process auto-detection |
+| **Ollama** | `@agent-arcade/watcher` | Process auto-detection |
 
-### What Gets Tracked
+---
 
-| OpenClaw Component | Tracked Events | Arcade Visualization |
-|--------------------|---------------|---------------------|
-| **Brain** (ReAct loop) | `think`, `plan`, `act`, `observe`, `respond`, `error` | Thinking/tool/writing state transitions |
-| **Skills** (5,700+ plugins) | `start`, `end`, `error` | Each skill spawns a child agent with parent link |
-| **Memory** (Markdown files) | `read`, `write`, `search` | Tool events with key names and sizes |
-| **Heartbeat** (scheduler) | `start`, `end` | Each scheduled task spawns a child agent |
-| **Gateway** (channels) | `receive`, `send` | Reading/writing states per channel message |
+## Gamification System
 
-### Integration Methods
+### 32 Achievements
 
-**Method 1: One-Line Wrap** (recommended)
+| Category | Examples |
+|----------|---------|
+| **Speed** | Lightning Reflexes, Speed Demon, Time Lord |
+| **Reliability** | Error Free, Rock Solid, Perfectionist |
+| **Tooling** | Tool User, Swiss Army, Tool Master |
+| **Endurance** | Marathon Runner, Iron Will, Unstoppable |
+| **Teamwork** | Team Player, Hivemind, Swarm Intelligence |
+| **Special** | First Blood, Night Owl, Early Bird, Century |
 
-```typescript
-import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
+### 12 XP Levels
 
-// Wrap your OpenClaw instance — auto-instruments everything
-const claw = wrapOpenClaw(openClawInstance, {
-  gatewayUrl: 'http://localhost:8787',
-  sessionId: 'my-claw-session',
-  agentName: 'MyClaw',         // optional: custom agent name
-  trackMemory: true,           // optional: track memory ops (default: true)
-  trackHeartbeat: true,        // optional: track scheduled tasks (default: true)
-  trackSkills: true,           // optional: track skill executions (default: true)
-})
+| Level | Title | XP |
+|-------|-------|----|
+| 1 | Novice | 0 |
+| 2 | Apprentice | 500 |
+| 3 | Journeyman | 1,500 |
+| 4 | Adept | 3,500 |
+| 5 | Expert | 7,000 |
+| 6–12 | Master → Godlike | 12K → 200K |
 
-// Use OpenClaw normally — all activity appears in the Arcade dashboard
-// When done:
-claw.arcadeDisconnect()
-```
+**Streak multiplier:** +0.1x per consecutive day, up to 3.0x
 
-**Method 2: Event Hooks** (granular control)
+---
 
-```typescript
-import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
+## Cost Intelligence
 
-const hooks = createOpenClawHooks({
-  gatewayUrl: 'http://localhost:8787',
-  sessionId: 'my-claw-session',
-})
+Real-time cost tracking for 25+ AI models:
 
-// Attach only the events you want to track
-claw.on('brain:think', hooks.onThink)
-claw.on('brain:plan', hooks.onPlan)
-claw.on('brain:act', hooks.onAct)
-claw.on('brain:observe', hooks.onObserve)
-claw.on('brain:respond', hooks.onRespond)
-claw.on('brain:error', hooks.onBrainError)
+| Provider | Models |
+|----------|--------|
+| **Anthropic** | Claude Opus 4, Sonnet 4.5, Haiku 3.5 |
+| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3-mini |
+| **Google** | Gemini 2.0 Flash, 1.5 Pro |
+| **Mistral** | Mistral Large, Medium, Small |
+| **Local** | Ollama (free) |
 
-claw.on('skill:start', hooks.onSkillStart)
-claw.on('skill:end', hooks.onSkillEnd)
-claw.on('skill:error', hooks.onSkillError)
-
-claw.on('memory:read', hooks.onMemoryRead)
-claw.on('memory:write', hooks.onMemoryWrite)
-claw.on('memory:search', hooks.onMemorySearch)
-
-claw.on('heartbeat:start', hooks.onHeartbeatStart)
-claw.on('heartbeat:end', hooks.onHeartbeatEnd)
-
-// Cleanup
-hooks.onEnd('Session complete')
-hooks.disconnect()
-```
-
-**Method 3: Gateway Middleware**
-
-```typescript
-import { openClawMiddleware } from '@agent-arcade/adapter-openclaw'
-
-// Instruments all incoming channel messages automatically
-claw.gateway.use(openClawMiddleware({
-  gatewayUrl: 'http://localhost:8787',
-  sessionId: 'production',
-}))
-```
-
-### How It Works Under the Hood
-
-```
-OpenClaw Instance
-  ├── brain.think("What's the weather?")
-  │     └── Arcade: spawn agent → state(thinking)
-  ├── brain.act("weather_skill", { city: "NYC" })
-  │     └── Arcade: tool("weather_skill") → state(tool)
-  ├── skills.execute("weather_skill")
-  │     └── Arcade: spawn child → link to parent → state(tool) → end
-  ├── memory.write("last_query", "weather NYC")
-  │     └── Arcade: tool("memory:write", { key: "last_query" })
-  ├── brain.respond("It's 72F and sunny!")
-  │     └── Arcade: state(writing) → end(success)
-  └── heartbeat.run("check_inbox")
-        └── Arcade: spawn child → link to parent → end
-```
+Budget alerts at 80% and 95% of configured threshold. Export cost reports as JSON.
 
 ---
 
@@ -435,274 +401,60 @@ OpenClaw Instance
 ```mermaid
 flowchart LR
   subgraph Adapters["Plug & Play Adapters"]
+    CC[Claude Code Hooks]
     OA[OpenAI Adapter]
     AA[Anthropic Adapter]
-    OC[OpenClaw Adapter]
     LC[LangChain Adapter]
-    LI[LlamaIndex Adapter]
-    CR[CrewAI Adapter]
-    AG[AutoGen Adapter]
+    CR[CrewAI / AutoGen]
   end
 
   subgraph ZeroCode["Zero-Code Tools"]
     PX[AI Proxy :8788]
     PW[Process Watcher]
-    GW[Git Watcher]
-    LT[Log Tailer]
   end
 
-  subgraph Core["Core Platform"]
-    GY[Gateway :8787]
-    CC[Cost Calculator]
+  subgraph Core["Gateway :47890"]
+    GY[Event Ingestion]
+    CC2[Cost Calculator]
     NR[Notification Router]
+    ST[Session Store]
   end
 
-  subgraph Dashboard["Web Dashboard :3000"]
-    LV[Live Visualization]
-    ACH[Achievements]
-    XP[XP & Leveling]
-    LB[Leaderboard]
+  subgraph Dashboard["Web Dashboard :47380"]
+    LV[Pixel-Art Canvas]
+    INT[Intervention Panel]
+    CON[AI Chat Console]
+    SET[Settings Panel]
+    XP[XP + Achievements]
     RP[Session Replay]
-    CD[Cost Dashboard]
   end
 
-  Adapters -->|telemetry events| GY
-  ZeroCode -->|telemetry events| GY
-  GY --> CC
-  GY --> NR
-  GY -->|SSE + Socket.IO| Dashboard
+  Adapters -->|POST /v1/ingest| Core
+  ZeroCode -->|POST /v1/ingest| Core
+  Core -->|SSE + Socket.IO| Dashboard
 ```
 
 ---
 
-## Gamification System
+## API Reference
 
-### Achievements (32 Unlockable)
+### Gateway (`:47890`)
 
-| Category | Examples | Tiers |
-|----------|----------|-------|
-| **Speed** | Lightning Reflexes, Speed Demon, Time Lord | Bronze → Diamond |
-| **Reliability** | Error Free, Rock Solid, Perfectionist | Bronze → Diamond |
-| **Tooling** | Tool User, Swiss Army, Tool Master | Bronze → Diamond |
-| **Endurance** | Marathon Runner, Iron Will, Unstoppable | Bronze → Diamond |
-| **Teamwork** | Team Player, Hivemind, Swarm Intelligence | Bronze → Diamond |
-| **Special** | First Blood, Night Owl, Early Bird, Century | Bronze → Diamond |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/ingest` | Ingest telemetry events |
+| GET | `/v1/stream?sessionId=` | SSE event stream |
+| GET | `/v1/state?sessionId=` | Session snapshot (for SSE refresh) |
+| GET | `/v1/capabilities` | Server capabilities |
+| GET | `/health` | Health check |
+| POST | `/v1/agents/:id/pause` | Pause agent |
+| POST | `/v1/agents/:id/resume` | Resume agent |
+| POST | `/v1/agents/:id/stop` | Stop agent |
+| POST | `/v1/agents/:id/redirect` | Redirect agent `{ instruction }` |
+| GET | `/v1/chat/providers` | List available AI providers |
+| POST | `/v1/chat` | Proxy AI chat request |
 
-### XP & Leveling
-
-12 RPG-style levels with streak multipliers:
-
-| Level | Title | XP Required | Color |
-|-------|-------|-------------|-------|
-| 1 | Novice | 0 | Gray |
-| 2 | Apprentice | 500 | Green |
-| 3 | Journeyman | 1,500 | Blue |
-| 4 | Adept | 3,500 | Purple |
-| 5 | Expert | 7,000 | Amber |
-| 6 | Master | 12,000 | Red |
-| 7 | Grandmaster | 20,000 | Pink |
-| 8 | Champion | 32,000 | Orange |
-| 9 | Legend | 50,000 | Teal |
-| 10 | Mythic | 80,000 | Gold |
-| 11 | Transcendent | 120,000 | Diamond |
-| 12 | Godlike | 200,000 | Magenta |
-
-**XP Sources:** Task completion (100), speed bonuses (50-200), error-free runs (25), tool diversity (10/tool), error recovery (50), achievement unlocks (200-2500)
-
-**Streak Multiplier:** +0.1x per consecutive day, up to 3.0x
-
-### Leaderboard
-
-Sortable rankings across 5 categories: Overall, Speed, Reliability, Tooling, Endurance. Top 3 agents get medal icons.
-
----
-
-## Cost Intelligence
-
-Real-time cost tracking for 25+ AI models:
-
-| Provider | Models Tracked |
-|----------|---------------|
-| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 3.5 |
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o1-mini, GPT-4 Turbo |
-| **Google** | Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0 |
-| **Mistral** | Mistral Large, Mistral Medium, Mistral Small |
-| **DeepSeek** | DeepSeek V3, DeepSeek R1 |
-| **OpenClaw** | Local agent (free — runs on your hardware) |
-| **Local** | Ollama, llama.cpp (free) |
-
-Features:
-- Per-agent and per-session cost breakdown
-- Model-colored cost bars in the dashboard
-- Budget threshold alerts (warning at 80%, critical at 95%)
-- Fuzzy model name matching (handles versioned names like `gpt-4o-2024-08-06`)
-- Export cost reports as JSON
-
----
-
-## Session Replay
-
-Record and replay agent sessions for debugging and sharing:
-
-- **Record** — Captures all events with relative timestamps
-- **Playback** — Speed control: 0.25x, 0.5x, 1x, 2x, 4x, 8x
-- **Seek** — Scrub to any point in the timeline
-- **Pause/Resume** — Stop and continue playback
-- **Save** — Persist up to 50 recordings in localStorage
-- **Import/Export** — Share sessions as JSON files
-
----
-
-## Notifications
-
-Multi-channel alert system:
-
-| Channel | Transport | Setup |
-|---------|-----------|-------|
-| **Slack** | Webhook | Paste incoming webhook URL |
-| **Discord** | Webhook | Paste channel webhook URL |
-| **Email** | SMTP (nodemailer) | Configure SMTP credentials |
-| **WhatsApp** | API (planned) | Coming soon |
-
-### Alert Types
-
-- **Cost threshold** — Alert when spend exceeds budget percentage
-- **Error rate** — Alert when agent error rate spikes
-- **Agent errors** — Immediate notification on agent failure
-- **Agent waiting** — Alert when agent is blocked too long
-- **Session complete** — Summary notification when session ends
-
-Rate limiting prevents notification spam (configurable cooldown per channel).
-
----
-
-## Zero-Code Instrumentation
-
-### AI Proxy
-
-Intercepts AI API calls without touching your code:
-
-```bash
-# Start proxy
-bun run packages/proxy/src/index.ts
-
-# Route any AI SDK through it
-OPENAI_BASE_URL=http://localhost:8788/openai python app.py
-ANTHROPIC_BASE_URL=http://localhost:8788/anthropic node app.js
-OLLAMA_HOST=http://localhost:8788/ollama ollama run llama3
-```
-
-Tracks: model name, token usage, latency, streaming vs non-streaming, errors.
-
-### Process Watcher
-
-Auto-detects running AI agents by scanning system processes:
-
-| Detected Process | Agent Type |
-|-----------------|------------|
-| `claude` | Claude Code |
-| `aider` | Aider |
-| `cursor` | Cursor |
-| `devin` | Devin |
-| `copilot` | GitHub Copilot |
-| `ollama` | Ollama |
-| `langchain` | LangChain |
-| `crewai` | CrewAI |
-| `autogen` | AutoGen |
-| `llamaindex` | LlamaIndex |
-
-Infers agent state from CPU usage: >50% = thinking, >20% = writing, >5% = reading.
-
-### Git Watcher
-
-Monitors your git index and emits file change events every 5 seconds. Automatically detects new, modified, and deleted files.
-
-### Log Tailer
-
-Watches AI tool log files with parsers for Claude Code, Aider, and generic formats. Auto-detects tool calls, thinking states, errors, and writing events.
-
-### Claude Code Hooks
-
-```bash
-agent-arcade hook claude-code
-```
-
-Generates `pre-tool.sh` and `post-tool.sh` scripts that emit telemetry for every tool invocation in Claude Code.
-
----
-
-## CLI
-
-```bash
-# Initialize — scans for AI tools and generates config
-agent-arcade init
-
-# Start all services (gateway + web + optional proxy)
-agent-arcade start
-
-# Check status
-agent-arcade status
-
-# Run a 4-agent simulation demo
-agent-arcade demo
-
-# Install Claude Code hooks
-agent-arcade hook claude-code
-```
-
-### Config File
-
-Create `arcade.config.json` in your project root:
-
-```json
-{
-  "gateway": { "port": 8787 },
-  "web": { "port": 3000 },
-  "proxy": { "enabled": true, "port": 8788 },
-  "agents": [
-    { "name": "Claude Code", "type": "claude-code", "auto": true },
-    { "name": "GPT Assistant", "type": "openai", "model": "gpt-4o" }
-  ],
-  "alerts": {
-    "slack": { "webhook": "https://hooks.slack.com/..." },
-    "costThreshold": 10.00
-  }
-}
-```
-
----
-
-## Protocol Reference
-
-### Event Types
-
-| Event | Description | When to Emit |
-|-------|-------------|--------------|
-| `agent.spawn` | New agent created | AI worker starts |
-| `agent.state` | State transition | Status changes |
-| `agent.tool` | Tool invocation | Tool called |
-| `agent.message` | Status message | User-facing updates |
-| `agent.link` | Parent-child link | Agent creates sub-agent |
-| `agent.position` | Layout position | For scene rendering |
-| `agent.end` | Agent completed | Task done or failed |
-| `session.start` | Session begins | App starts |
-| `session.end` | Session ends | App shuts down |
-
-### Agent States
-
-| State | Icon | Description |
-|-------|------|-------------|
-| `idle` | `idle` | Waiting for work |
-| `thinking` | `thinking` | Processing / reasoning |
-| `reading` | `reading` | Reading files / context |
-| `writing` | `writing` | Writing code / content |
-| `tool` | `tool` | Executing a tool |
-| `waiting` | `waiting` | Waiting for external input |
-| `moving` | `moving` | Navigating / transitioning |
-| `error` | `error` | Error occurred |
-| `done` | `done` | Task completed |
-
-### Ingest Payload
+### Event Protocol
 
 ```json
 {
@@ -713,36 +465,23 @@ Create `arcade.config.json` in your project root:
   "ts": 1773120000000,
   "payload": {
     "state": "writing",
-    "label": "Implementing feature",
+    "label": "Implementing auth middleware",
     "progress": 0.62
   }
 }
 ```
 
----
+### Agent States
 
-## API Endpoints
-
-### Gateway (`:8787`)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/v1/ingest` | Ingest telemetry events |
-| GET | `/v1/stream?sessionId=...` | SSE event stream |
-| GET | `/v1/connect?sessionId=...` | WebSocket (Socket.IO) |
-| GET | `/v1/capabilities` | Server capabilities |
-| GET | `/health` | Health check |
-| GET | `/ready` | Readiness probe |
-
-### AI Proxy (`:8788`)
-
-| Path | Target |
-|------|--------|
-| `/openai/*` | api.openai.com |
-| `/anthropic/*` | api.anthropic.com |
-| `/gemini/*` | generativelanguage.googleapis.com |
-| `/ollama/*` | localhost:11434 |
-| `/mistral/*` | api.mistral.ai |
+| State | Description |
+|-------|-------------|
+| `thinking` | Processing / reasoning |
+| `writing` | Writing code or content |
+| `reading` | Reading files or context |
+| `tool` | Executing a tool |
+| `idle` | Waiting for work |
+| `error` | Error occurred |
+| `done` | Task completed |
 
 ---
 
@@ -752,15 +491,13 @@ Create `arcade.config.json` in your project root:
 agent-arcade-gateway/
 ├── packages/
 │   ├── gateway/             # Bun telemetry gateway (HTTP + Socket.IO + SSE)
-│   ├── web/                 # Next.js dashboard with gamification UI
-│   ├── proxy/               # Zero-code AI API proxy
-│   ├── cli/                 # CLI tool (init, start, demo, hooks)
-│   ├── core/                # Shared types and utilities
-│   ├── embed/               # Embeddable widget
+│   ├── web/                 # Next.js dashboard (canvas, console, settings, intervention)
+│   ├── proxy/               # Zero-code AI API proxy (Bun)
+│   ├── cli/                 # CLI tool (init, start, demo, hook claude-code)
+│   ├── embed/               # React embed widget + URL builder
 │   │
 │   ├── adapter-openai/      # OpenAI SDK wrapper
-│   ├── adapter-anthropic/   # Anthropic/Claude SDK wrapper
-│   ├── adapter-openclaw/    # OpenClaw agent framework wrapper
+│   ├── adapter-anthropic/   # Anthropic SDK wrapper (streaming + tool use)
 │   ├── adapter-langchain/   # LangChain callback handler
 │   ├── adapter-llamaindex/  # LlamaIndex callback handler
 │   ├── adapter-crewai/      # CrewAI Python adapter
@@ -770,46 +507,55 @@ agent-arcade-gateway/
 │   ├── sdk-browser/         # Browser client SDK
 │   ├── sdk-python/          # Python client SDK
 │   │
-│   ├── watcher/             # AI process auto-detector
+│   ├── watcher/             # AI process auto-detector (Claude, Cursor, Aider, Ollama)
 │   ├── git-watcher/         # Git index change watcher
 │   ├── log-tailer/          # AI log file parser
-│   └── notifications/       # Multi-channel alert router
+│   └── notifications/       # Slack / Discord / Email / WhatsApp alerts
 │
+├── docs/screenshots/        # Real screenshots from live sessions
 ├── scripts/                 # Load testing, simulation, dev tools
-├── docs/                    # Runbooks, architecture, guides
-├── docker-compose.yml       # Production deployment
-└── arcade.config.example.json  # Config template
+└── docker-compose.yml       # Production deployment
+```
+
+---
+
+## Testing
+
+```bash
+# Full CI pipeline
+npm run ci           # lint → typecheck → build → test (152 tests)
+
+# Individual suites
+npm run test:gateway  # 25 gateway tests
+npm run test:sdk      # SDK tests
+npm run lint:web      # ESLint
+npm run typecheck:web # TypeScript
 ```
 
 ---
 
 ## Production Deployment
 
-### Docker Compose
-
 ```bash
+# Docker Compose
 docker compose up -d --build
-```
 
-### PM2 (VM/Bare Metal)
-
-```bash
+# PM2 (VM / bare metal)
 npm run build:web
-npm run prod:start    # Start with PM2
-npm run prod:status   # Check status
-npm run prod:logs     # View logs
+npm run prod:start
 ```
 
 ### Environment Variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PROXY_PORT` | `8788` | AI Proxy port |
-| `GATEWAY_URL` | `http://localhost:8787` | Gateway URL for proxy |
-| `SESSION_ID` | Auto-generated | Default session |
-| `JWT_SECRET` | — | Auth token signing |
-| `SESSION_SIGNING_SECRET` | — | Session validation |
+| `ANTHROPIC_API_KEY` | — | Claude API key (shared by all clients) |
+| `OPENAI_API_KEY` | — | OpenAI API key |
+| `GEMINI_API_KEY` | — | Google Gemini key |
+| `MISTRAL_API_KEY` | — | Mistral API key |
+| `PORT` | `47890` | Gateway port |
 | `REQUIRE_AUTH` | `0` | Enable JWT auth |
+| `JWT_SECRET` | — | Auth token signing |
 | `ALLOWED_ORIGINS` | `*` | CORS allowlist |
 
 ---
@@ -818,49 +564,22 @@ npm run prod:logs     # View logs
 
 | Feature | Details |
 |---------|---------|
-| JWT auth | Optional, enable with `REQUIRE_AUTH=1` |
-| Session signing | Required in production |
-| CORS | Configurable allowlist with ReDoS protection |
-| Input validation | Names ≤200, roles ≤100, labels ≤500, messages ≤4000 chars |
-| Rate limiting | Flood and payload-size controls |
-| HTTPS | Configure at reverse proxy |
-
-See [SECURITY.md](SECURITY.md) for the full security policy.
-
----
-
-## Testing
-
-```bash
-# Run all tests
-npm run ci           # lint → typecheck → build → test
-
-# Individual suites
-npm run test:gateway  # 25 gateway tests
-npm run test:store    # Store tests
-npm run test:sdk      # SDK tests
-npm run lint:web      # ESLint
-npm run typecheck:web # TypeScript check
-```
+| JWT auth | Optional — `REQUIRE_AUTH=1` |
+| AES-256 encryption | API keys encrypted in localStorage |
+| CORS | Configurable allowlist |
+| Input validation | Names ≤200, labels ≤500, messages ≤4000 chars |
+| Rate limiting | Flood and payload-size protection |
 
 ---
 
 ## Contributing
 
-Contributions are welcome!
-
 1. Fork the repository
 2. Create a feature branch
-3. Run `npm run ci` to verify
+3. Run `npm run ci` to verify all 152 tests pass
 4. Open a pull request
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE)
 
 ---
 
@@ -868,10 +587,10 @@ MIT License — see [LICENSE](LICENSE)
 
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
 
-**Agent Arcade v3.0 — See every AI agent. Track every token. Level up.**
+**Agent Arcade v3.2 — See every AI agent. Track every token. Level up.**
 
-*Now with first-class OpenClaw, OpenAI, Anthropic, LangChain, LlamaIndex, CrewAI, and AutoGen support.*
+*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · Mistral · Ollama*
 
-[Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
+[Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
 
 </div>
