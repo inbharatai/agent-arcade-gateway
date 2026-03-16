@@ -9,7 +9,6 @@
     "test": "bun test test/"
   },
   "dependencies": {
-    "@agent-arcade/notifications": "workspace:*",
     "@socket.io/redis-adapter": "^8.3.0",
     "jose": "^6.1.0",
     "redis": "^5.8.2",
