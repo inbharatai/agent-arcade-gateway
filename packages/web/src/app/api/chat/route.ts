@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
     if (!apiKey) {
       return Response.json({
-        error: 'No Anthropic API key detected. Run `agent-arcade start` in the same shell as your AI tool — API keys are inherited automatically from your environment.',
+        error: 'No Anthropic API key detected. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.',
       }, { status: 401 })
     }
 
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = provider === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
     if (!apiKey) {
       return Response.json({
-        error: `No ${provider} API key detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.`,
+        error: `No ${provider} API key detected. Add your key in Settings → Providers, or set the key in your environment.`,
       }, { status: 401 })
     }
 
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
   if (provider === 'gemini') {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
-      return Response.json({ error: 'No Gemini API key detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.' }, { status: 401 })
+      return Response.json({ error: 'No Gemini API key detected. Add your key in Settings → Providers, or set GEMINI_API_KEY in your environment.' }, { status: 401 })
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`
     const upstream = await fetch(url, {

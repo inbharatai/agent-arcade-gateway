@@ -1,5 +1,8 @@
 import { createHmac, randomUUID } from 'crypto'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
+import { spawn, ChildProcess } from 'child_process'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
 import { SignJWT, jwtVerify } from 'jose'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient, RedisClientType } from 'redis'
@@ -55,6 +58,15 @@ const ENABLE_REDIS_ADAPTER = (process.env.ENABLE_REDIS_ADAPTER || '1') === '1'
 // Only honour X-Forwarded-For when explicitly running behind a trusted reverse proxy.
 // Without this, any client can spoof their IP and trivially bypass IP-based rate limiting.
 const TRUST_PROXY = process.env.TRUST_PROXY === '1'
+
+// ── WhatsApp QR auto-start ────────────────────────────────────────────────────
+// Auto-spawn the whatsapp-client process so QR codes are available immediately.
+// Enable with WHATSAPP_QR_MODE=1, or auto-enabled in development mode.
+const WHATSAPP_QR_MODE = (process.env.WHATSAPP_QR_MODE || (NODE_ENV === 'development' ? '1' : '0')) === '1'
+const WHATSAPP_CLIENT_PORT = process.env.WHATSAPP_CLIENT_PORT || '47891'
+let whatsappChild: ChildProcess | null = null
+let whatsappRestarts = 0
+const WHATSAPP_MAX_RESTARTS = 5
 
 // API_KEYS format: keyId:keyValue:role:sessionRegex,keyId2:keyValue2:role:sessionRegex
 const API_KEYS = (process.env.API_KEYS || '')
@@ -145,6 +157,21 @@ interface AgentRecord {
   position?: { x: number; y: number }
   aiModel?: string
   task?: string
+}
+
+interface GoalRecord {
+  id: string
+  sessionId: string
+  originalGoal: string
+  status: 'planning' | 'review' | 'executing' | 'phase-review' | 'paused' | 'complete' | 'stopped' | 'failed'
+  taskTree: Record<string, unknown>
+  tasks: Record<string, { status: string; agentId?: string; progress: number; cost: number; tokens: number; output?: string; error?: string }>
+  currentPhase: number
+  approvedPhases: number[]
+  totalCost: number
+  totalTokens: number
+  startedAt?: number
+  completedAt?: number
 }
 
 interface SessionMeta {
@@ -506,6 +533,19 @@ class InMemoryStorage {
   private sessions = new Map<string, SessionMeta>()
   private agents = new Map<string, Map<string, AgentRecord>>()
   private events = new Map<string, TelemetryEvent[]>()
+  goals = new Map<string, GoalRecord>()
+
+  getGoal(goalId: string): GoalRecord | null {
+    return this.goals.get(goalId) || null
+  }
+
+  setGoal(goal: GoalRecord): void {
+    this.goals.set(goal.id, goal)
+  }
+
+  getGoalsBySession(sessionId: string): GoalRecord[] {
+    return Array.from(this.goals.values()).filter(g => g.sessionId === sessionId)
+  }
 
   async touchSession(sessionId: string, owner: string) {
     const now = Date.now()
@@ -678,7 +718,25 @@ class RedisStorage {
     } while (cursor !== 0)
     if (pruned > 0) console.log(`[redis-storage] pruned ${pruned} stale agents`)
   }
+
+  getGoal(goalId: string): GoalRecord | null {
+    // For Redis, goals are stored in-memory on the gateway instance.
+    // A production deployment would use Redis hashes, but for now we
+    // delegate to a module-level Map shared with InMemoryStorage.
+    return goalStore.get(goalId) || null
+  }
+
+  setGoal(goal: GoalRecord): void {
+    goalStore.set(goal.id, goal)
+  }
+
+  getGoalsBySession(sessionId: string): GoalRecord[] {
+    return Array.from(goalStore.values()).filter(g => g.sessionId === sessionId)
+  }
 }
+
+// Shared goal store used by RedisStorage (InMemoryStorage has its own)
+const goalStore = new Map<string, GoalRecord>()
 
 type Storage = InMemoryStorage | RedisStorage
 let storage: Storage = new InMemoryStorage()
@@ -1464,20 +1522,21 @@ const httpServer = createServer(async (req, res) => {
   // or "Connected" badge in the Settings → WhatsApp tab.
 
   if (url.pathname === '/v1/whatsapp/status' && req.method === 'GET') {
-    const clientPort = process.env.WHATSAPP_CLIENT_PORT || '47891'
     try {
-      const resp = await fetch(`http://localhost:${clientPort}/status`, { signal: AbortSignal.timeout(2000) })
+      const resp = await fetch(`http://localhost:${WHATSAPP_CLIENT_PORT}/status`, { signal: AbortSignal.timeout(2000) })
       const data = await resp.json()
       return jsonRes(res, 200, data)
     } catch {
+      if (WHATSAPP_QR_MODE && whatsappChild && !whatsappChild.killed) {
+        return jsonRes(res, 200, { status: 'starting', message: 'WhatsApp client is starting — QR code will appear shortly...' })
+      }
       return jsonRes(res, 200, { status: 'disconnected', message: 'whatsapp-client not running — start with: bun run packages/whatsapp-client/src/index.ts' })
     }
   }
 
   if (url.pathname === '/v1/whatsapp/qr.png' && req.method === 'GET') {
-    const clientPort = process.env.WHATSAPP_CLIENT_PORT || '47891'
     try {
-      const resp = await fetch(`http://localhost:${clientPort}/qr.png`, { signal: AbortSignal.timeout(2000) })
+      const resp = await fetch(`http://localhost:${WHATSAPP_CLIENT_PORT}/qr.png`, { signal: AbortSignal.timeout(2000) })
       if (!resp.ok) { res.writeHead(204); res.end(); return }
       const buf = Buffer.from(await resp.arrayBuffer())
       res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': String(buf.length) })
@@ -1486,6 +1545,162 @@ const httpServer = createServer(async (req, res) => {
       res.writeHead(204); res.end()
     }
     return
+  }
+
+  // ── Goal Mode endpoints ───────────────────────────────────────────────────
+
+  // POST /v1/goals/start
+  if (url.pathname === '/v1/goals/start' && req.method === 'POST') {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const body = JSON.parse(await readBody(req))
+    const goalId = body.goalId || randomUUID()
+    const sessionId = String(body.sessionId || '')
+    if (!sessionId) return jsonRes(res, 400, { error: 'sessionId required' })
+    const goal: GoalRecord = {
+      id: goalId,
+      sessionId,
+      originalGoal: body.originalGoal || '',
+      status: 'executing',
+      taskTree: body.taskTree || {},
+      tasks: {},
+      currentPhase: 0,
+      approvedPhases: [],
+      totalCost: 0,
+      totalTokens: 0,
+      startedAt: Date.now(),
+    }
+    storage.setGoal(goal)
+    io.to(`session:${sessionId}`).emit('goal.started', { goalId, sessionId })
+    return jsonRes(res, 200, { goalId, status: 'executing' })
+  }
+
+  // GET /v1/goals/:id/status
+  const goalStatusMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/status$/)
+  if (req.method === 'GET' && goalStatusMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const goal = storage.getGoal(goalStatusMatch[1])
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    return jsonRes(res, 200, goal)
+  }
+
+  // POST /v1/goals/:id/pause-all
+  const goalPauseMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/pause-all$/)
+  if (req.method === 'POST' && goalPauseMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const goal = storage.getGoal(goalPauseMatch[1])
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    goal.status = 'paused'
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.paused', { goalId: goal.id })
+    return jsonRes(res, 200, { ok: true, status: 'paused' })
+  }
+
+  // POST /v1/goals/:id/resume-all
+  const goalResumeMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/resume-all$/)
+  if (req.method === 'POST' && goalResumeMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const goal = storage.getGoal(goalResumeMatch[1])
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    goal.status = 'executing'
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.resumed', { goalId: goal.id })
+    return jsonRes(res, 200, { ok: true, status: 'executing' })
+  }
+
+  // POST /v1/goals/:id/stop-all
+  const goalStopMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/stop-all$/)
+  if (req.method === 'POST' && goalStopMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const goal = storage.getGoal(goalStopMatch[1])
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    goal.status = 'stopped'
+    goal.completedAt = Date.now()
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.stopped', { goalId: goal.id })
+    return jsonRes(res, 200, { ok: true, status: 'stopped' })
+  }
+
+  // POST /v1/goals/:id/approve-phase
+  const goalApproveMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/approve-phase$/)
+  if (req.method === 'POST' && goalApproveMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const goal = storage.getGoal(goalApproveMatch[1])
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    const body = JSON.parse(await readBody(req))
+    const phaseIndex = Number(body.phaseIndex)
+    if (Number.isNaN(phaseIndex)) return jsonRes(res, 400, { error: 'phaseIndex required' })
+    if (!goal.approvedPhases.includes(phaseIndex)) goal.approvedPhases.push(phaseIndex)
+    goal.currentPhase = phaseIndex + 1
+    goal.status = 'executing'
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.phase.approved', { goalId: goal.id, phaseIndex })
+    return jsonRes(res, 200, { ok: true, currentPhase: goal.currentPhase, approvedPhases: goal.approvedPhases })
+  }
+
+  // POST /v1/goals/:id/tasks/:taskId/update
+  const goalTaskUpdateMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/tasks\/([^/]+)\/update$/)
+  if (req.method === 'POST' && goalTaskUpdateMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const [, goalId, taskId] = goalTaskUpdateMatch
+    const goal = storage.getGoal(goalId)
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    const body = JSON.parse(await readBody(req))
+    const existing = goal.tasks[taskId] || { status: 'pending', progress: 0, cost: 0, tokens: 0 }
+    if (body.status !== undefined) existing.status = body.status
+    if (body.progress !== undefined) existing.progress = body.progress
+    if (body.cost !== undefined) existing.cost = body.cost
+    if (body.tokens !== undefined) existing.tokens = body.tokens
+    if (body.output !== undefined) existing.output = body.output
+    if (body.error !== undefined) existing.error = body.error
+    if (body.agentId !== undefined) existing.agentId = body.agentId
+    goal.tasks[taskId] = existing
+    // Recalculate totals
+    goal.totalCost = Object.values(goal.tasks).reduce((s, t) => s + t.cost, 0)
+    goal.totalTokens = Object.values(goal.tasks).reduce((s, t) => s + t.tokens, 0)
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.updated', { goalId, taskId, task: existing })
+    return jsonRes(res, 200, { ok: true, task: existing })
+  }
+
+  // POST /v1/goals/:id/tasks/:taskId/retry
+  const goalTaskRetryMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/tasks\/([^/]+)\/retry$/)
+  if (req.method === 'POST' && goalTaskRetryMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const [, goalId, taskId] = goalTaskRetryMatch
+    const goal = storage.getGoal(goalId)
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    const task = goal.tasks[taskId]
+    if (!task) return jsonRes(res, 404, { error: 'Task not found' })
+    task.status = 'pending'
+    task.progress = 0
+    task.error = undefined
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.retry', { goalId, taskId })
+    return jsonRes(res, 200, { ok: true })
+  }
+
+  // POST /v1/goals/:id/tasks/:taskId/skip
+  const goalTaskSkipMatch = url.pathname.match(/^\/v1\/goals\/([^/]+)\/tasks\/([^/]+)\/skip$/)
+  if (req.method === 'POST' && goalTaskSkipMatch) {
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    const [, goalId, taskId] = goalTaskSkipMatch
+    const goal = storage.getGoal(goalId)
+    if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    const task = goal.tasks[taskId]
+    if (!task) return jsonRes(res, 404, { error: 'Task not found' })
+    task.status = 'skipped'
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.skipped', { goalId, taskId })
+    return jsonRes(res, 200, { ok: true })
   }
 
   // GET /v1/session/:sessionId/agents
@@ -1610,7 +1825,7 @@ const httpServer = createServer(async (req, res) => {
     }
 
     if (provider === 'claude') {
-      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not detected. Start the gateway in the same shell where your AI tool runs — keys are inherited automatically.' })
+      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.' })
       const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
         method: 'POST',
         headers: {
@@ -1835,11 +2050,133 @@ io.on('connection', async (socket: Socket) => {
     }
   })
 
+  // ── Goal Mode socket events ──────────────────────────────────────────────
+  socket.on('goal.task.started', (data: { goalId: string; taskId: string; agentId?: string }) => {
+    const goal = storage.getGoal(data.goalId)
+    if (!goal) { socket.emit('error', { message: 'Goal not found' }); return }
+    const task = goal.tasks[data.taskId] || { status: 'pending', progress: 0, cost: 0, tokens: 0 }
+    task.status = 'running'
+    if (data.agentId) task.agentId = data.agentId
+    goal.tasks[data.taskId] = task
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.updated', { goalId: data.goalId, taskId: data.taskId, task })
+  })
+
+  socket.on('goal.task.progress', (data: { goalId: string; taskId: string; progress: number; cost?: number; tokens?: number }) => {
+    const goal = storage.getGoal(data.goalId)
+    if (!goal) { socket.emit('error', { message: 'Goal not found' }); return }
+    const task = goal.tasks[data.taskId]
+    if (!task) { socket.emit('error', { message: 'Task not found' }); return }
+    task.progress = data.progress
+    if (data.cost !== undefined) task.cost = data.cost
+    if (data.tokens !== undefined) task.tokens = data.tokens
+    goal.totalCost = Object.values(goal.tasks).reduce((s, t) => s + t.cost, 0)
+    goal.totalTokens = Object.values(goal.tasks).reduce((s, t) => s + t.tokens, 0)
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.updated', { goalId: data.goalId, taskId: data.taskId, task })
+  })
+
+  socket.on('goal.task.complete', (data: { goalId: string; taskId: string; output?: string; cost?: number; tokens?: number }) => {
+    const goal = storage.getGoal(data.goalId)
+    if (!goal) { socket.emit('error', { message: 'Goal not found' }); return }
+    const task = goal.tasks[data.taskId]
+    if (!task) { socket.emit('error', { message: 'Task not found' }); return }
+    task.status = 'complete'
+    task.progress = 100
+    if (data.output !== undefined) task.output = data.output
+    if (data.cost !== undefined) task.cost = data.cost
+    if (data.tokens !== undefined) task.tokens = data.tokens
+    goal.totalCost = Object.values(goal.tasks).reduce((s, t) => s + t.cost, 0)
+    goal.totalTokens = Object.values(goal.tasks).reduce((s, t) => s + t.tokens, 0)
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.updated', { goalId: data.goalId, taskId: data.taskId, task })
+  })
+
+  socket.on('goal.task.failed', (data: { goalId: string; taskId: string; error?: string }) => {
+    const goal = storage.getGoal(data.goalId)
+    if (!goal) { socket.emit('error', { message: 'Goal not found' }); return }
+    const task = goal.tasks[data.taskId]
+    if (!task) { socket.emit('error', { message: 'Task not found' }); return }
+    task.status = 'failed'
+    if (data.error !== undefined) task.error = data.error
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.task.updated', { goalId: data.goalId, taskId: data.taskId, task })
+  })
+
+  socket.on('goal.phase.complete', (data: { goalId: string; phaseIndex: number }) => {
+    const goal = storage.getGoal(data.goalId)
+    if (!goal) { socket.emit('error', { message: 'Goal not found' }); return }
+    goal.status = 'phase-review'
+    storage.setGoal(goal)
+    io.to(`session:${goal.sessionId}`).emit('goal.phase.complete', { goalId: data.goalId, phaseIndex: data.phaseIndex })
+  })
+
   socket.on('disconnect', async () => {
     metrics.wsConnectedNow = Math.max(0, metrics.wsConnectedNow - 1)
     await redis?.del(`aa:conn:${socket.id}`)
   })
 })
+
+// ── WhatsApp auto-spawn ──────────────────────────────────────────────────────
+function spawnWhatsAppClient() {
+  // Resolve the whatsapp-client entry relative to the gateway package
+  const candidates = [
+    resolve(__dirname, '../../whatsapp-client/src/index.ts'),
+    resolve(process.cwd(), '../whatsapp-client/src/index.ts'),
+    resolve(process.cwd(), 'packages/whatsapp-client/src/index.ts'),
+  ]
+  const entry = candidates.find(p => existsSync(p))
+  if (!entry) {
+    log('warn', 'whatsapp-client entry not found, skipping auto-start', { searched: candidates })
+    return
+  }
+
+  // Check if already running on the expected port
+  fetch(`http://localhost:${WHATSAPP_CLIENT_PORT}/status`, { signal: AbortSignal.timeout(1000) })
+    .then(r => {
+      if (r.ok) {
+        log('info', 'whatsapp-client already running', { port: WHATSAPP_CLIENT_PORT })
+        return
+      }
+      doSpawn(entry)
+    })
+    .catch(() => doSpawn(entry))
+
+  function doSpawn(entryPath: string) {
+    log('info', 'auto-starting whatsapp-client', { entry: entryPath, port: WHATSAPP_CLIENT_PORT })
+    const runtime = process.execPath // bun or node — whatever started the gateway
+    whatsappChild = spawn(runtime, ['run', entryPath], {
+      env: {
+        ...process.env,
+        GATEWAY_URL: `http://localhost:${PORT}`,
+        WHATSAPP_CLIENT_PORT: WHATSAPP_CLIENT_PORT,
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: false,
+    })
+
+    whatsappChild.stdout?.on('data', (d: Buffer) => {
+      const msg = d.toString().trim()
+      if (msg) log('info', `[whatsapp] ${msg}`)
+    })
+    whatsappChild.stderr?.on('data', (d: Buffer) => {
+      const msg = d.toString().trim()
+      if (msg) log('warn', `[whatsapp] ${msg}`)
+    })
+    whatsappChild.on('exit', (code) => {
+      log('info', 'whatsapp-client exited', { code })
+      whatsappChild = null
+      // Auto-restart after 5s (with limit)
+      if (WHATSAPP_QR_MODE && code !== 0 && whatsappRestarts < WHATSAPP_MAX_RESTARTS) {
+        whatsappRestarts++
+        log('info', 'whatsapp-client will restart', { attempt: whatsappRestarts, maxRestarts: WHATSAPP_MAX_RESTARTS })
+        setTimeout(() => spawnWhatsAppClient(), 5000)
+      } else if (whatsappRestarts >= WHATSAPP_MAX_RESTARTS) {
+        log('warn', 'whatsapp-client max restarts reached — install dependencies with: cd packages/whatsapp-client && bun install')
+      }
+    })
+  }
+}
 
 async function bootstrap() {
   if (REQUIRE_AUTH && !JWT_SECRET && apiKeyIndex.size === 0) {
@@ -1886,12 +2223,23 @@ async function bootstrap() {
       redisEnabled: Boolean(redis),
       redisAdapterEnabled: Boolean(redisPub && redisSub),
       protocolVersion: PROTOCOL_VERSION,
+      whatsappQrMode: WHATSAPP_QR_MODE,
     })
+
+    // Auto-spawn whatsapp-client for QR code generation
+    if (WHATSAPP_QR_MODE) {
+      spawnWhatsAppClient()
+    }
   })
 }
 
 function shutdown(signal: string) {
   log('info', 'shutdown requested', { signal })
+  // Stop auto-spawned whatsapp-client
+  if (whatsappChild && !whatsappChild.killed) {
+    whatsappChild.kill('SIGTERM')
+    whatsappChild = null
+  }
   httpServer.close(async () => {
     await Promise.allSettled([
       redis?.quit(),

@@ -313,6 +313,7 @@ export default function Home() {
                   authToken={auth.token}
                   sessionSignature={auth.sessionSignature}
                   connectedAgents={agentsList.length}
+                  activeAgentModels={agentsList.map(a => a.aiModel).filter(Boolean) as string[]}
                   onAgentCommand={handleAgentCommand}
                 />
               }

@@ -7,8 +7,9 @@ import { ProviderSettings } from './ProviderSettings'
 import { LanguageSettings } from './LanguageSettings'
 import { AppearanceSettings } from './AppearanceSettings'
 import { WhatsAppSettings } from './WhatsAppSettings'
+import { GoalModeSettings } from './GoalModeSettings'
 
-type SettingsTab = 'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'about'
+type SettingsTab = 'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'goalmode' | 'about'
 
 interface SettingsPanelProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: 'language', label: 'Language', icon: '🌐' },
   { id: 'appearance', label: 'Appearance', icon: '🎨' },
   { id: 'whatsapp', label: 'WhatsApp', icon: '📱' },
+  { id: 'goalmode', label: 'Goal Mode', icon: '🎯' },
   { id: 'about', label: 'About', icon: 'ℹ️' },
 ]
 
@@ -109,6 +111,9 @@ export function SettingsPanel({ isOpen, activeTab, onTabChange, onClose }: Setti
           )}
           {activeTab === 'whatsapp' && (
             <WhatsAppSettings />
+          )}
+          {activeTab === 'goalmode' && (
+            <GoalModeSettings />
           )}
           {activeTab === 'about' && (
             <AboutTab />

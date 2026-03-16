@@ -19,6 +19,9 @@ import {
   initArcadeBridge, consoleAgentSpawn, consoleAgentThinking, consoleAgentWriting,
   consoleAgentDone, consoleAgentError, consoleAgentCodeDetected,
 } from '@/lib/arcade-bridge'
+import dynamic from 'next/dynamic'
+
+const GoalMode = dynamic(() => import('@/components/GoalMode').then(m => ({ default: m.GoalMode })), { ssr: false })
 
 interface ArcadeConsoleProps {
   gatewayUrl?: string
@@ -26,6 +29,7 @@ interface ArcadeConsoleProps {
   authToken?: string
   sessionSignature?: string
   connectedAgents?: number
+  activeAgentModels?: string[]
   onAgentCommand?: (cmd: string, agentId?: string, args?: string) => void
 }
 
@@ -56,6 +60,7 @@ export function ArcadeConsole({
   authToken,
   sessionSignature,
   connectedAgents = 0,
+  activeAgentModels = [],
   onAgentCommand,
 }: ArcadeConsoleProps) {
   const [selectedModel, setSelectedModel] = useState<ModelOption>(loadSavedModel)
@@ -69,14 +74,58 @@ export function ArcadeConsole({
   const [showOutput, setShowOutput] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'about'>('console')
+  const [settingsTab, setSettingsTab] = useState<'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'goalmode' | 'about'>('console')
   const [sessionStart] = useState(Date.now())
+  const [consoleMode, setConsoleMode] = useState<'chat' | 'goal'>('chat')
   const abortRef = useRef<AbortController | null>(null)
+  const autoDetectedRef = useRef(false)
 
   // Check server-side providers on mount
   useEffect(() => {
     checkServerProviders().then(setServerProviders).catch(() => {})
   }, [])
+
+  // Auto-detect AI model from active agents + server providers
+  // Runs once when agents first appear (doesn't override manual selections)
+  useEffect(() => {
+    if (autoDetectedRef.current) return
+    if (activeAgentModels.length === 0 && Object.keys(serverProviders).length === 0) return
+
+    // Already has a user-saved model preference → don't override
+    if (typeof window !== 'undefined' && localStorage.getItem(MODEL_STORAGE_KEY)) return
+
+    // Try to match agent model strings to our MODEL_OPTIONS
+    const matchFromAgents = (): ModelOption | null => {
+      for (const agentModel of activeAgentModels) {
+        const lower = agentModel.toLowerCase()
+        // Direct ID match
+        const exact = MODEL_OPTIONS.find(m => m.id === lower || m.name.toLowerCase() === lower)
+        if (exact) return exact
+        // Fuzzy: "claude" → Claude Sonnet, "gpt" → GPT-4o, "gemini" → Gemini Flash
+        if (lower.includes('claude') || lower.includes('anthropic')) return MODEL_OPTIONS.find(m => m.provider === 'claude') || null
+        if (lower.includes('gpt') || lower.includes('openai')) return MODEL_OPTIONS.find(m => m.provider === 'openai') || null
+        if (lower.includes('gemini') || lower.includes('google')) return MODEL_OPTIONS.find(m => m.provider === 'gemini') || null
+        if (lower.includes('mistral')) return MODEL_OPTIONS.find(m => m.provider === 'mistral') || null
+        if (lower.includes('ollama') || lower.includes('llama')) return null // ollama needs separate setup
+      }
+      return null
+    }
+
+    // Try to pick best model from server providers (gateway has the key)
+    const matchFromProviders = (): ModelOption | null => {
+      if (serverProviders.claude) return MODEL_OPTIONS.find(m => m.provider === 'claude') || null
+      if (serverProviders.openai) return MODEL_OPTIONS.find(m => m.provider === 'openai') || null
+      if (serverProviders.gemini) return MODEL_OPTIONS.find(m => m.provider === 'gemini') || null
+      if (serverProviders.mistral) return MODEL_OPTIONS.find(m => m.provider === 'mistral') || null
+      return null
+    }
+
+    const detected = matchFromAgents() || matchFromProviders()
+    if (detected) {
+      autoDetectedRef.current = true
+      setSelectedModel(detected)
+    }
+  }, [activeAgentModels, serverProviders])
 
   // Initialize arcade bridge with gateway config
   useEffect(() => {
@@ -312,6 +361,33 @@ export function ArcadeConsole({
         connectedAgents={connectedAgents}
       />
 
+      {/* Chat / Goal Mode Toggle */}
+      <div className="shrink-0 px-3 pt-2 flex items-center gap-1">
+        <button
+          onClick={() => setConsoleMode('chat')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            consoleMode === 'chat'
+              ? 'bg-blue-500/20 border border-blue-500/30 text-blue-300'
+              : 'bg-white/5 border border-white/10 text-white/40 hover:text-white/60'
+          }`}
+        >
+          💬 Chat Mode
+        </button>
+        <button
+          onClick={() => setConsoleMode('goal')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            consoleMode === 'goal'
+              ? 'bg-violet-500/20 border border-violet-500/30 text-violet-300'
+              : 'bg-white/5 border border-white/10 text-white/40 hover:text-white/60'
+          }`}
+        >
+          🎯 Goal Mode
+        </button>
+        {consoleMode === 'goal' && (
+          <span className="text-[10px] text-white/30 ml-2">Supervised multi-agent orchestration</span>
+        )}
+      </div>
+
       <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center gap-2">
         <div className="flex-1 min-w-0">
           <ModelSelector
@@ -353,11 +429,17 @@ export function ArcadeConsole({
         </button>
       </div>
 
-      {/* Provider not yet detected — nudge to start the gateway alongside the AI tool */}
+      {/* Provider not yet detected — offer to enter key directly */}
       {!apiKeys[selectedModel.provider] && !serverProviders[selectedModel.provider] && selectedModel.provider !== 'ollama' && messages.length === 0 && !error && (
         <div className="shrink-0 mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center gap-2">
-          <span>🔗</span>
-          <span className="flex-1">Start <code className="bg-black/30 px-1 rounded font-mono">agent-arcade start</code> in the same shell as your AI tool — the Console auto-detects API keys from your environment.</span>
+          <span>🔑</span>
+          <span className="flex-1">No <strong>{selectedModel.provider}</strong> API key detected.</span>
+          <button
+            onClick={() => { setSettingsTab('providers'); setSettingsOpen(true) }}
+            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-200 shrink-0 font-medium whitespace-nowrap"
+          >
+            Add Key →
+          </button>
         </div>
       )}
 
@@ -377,26 +459,35 @@ export function ArcadeConsole({
         </div>
       )}
 
-      <ChatHistory
-        messages={messages}
-        streamingContent={streamingContent}
-        isStreaming={isStreaming}
-        modelName={selectedModel.name}
-      />
+      {consoleMode === 'chat' ? (
+        <>
+          <ChatHistory
+            messages={messages}
+            streamingContent={streamingContent}
+            isStreaming={isStreaming}
+            modelName={selectedModel.name}
+          />
 
-      <OutputPanel
-        lastResponse={messages.findLast(m => m.role === 'assistant')?.content || ''}
-        isVisible={showOutput}
-        onClose={() => setShowOutput(false)}
-      />
+          <OutputPanel
+            lastResponse={messages.findLast(m => m.role === 'assistant')?.content || ''}
+            isVisible={showOutput}
+            onClose={() => setShowOutput(false)}
+          />
 
-      <InputPanel
-        onSend={handleSend}
-        isStreaming={isStreaming}
-        onStop={handleStop}
-        selectedModel={selectedModel}
-        onCommandPalette={() => setCommandPaletteOpen(true)}
-      />
+          <InputPanel
+            onSend={handleSend}
+            isStreaming={isStreaming}
+            onStop={handleStop}
+            selectedModel={selectedModel}
+            onCommandPalette={() => setCommandPaletteOpen(true)}
+          />
+        </>
+      ) : (
+        <GoalMode
+          sessionId={sessionId || 'default'}
+          gatewayUrl={gatewayUrl}
+        />
+      )}
     </div>
   )
 }

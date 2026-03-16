@@ -130,8 +130,17 @@ export function WhatsAppSettings() {
         <ConnectedPanel />
       )}
 
+      {/* Starting state — auto-spawn in progress */}
+      {payload?.status === 'starting' && (
+        <div className="flex flex-col items-center gap-3 py-6">
+          <div className="w-8 h-8 rounded-full border-2 border-green-500/40 border-t-green-400 animate-spin" />
+          <p className="text-green-300/80 text-sm font-medium">WhatsApp client is starting…</p>
+          <p className="text-white/30 text-xs">QR code will appear automatically in a few seconds</p>
+        </div>
+      )}
+
       {/* Disconnected / not started */}
-      {(payload?.status === 'disconnected' || payload?.status === 'error' || payload?.status === 'starting') && (
+      {(payload?.status === 'disconnected' || payload?.status === 'error') && (
         <DisconnectedPanel message={payload?.message} />
       )}
 

@@ -11,9 +11,10 @@
 [![Version](https://img.shields.io/badge/Version-3.2.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
+[![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
 [![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Universal_Remote-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
 [![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deepest-ai-brain-observability)
-[![Zero Config](https://img.shields.io/badge/Zero_Config-No_API_Keys-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
+[![Zero Config](https://img.shields.io/badge/Zero_Config-Auto--Detect_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
@@ -94,7 +95,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 </tr>
 </table>
 
-**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use.
+**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use. The Console **auto-detects which AI model your agents are using** and selects it automatically — no manual model switching needed.
 
 ### Why Agent Arcade?
 
@@ -105,6 +106,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 | "My agent is stuck and I can't intervene" | Pause, redirect, stop, or hand off any agent mid-task |
 | "I need different control surfaces" | REST API + WhatsApp + Dashboard + CLI — control from anywhere |
 | "Each framework needs different tooling" | One platform for Claude Code, OpenAI, LangChain, CrewAI, and 8 more |
+| "I have to configure the console model manually" | Console auto-detects the AI model from your running agents and inherits API keys |
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
 
 ### 🕹️ How It Works
@@ -117,7 +119,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
  ╚══════════════════════════════════════════════════════════════════════╝
 ```
 
-The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console Chat shares the same API keys from your environment — observatory, console, and arcade are one unified system.
+The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console auto-detects the AI model your agents are using and inherits API keys from the environment. The WhatsApp QR client auto-starts with the gateway — scan once and control any agent from your phone. Observatory, console, WhatsApp, and arcade are one unified system.
 
 ---
 
@@ -165,10 +167,12 @@ flowchart LR
 
 ### Three Places to Scan the QR Code
 
+All locations work automatically — the gateway auto-starts the WhatsApp client, no manual process needed.
+
 | Location | How |
 |:---------|:----|
-| **Terminal** | QR code prints directly in your terminal when you start the client |
-| **Dashboard** | Settings → WhatsApp tab shows the QR code with live connection status |
+| **Dashboard** | Settings → WhatsApp tab — QR code appears automatically with live status (Starting → QR → Connected) |
+| **Terminal** | QR code prints directly in the gateway terminal output |
 | **HTTP endpoint** | `GET http://localhost:47891/qr.png` serves the QR as a PNG image |
 
 <div align="center">
@@ -183,21 +187,29 @@ flowchart LR
 <tr>
 <td width="50%">
 
-### Setup — One Command
+### Setup — Fully Automatic
+
+**The gateway auto-starts the WhatsApp client in development mode.** No separate process to manage. Just start the gateway and the QR code appears in your dashboard immediately.
 
 ```bash
-# Start the WhatsApp QR client
+# Automatic (default in dev mode):
+npm run dev:arcade
+# → Gateway starts on :47890
+# → WhatsApp client auto-spawns on :47891
+# → QR code appears in Settings → WhatsApp tab
+
+# Manual (production or custom setup):
 GATEWAY_URL=http://localhost:47890 \
   bun run packages/whatsapp-client/src/index.ts
 ```
 
 The client uses [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys) — a lightweight, open-source WhatsApp Web library. **No Twilio account. No API keys. No monthly fees.** Scan once, and the session persists across restarts in `.whatsapp-auth/`.
 
-The gateway automatically proxies WhatsApp status via two endpoints:
+The gateway auto-spawns the WhatsApp client and proxies its status via two endpoints:
 - `GET /v1/whatsapp/status` — connection state + QR data URL
 - `GET /v1/whatsapp/qr.png` — QR code as PNG image
 
-The dashboard polls these endpoints to show real-time WhatsApp status without any extra configuration.
+Auto-start is controlled by `WHATSAPP_QR_MODE` (defaults to `1` in development, `0` in production). The dashboard polls these endpoints to show real-time WhatsApp status — from "Starting..." spinner to live QR code to "Connected" badge — without any extra configuration.
 
 </td>
 <td width="50%">
@@ -238,7 +250,8 @@ Every command works with **any framework** — the agent could be Claude Code, O
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `GATEWAY_URL` | `http://localhost:47890` | Which gateway to control |
+| `WHATSAPP_QR_MODE` | `1` (dev) / `0` (prod) | Auto-start WhatsApp client with gateway — QR appears automatically |
+| `GATEWAY_URL` | `http://localhost:47890` | Which gateway to control (used by standalone client) |
 | `WHATSAPP_AUTH_DIR` | `./.whatsapp-auth` | Session credentials (persists across restarts) |
 | `WHATSAPP_CLIENT_PORT` | `47891` | Internal QR server port |
 | `WHATSAPP_ALLOWED_NUMBERS` | *(empty = all)* | Comma-separated E.164 numbers allowed to send commands |
@@ -332,8 +345,10 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 ### Console Features
 
-- **Zero-config auto-detection** — the Console auto-detects `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your shell environment. No separate configuration needed — the observatory and the console are one unified system.
-- **Claude Sonnet 4.6** pre-selected — switch to GPT-4o, Gemini, Mistral, or Ollama (local/free) from the dropdown
+- **Auto-detects AI model from your agents** — if your session has Claude agents running, the Console auto-selects Claude. GPT-4o agents? It switches to GPT-4o. No manual model selection needed — the Console matches what your agents are already using.
+- **Auto-inherits API keys** — the Console reads `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from the gateway's environment. No `.env` files. No Settings page. The observatory and the console are one unified system.
+- **Smart fallback** — if no agents are running, the Console picks the first provider with an available API key. If no keys are in the environment, a one-click "Add Key →" button opens Settings → Providers.
+- **12 models across 5 providers** — Claude Sonnet/Opus/Haiku 4.6, GPT-4o/4o-mini/o3-mini, Gemini 2.0 Flash/1.5 Pro, Mistral Large/Small, plus Ollama (local/free)
 - **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
 - **Export conversation** — save the full chat as markdown
 - **Ctrl+Enter to send** — keyboard-driven workflow
@@ -384,15 +399,16 @@ Control any agent from any framework via your personal WhatsApp — [see the ful
 
 ## ⚙️ Settings Panel
 
-The ⚙️ Settings panel (6 tabs) is accessible from the toolbar:
+The ⚙️ Settings panel (7 tabs) is accessible from the toolbar:
 
 | Tab | What It Controls |
 |-----|-----------------|
-| **Console** | Default AI model, token count display, cost estimates, history retention |
-| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto ✓" when keys are inherited from environment. Optional manual override with AES-256 encrypted storage. |
+| **Console** | Default AI model (auto-detected from running agents), token count display, cost estimates, history retention |
+| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto ✓" when keys are inherited from environment. One-click "Add Key →" for manual entry with AES-256 encrypted storage. |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
-| **WhatsApp** | QR code scanner to pair your personal WhatsApp — scan once, control agents from your phone |
+| **WhatsApp** | Auto-generated QR code to pair your personal WhatsApp — scan once, control agents from your phone. Gateway auto-starts the client. |
+| **Goal Mode** | Phase review gates, stuck timeout, max parallel agents, max tasks, cost limit, WhatsApp goal updates. "Goal Mode is assisted orchestration — it does not guarantee production-ready output without your review." |
 | **About** | Version info, gateway connection status |
 
 ---
@@ -432,7 +448,13 @@ npm run dev:web        # Dashboard on :47380
 http://localhost:47380
 ```
 
-That's it. **No API keys to configure.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. The AI Chat Console also works automatically — it inherits API keys from your shell environment (the same `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. that your AI tools already use). Observatory, Console, and Arcade are one unified system.
+That's it. **No API keys to configure.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. Three things happen automatically:
+
+1. **Console model auto-detection** — the Chat Console detects which AI model your agents are using (Claude, GPT-4o, Gemini, etc.) and selects it. No manual model switching.
+2. **API key inheritance** — the Console inherits API keys from your shell environment (the same `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. that your AI tools already use).
+3. **WhatsApp QR auto-start** — the gateway spawns the WhatsApp client automatically. Open Settings → WhatsApp to scan the QR code and control agents from your phone.
+
+Observatory, Console, WhatsApp, and Arcade are one unified system.
 
 ### 4. (Optional) Hook into Claude Code
 
@@ -669,15 +691,75 @@ Budget warning at 80% of configured threshold in dashboard. Configurable cost th
 | | Innovation | Description |
 |:-:|:----------|:------------|
 | 🎨 | **Pixel-Art Visualization** | Every agent is a unique procedurally-generated character (15 classes, 13 animation frames, per-pixel shading). Model-based coloring: Claude → purple, GPT → green, Gemini → blue. 100% canvas-drawn — zero external assets. |
-| 💚 | **WhatsApp Agent Control** | Scan a QR code, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. Works with every connected framework — OpenClaw, Claude Code, LangChain, all of them. |
-| ⚡ | **Zero-Config Console** | The Chat Console inherits API keys directly from your shell environment. No `.env` files. No Settings page. Start the gateway in the same terminal as your AI tool and it just works. |
+| 💚 | **WhatsApp Agent Control** | Gateway auto-starts the QR client — scan a QR code from the dashboard, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. No separate process to manage. |
+| ⚡ | **Zero-Config Console** | Auto-detects the AI model from your running agents AND inherits API keys from the shell environment. If agents use Claude, the Console selects Claude. No manual setup — observatory, console, and agents share one brain. |
 | 🔌 | **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
 | 💰 | **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
 | 🏆 | **RPG Gamification** | 32 achievements, 12 XP levels (Novice → Godlike), streak multiplier up to 3.0x. Leaderboards across 5 categories. Achievement toasts with confetti animation. |
+| 🎯 | **Goal Mode** | Turn one goal into a supervised multi-agent execution plan. AI decomposes, you approve, agents execute in parallel — with phase review gates, live progress, and full stop/pause/redirect control. |
 | ⏸️ | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
 | 📊 | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
 | 🌍 | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
 | 🐙 | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+
+---
+
+## 🎯 Goal Mode
+
+Turn one high-level goal into a structured execution plan, delegated across multiple agents — with live visibility and full control.
+
+**What it does:**
+- Parses your goal into a structured task tree (max 6 sub-tasks)
+- Assigns specialized agents to each sub-task (backend, frontend, database, testing, devops)
+- Shows the full execution plan before anything starts
+- Runs tasks in parallel where possible, sequential where dependencies exist
+- Requires your approval between phases
+- Lets you stop, pause, retry, redirect, or skip any agent at any time
+
+**What it is:** Supervised multi-agent orchestration. You stay in control throughout.
+
+**What it is not:**
+- Not autonomous long-running execution
+- Not production-ready without your review
+- Not self-healing or self-deploying
+- Not a replacement for human judgment
+
+### How Goal Mode Works
+
+```
+ ╔══════════════════════════════════════════════════════════════════════╗
+ ║  1. 🎯 DESCRIBE   →  "Build a complete auth system with OAuth"    ║
+ ║  2. 📋 REVIEW     →  See the execution plan before anything runs  ║
+ ║  3. ✅ APPROVE    →  Start supervised multi-agent execution       ║
+ ║  4. 👁️ MONITOR   →  Live progress, pause/stop/redirect anytime   ║
+ ║  5. 🔍 VERIFY    →  Review results between each phase             ║
+ ╚══════════════════════════════════════════════════════════════════════╝
+```
+
+Toggle between **💬 Chat Mode** and **🎯 Goal Mode** in the Console header. In Goal Mode:
+
+| Feature | Details |
+|---------|---------|
+| **Goal Decomposition** | AI breaks your goal into 2-6 atomic tasks with dependencies |
+| **Execution Plan** | Visual phase diagram showing parallel vs sequential execution |
+| **Specialized Agents** | Each task gets a specialized agent (🔧 Backend, 🎨 Frontend, 🗄️ Database, 🧪 Testing, 🚀 DevOps) |
+| **Phase Review Gates** | Approval required between phases (configurable) |
+| **Live Execution Graph** | Real-time progress bars, cost tracking, and status for every task |
+| **Human Override** | Pause All, Stop All, per-task controls, collapse to single agent |
+| **Task Recovery** | Retry failed tasks, skip blocked tasks, redirect with new instructions |
+
+### Goal Mode Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Phase review gates | On | Require approval between phases |
+| Stuck task timeout | 3 min | Auto-pause tasks with no progress |
+| Max parallel agents | 3 | Simultaneous agent limit |
+| Max tasks per goal | 6 | Reject goals needing more tasks |
+| Cost limit per goal | $5 | Pause if goal cost exceeds limit |
+| WhatsApp updates | Off | Send phase completions to WhatsApp |
+
+Use Goal Mode for structured multi-step tasks where you want AI assistance with visibility and control — not for set-and-forget automation.
 
 ---
 
@@ -768,6 +850,15 @@ flowchart LR
 | POST | `/v1/chat` | Proxy AI chat request |
 | GET | `/v1/whatsapp/status` | QR-mode connection status `{ status, qr? }` |
 | GET | `/v1/whatsapp/qr.png` | QR code image (PNG) for dashboard display |
+| POST | `/v1/goals/start` | Start a goal execution `{ taskTree, sessionId }` |
+| GET | `/v1/goals/:id/status` | Live goal execution status |
+| POST | `/v1/goals/:id/pause-all` | Pause all goal agents |
+| POST | `/v1/goals/:id/resume-all` | Resume all goal agents |
+| POST | `/v1/goals/:id/stop-all` | Stop all goal agents (saves completed work) |
+| POST | `/v1/goals/:id/approve-phase` | Approve phase and advance `{ phaseIndex }` |
+| POST | `/v1/goals/:id/tasks/:taskId/update` | Update task status/progress `{ status, progress, cost }` |
+| POST | `/v1/goals/:id/tasks/:taskId/retry` | Retry a failed task |
+| POST | `/v1/goals/:id/tasks/:taskId/skip` | Skip a blocked task |
 | POST | `/v1/connect` | Register external client connection |
 | POST | `/v1/session-token` | Issue a signed session token |
 | POST | `/v1/auth/revoke` | Revoke a JWT token |
@@ -901,6 +992,7 @@ npm run prod:start
 | `NOTIFY_EMAIL_TO` | — | Alert recipient email address |
 | `NOTIFY_COST_THRESHOLD` | `5` | USD cost threshold for cost alerts |
 | **WhatsApp QR Mode** | | |
+| `WHATSAPP_QR_MODE` | `1` (dev) / `0` (prod) | Auto-start the WhatsApp client with the gateway. QR code appears automatically in the dashboard. |
 | `WHATSAPP_AUTH_DIR` | `./.whatsapp-auth` | Directory to persist Baileys session credentials |
 | `WHATSAPP_CLIENT_PORT` | `47891` | Port for the QR code HTTP server |
 | `WHATSAPP_ALLOWED_NUMBERS` | — | Comma-separated E.164 numbers allowed to send commands (empty = all) |
