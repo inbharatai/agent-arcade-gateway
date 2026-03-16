@@ -26,6 +26,8 @@ export interface ArcadeSettings {
   showNarrative: boolean
   // ── Timeline view ───────────────────────────────────────
   showTimeline: boolean
+  // ── Voice volume (0..1) independent of master ────────────
+  voiceVolume: number
 }
 
 const STORAGE_KEY = 'agent-arcade-settings'
@@ -50,6 +52,7 @@ export const DEFAULT_SETTINGS: ArcadeSettings = {
   showTrustIndicators: true,
   showNarrative: true,
   showTimeline: true,
+  voiceVolume: 0.7,
 }
 
 function safeStorage(): Storage | null {

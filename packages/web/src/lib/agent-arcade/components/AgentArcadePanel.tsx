@@ -27,7 +27,7 @@ import {
   playTrustChime, playRecoverySfx, playMilestoneSfx,
 } from '../audio/synth'
 import { startMusic, stopMusic } from '../audio/music'
-import { speak, stopVoice, unlockVoice } from '../audio/voice'
+import { speak, stopVoice, unlockVoice, setVoiceVolume } from '../audio/voice'
 
 // ── Status badge ────────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<ConnectionStatus, { bg: string; text: string; pulse?: boolean }> = {
@@ -137,8 +137,10 @@ export function AgentArcadePanel({
       stopMusic()
     }
     if (!settings.voiceEnabled) stopVoice()
+    setVoiceVolume(settings.voiceVolume ?? 0.7)
   }, [settings.soundEnabled, settings.musicEnabled, settings.voiceEnabled,
-      settings.masterVolume, settings.musicVolume, settings.sfxVolume, settings.theme])
+      settings.masterVolume, settings.musicVolume, settings.sfxVolume, settings.theme,
+      settings.voiceVolume])
 
   // ── Audio callbacks from canvas ─────────────────────────────────────
   const audioCallbacks = useMemo<CanvasAudioCallbacks>(() => ({
@@ -157,9 +159,21 @@ export function AgentArcadePanel({
       }
       if (settings.voiceEnabled) {
         const agent = agents.find(a => a.id === agentId)
-        // Only speak label when it contains real execution info (not a generic word)
-        if (agent && agent.label && agent.label.trim().length > 6) {
-          speak(agent.label, agentId, agents.indexOf(agent))
+        if (!agent) return
+        const agentIdx = agents.indexOf(agent)
+        if (agent.label && agent.label.trim().length > 6) {
+          // Label contains real execution info — speak it
+          speak(agent.label, agentId, agentIdx)
+        } else {
+          // Label is too short or absent — fall back to a state phrase for key transitions
+          const STATE_PHRASES: Partial<Record<AgentState, string>> = {
+            thinking: `${agent.name} is thinking`,
+            tool:     `${agent.name} using a tool`,
+            error:    `${agent.name} hit an error`,
+            done:     `${agent.name} is done`,
+          }
+          const phrase = STATE_PHRASES[newState]
+          if (phrase) speak(phrase, agentId, agentIdx)
         }
       }
     },

@@ -51,7 +51,8 @@ export function useAgentIntervention(config: InterventionConfig) {
     return () => { agentStatesRef.current.clear() }
   }, [])
 
-  // Post an event to the gateway via HTTP ingest
+  // Post an event to the gateway via HTTP ingest (used for message/handoff events that
+  // have no dedicated REST endpoint)
   const ingest = useCallback(async (type: string, agentId: string, payload: Record<string, unknown>) => {
     const { gatewayUrl, sessionId, authToken, sessionSignature } = configRef.current
     if (!gatewayUrl || !sessionId) return
@@ -61,6 +62,30 @@ export function useAgentIntervention(config: InterventionConfig) {
     if (sessionSignature) headers['X-Session-Signature'] = sessionSignature
     try {
       await fetch(`${gatewayUrl}/v1/ingest`, { method: 'POST', headers, body: JSON.stringify(event) })
+    } catch {
+      // Silently fail — gateway may not be available
+    }
+  }, [])
+
+  // Call a dedicated agent control REST endpoint (pause/resume/stop/redirect).
+  // These endpoints atomically upsert agent state in storage before broadcasting,
+  // apply per-agent rate limiting (10 req/min), and require publisher role — unlike
+  // /v1/ingest which applies session-level flood limits.
+  const callAgentEndpoint = useCallback(async (
+    agentId: string,
+    action: 'pause' | 'resume' | 'stop' | 'redirect',
+    body?: Record<string, unknown>,
+  ) => {
+    const { gatewayUrl, sessionId, authToken, sessionSignature } = configRef.current
+    if (!gatewayUrl || !sessionId) return
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+    if (sessionSignature) headers['X-Session-Signature'] = sessionSignature
+    try {
+      await fetch(
+        `${gatewayUrl}/v1/agents/${encodeURIComponent(sessionId)}/${encodeURIComponent(agentId)}/${action}`,
+        { method: 'POST', headers, body: body ? JSON.stringify(body) : undefined },
+      )
     } catch {
       // Silently fail — gateway may not be available
     }
@@ -88,15 +113,15 @@ export function useAgentIntervention(config: InterventionConfig) {
     const state = getOrCreate(agentId)
     state.isPaused = true
     refreshState()
-    void ingest('agent.state', agentId, { state: 'waiting', paused: true })
-  }, [ingest, getOrCreate, refreshState])
+    void callAgentEndpoint(agentId, 'pause')
+  }, [callAgentEndpoint, getOrCreate, refreshState])
 
   const resumeAgent = useCallback((agentId: string) => {
     const state = getOrCreate(agentId)
     state.isPaused = false
     refreshState()
-    void ingest('agent.state', agentId, { state: 'thinking', resumed: true })
-  }, [ingest, getOrCreate, refreshState])
+    void callAgentEndpoint(agentId, 'resume')
+  }, [callAgentEndpoint, getOrCreate, refreshState])
 
   const stopAgent = useCallback((agentId: string) => {
     setConfirmDialog({
@@ -108,11 +133,11 @@ export function useAgentIntervention(config: InterventionConfig) {
         state.isStopped = true
         state.isPaused = false
         refreshState()
-        void ingest('agent.end', agentId, { reason: 'user_stopped', saveProgress: true })
+        void callAgentEndpoint(agentId, 'stop')
         setConfirmDialog(null)
       },
     })
-  }, [ingest, getOrCreate, refreshState])
+  }, [callAgentEndpoint, getOrCreate, refreshState])
 
   const redirectAgent = useCallback((agentId: string, instruction: string) => {
     const state = getOrCreate(agentId)
@@ -125,8 +150,8 @@ export function useAgentIntervention(config: InterventionConfig) {
       description: `Redirected: ${instruction.slice(0, 60)}`,
     })
     refreshState()
-    void ingest('agent.message', agentId, { type: 'redirect', text: instruction, redirect: true })
-  }, [ingest, getOrCreate, refreshState])
+    void callAgentEndpoint(agentId, 'redirect', { instruction })
+  }, [callAgentEndpoint, getOrCreate, refreshState])
 
   const handoffAgent = useCallback((fromAgentId: string, toAgentId: string, note?: string) => {
     setConfirmDialog({

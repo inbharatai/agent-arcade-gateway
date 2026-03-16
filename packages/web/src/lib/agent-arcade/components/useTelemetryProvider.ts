@@ -31,14 +31,17 @@ export function useTelemetryProvider(opts: ProviderOpts) {
 
   // Periodic stale agent cleanup (every 10s):
   //   done agents removed after 20s, error after 30s, idle after 45s
+  // Use getState() inside the callback so this effect has no reactive dependency
+  // on the store object (which changes on every event and would otherwise cause
+  // the interval to be cleared and recreated continuously).
   useEffect(() => {
     cleanupIntervalRef.current = setInterval(() => {
-      store.cleanupStaleAgents(45000)
+      useAgentArcadeStore.getState().cleanupStaleAgents(45000)
     }, 10000)
     return () => {
       if (cleanupIntervalRef.current) clearInterval(cleanupIntervalRef.current)
     }
-  }, [store])
+  }, [])
 
   useEffect(() => {
     if (!opts.autoConnect || !opts.url || !opts.sessionId) return

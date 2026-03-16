@@ -84,6 +84,8 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
   const speechRef = useRef<SpeechRecognitionInstance | null>(null)
   const interimBaseRef = useRef('')
   const voiceErrorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [interimText, setInterimText] = useState('')
 
   useEffect(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -97,11 +99,14 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
   }, [])
 
   const stopListening = useCallback(() => {
+    clearTimeout(autoStopTimerRef.current)
+    autoStopTimerRef.current = undefined
     if (speechRef.current) {
       speechRef.current.abort()
       speechRef.current = null
     }
     interimBaseRef.current = ''
+    setInterimText('')
     setIsListening(false)
   }, [])
 
@@ -134,9 +139,11 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
         const newBase = interimBaseRef.current + (interimBaseRef.current ? ' ' : '') + finalTranscript.trim()
         interimBaseRef.current = newBase
         setText(newBase)
+        setInterimText('')
       } else if (interimTranscript) {
         const combined = interimBaseRef.current + (interimBaseRef.current ? ' ' : '') + interimTranscript
         setText(combined)
+        setInterimText(interimTranscript)
       }
     }
 
@@ -155,7 +162,10 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
     }
 
     recognition.onend = () => {
+      clearTimeout(autoStopTimerRef.current)
+      autoStopTimerRef.current = undefined
       setIsListening(false)
+      setInterimText('')
       speechRef.current = null
       interimBaseRef.current = ''
     }
@@ -164,6 +174,15 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
     try {
       recognition.start()
       setIsListening(true)
+      // Auto-stop after 30s to prevent indefinite mic hold
+      autoStopTimerRef.current = setTimeout(() => {
+        if (speechRef.current) {
+          speechRef.current.stop()
+          speechRef.current = null
+          setInterimText('')
+          setIsListening(false)
+        }
+      }, 30_000)
     } catch {
       showVoiceError('🎤 Could not start voice recognition — try again')
       speechRef.current = null
@@ -262,8 +281,15 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
             onKeyDown={handleKeyDown}
             placeholder="Type anything… Ctrl+Enter to send · Ctrl+K for commands"
             rows={1}
-            className="w-full px-4 py-3 pr-12 rounded-xl bg-white/8 border border-white/10 focus:border-blue-500/50 focus:outline-none resize-none text-sm placeholder-white/30 transition-colors leading-relaxed"
+            className={`w-full px-4 py-3 pr-12 rounded-xl bg-white/8 border focus:outline-none resize-none text-sm placeholder-white/30 transition-colors leading-relaxed ${
+              isListening ? 'border-red-500/50 focus:border-red-500/70' : 'border-white/10 focus:border-blue-500/50'
+            }`}
           />
+          {isListening && interimText && (
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-1 text-xs text-red-400/70 italic pointer-events-none truncate">
+              {interimText}
+            </div>
+          )}
           {langCode && langCode !== 'en' && (
             <span className="absolute right-3 top-3 text-lg" title={`Input: ${langCode}`}>
               {LANG_ICONS[langCode] || '🌐'}

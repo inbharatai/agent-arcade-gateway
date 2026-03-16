@@ -385,7 +385,11 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
         else if (agent.state === 'idle'  && age > staleMs) { agents.delete(id); removed++ }
       }
       if (removed === 0) return state
-      return { agents, agentsList: Array.from(agents.values()) }
+      // Clear selectedAgentId if the selected agent was pruned
+      const newSelectedId = (state.selectedAgentId && agents.has(state.selectedAgentId))
+        ? state.selectedAgentId
+        : null
+      return { agents, agentsList: Array.from(agents.values()), selectedAgentId: newSelectedId }
     })
   },
 }))

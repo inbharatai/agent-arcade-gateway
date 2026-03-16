@@ -49,6 +49,9 @@ const SESSION_FLOOD_MAX = Number.parseInt(process.env.SESSION_FLOOD_MAX || '600'
 
 const ENABLE_INTERNAL_ROUTES = (process.env.ENABLE_INTERNAL_ROUTES || (NODE_ENV === 'production' ? '0' : '1')) === '1'
 const ENABLE_REDIS_ADAPTER = (process.env.ENABLE_REDIS_ADAPTER || '1') === '1'
+// Only honour X-Forwarded-For when explicitly running behind a trusted reverse proxy.
+// Without this, any client can spoof their IP and trivially bypass IP-based rate limiting.
+const TRUST_PROXY = process.env.TRUST_PROXY === '1'
 
 // API_KEYS format: keyId:keyValue:role:sessionRegex,keyId2:keyValue2:role:sessionRegex
 const API_KEYS = (process.env.API_KEYS || '')
@@ -203,9 +206,14 @@ function metricsPrometheus(): string {
 
 // ---- CORS / network helpers -------------------------------------------------
 function getClientIp(req: IncomingMessage): string {
-  return req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()
-    || req.socket.remoteAddress
-    || 'unknown'
+  // Only trust X-Forwarded-For when TRUST_PROXY=1 is explicitly set.
+  // Without the guard a client can send X-Forwarded-For: 127.0.0.1 and
+  // appear as localhost, bypassing IP-based rate limits entirely.
+  if (TRUST_PROXY) {
+    const xff = req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim()
+    if (xff) return xff
+  }
+  return req.socket.remoteAddress || 'unknown'
 }
 
 function originAllowed(origin?: string): boolean {
@@ -217,8 +225,19 @@ function originAllowed(origin?: string): boolean {
     if (rule.startsWith('regex:')) {
       try {
         const pattern = rule.slice('regex:'.length)
-        // Guard against ReDoS: reject overly complex patterns
-        if (pattern.length > 200 || /([+*])\1/.test(pattern)) {
+        // Guard against ReDoS:
+        //   1. Hard length cap
+        //   2. Only allow a safe character set — no raw regex quantifier soup
+        //      Permitted: alphanumeric, . - : / _ ~ % # @ ! = ? * (glob wildcard)
+        //      Anything outside that set (parentheses, braces, +, {, |, $, ^…) is rejected
+        //   3. Explicit rejection of nested-quantifier patterns that cause exponential backtracking
+        const SAFE_CORS_CHARS = /^[a-zA-Z0-9.\-:/_~%#@!=?*]+$/
+        const NESTED_QUANTIFIER = /([+*}])[+*{]|[)][+*{?]|\(\?[^:=!<]/
+        if (
+          pattern.length > 200 ||
+          !SAFE_CORS_CHARS.test(pattern) ||
+          NESTED_QUANTIFIER.test(pattern)
+        ) {
           log('warn', `Skipping suspicious CORS regex pattern: ${pattern.slice(0, 60)}`)
           continue
         }
@@ -491,7 +510,7 @@ class InMemoryStorage {
   }
 
   /** Remove done/error agents older than maxAgeMs, and sessions with no agents older than maxAgeMs */
-  pruneStaleAgents(maxAgeMs: number) {
+  async pruneStaleAgents(maxAgeMs: number) {
     const now = Date.now()
     let pruned = 0
     for (const [sessionId, agentMap] of this.agents) {
@@ -594,6 +613,29 @@ class RedisStorage {
     } while (cursor !== '0')
     return out
   }
+
+  async pruneStaleAgents(maxAgeMs: number) {
+    const now = Date.now()
+    let cursor = 0
+    let pruned = 0
+    do {
+      const result = await this.client.scan(cursor, { MATCH: 'aa:session:*:agents', COUNT: 100 })
+      cursor = result.cursor
+      for (const key of result.keys) {
+        const agentsHash = await this.client.hGetAll(key)
+        for (const [agentId, raw] of Object.entries(agentsHash)) {
+          try {
+            const agent = JSON.parse(raw) as AgentRecord
+            if ((agent.state === 'done' || agent.state === 'error') && now - agent.lastUpdate > maxAgeMs) {
+              await this.client.hDel(key, agentId)
+              pruned++
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } while (cursor !== 0)
+    if (pruned > 0) console.log(`[redis-storage] pruned ${pruned} stale agents`)
+  }
 }
 
 type Storage = InMemoryStorage | RedisStorage
@@ -630,11 +672,11 @@ setInterval(() => {
   }
 }, 60_000).unref()
 
-// Prune done/error agents from InMemoryStorage every 30s (30s retention for completed agents)
+// Prune done/error agents every 30s (works for both InMemoryStorage and RedisStorage)
 setInterval(() => {
-  if (storage instanceof InMemoryStorage) {
-    storage.pruneStaleAgents(30_000)
-  }
+  storage.pruneStaleAgents(30_000).catch((e: unknown) => {
+    console.warn('[storage] pruneStaleAgents error:', e)
+  })
 }, 30_000).unref()
 
 // ---- Event processing -------------------------------------------------------
@@ -1181,6 +1223,7 @@ const httpServer = createServer(async (req, res) => {
       clearInterval(hb)
       metrics.sseConnectedNow = Math.max(0, metrics.sseConnectedNow - 1)
       set.delete(client)
+      if (set.size === 0) sseClients.delete(sessionId)
     })
     return
   }
@@ -1460,6 +1503,29 @@ const httpServer = createServer(async (req, res) => {
 
     const { messages, model, provider } = body
 
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return jsonRes(res, 400, { error: 'messages array is required and must not be empty' })
+    }
+    if (!model || typeof model !== 'string') {
+      return jsonRes(res, 400, { error: 'model is required' })
+    }
+
+    // Sanitize upstream error messages before returning to the client.
+    // Upstream providers may echo request headers (including API keys) in their
+    // error bodies; we extract only the human-readable message string and never
+    // forward raw upstream objects.
+    function sanitizeChatError(raw: Record<string, unknown>, httpStatus: number): string {
+      const errObj = raw?.error
+      if (errObj && typeof errObj === 'object') {
+        const msg = (errObj as Record<string, unknown>).message
+        if (typeof msg === 'string' && msg.length > 0) {
+          // Strip anything that looks like an API key (long alphanumeric tokens)
+          return msg.replace(/\b[A-Za-z0-9_\-]{32,}\b/g, '[REDACTED]').slice(0, 400)
+        }
+      }
+      return `Upstream API error (HTTP ${httpStatus})`
+    }
+
     if (provider === 'claude') {
       if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured on gateway. Set it in gateway .env and restart.' })
       const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
@@ -1479,11 +1545,12 @@ const httpServer = createServer(async (req, res) => {
       }).catch((err: Error) => { throw new Error(`Upstream fetch failed: ${err.message}`) })
 
       if (!upstream.ok) {
-        const err = await upstream.json().catch(() => ({ error: { message: upstream.statusText } })) as Record<string, unknown>
-        const errMsg = (err?.error as Record<string, unknown>)?.message || `API error: ${upstream.status}`
-        return jsonRes(res, upstream.status, { error: errMsg })
+        const errBody = await upstream.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>
+        return jsonRes(res, upstream.status, { error: sanitizeChatError(errBody, upstream.status) })
       }
 
+      // Only forward safe, known response headers — never forward Authorization,
+      // x-api-key, or any header that could expose gateway credentials.
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -1513,10 +1580,11 @@ const httpServer = createServer(async (req, res) => {
       }).catch((err: Error) => { throw new Error(`Upstream fetch failed: ${err.message}`) })
 
       if (!upstream.ok) {
-        const err = await upstream.json().catch(() => ({ error: { message: upstream.statusText } })) as Record<string, unknown>
-        return jsonRes(res, upstream.status, { error: (err?.error as Record<string, unknown>)?.message || `API error: ${upstream.status}` })
+        const errBody = await upstream.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>
+        return jsonRes(res, upstream.status, { error: sanitizeChatError(errBody, upstream.status) })
       }
 
+      // Only forward safe, known response headers.
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -1619,6 +1687,17 @@ io.on('connection', async (socket: Socket) => {
         metrics.publishRejected++
         socket.emit('error', { message: 'Forbidden' })
         return
+      }
+      // Re-check JWT expiry on every event. The token was verified once at
+      // connect time; a long-lived WebSocket can survive token expiry otherwise.
+      if (principal.tokenType === 'jwt' && principal.exp !== undefined) {
+        if (Math.floor(Date.now() / 1000) > principal.exp) {
+          metrics.publishRejected++
+          metrics.authFailures++
+          socket.emit('error', { message: 'Token expired' })
+          socket.disconnect(true)
+          return
+        }
       }
       if (!activeSessionId) {
         metrics.publishRejected++

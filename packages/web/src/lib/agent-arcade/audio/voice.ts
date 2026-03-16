@@ -10,6 +10,7 @@ const COOLDOWN_MS = 3000
 const lastSpoke = new Map<string, number>()
 let speaking = false
 let unlocked = false
+let voiceVolume = 0.7
 const queue: Array<{ text: string; agentIndex: number; agentId: string }> = []
 
 /**
@@ -53,11 +54,17 @@ function processQueue() {
 
   const utterance = new SpeechSynthesisUtterance(item.text)
   utterance.rate = 1.1
-  utterance.volume = 0.7
+  utterance.volume = voiceVolume
   // Vary pitch per agent (0.8 → 1.4)
   utterance.pitch = 0.8 + (item.agentIndex % 7) * 0.1
   utterance.onend = () => { speaking = false; processQueue() }
-  utterance.onerror = () => { speaking = false; processQueue() }
+  utterance.onerror = (e) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[voice] utterance error:', (e as SpeechSynthesisErrorEvent).error, 'text:', item.text.slice(0, 40))
+    }
+    speaking = false
+    processQueue()
+  }
 
   speechSynthesis.speak(utterance)
 }
@@ -82,4 +89,12 @@ export function stopVoice() {
 
 export function isVoiceAvailable(): boolean {
   return typeof speechSynthesis !== 'undefined'
+}
+
+/**
+ * Set the volume for all subsequent TTS utterances (0..1).
+ * Call this whenever settings.voiceVolume changes.
+ */
+export function setVoiceVolume(vol: number) {
+  voiceVolume = Math.max(0, Math.min(1, vol))
 }
