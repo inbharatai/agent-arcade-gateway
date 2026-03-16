@@ -40,7 +40,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
                     └── Any HTTP API ──┘                            + Intervention
 ```
 
-**Gateway-first API key design:** set your API key **once** in the gateway `.env` — every connected client auto-uses it. No per-client configuration needed.
+**Zero configuration to start watching agents.** No API keys needed for observability — just start the gateway, connect your agents, and watch them work. API keys are only needed if you use the optional [AI Chat Console](#ai-chat-console).
 
 ---
 
@@ -80,7 +80,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 - **Claude Sonnet 4.6** pre-selected — switch to GPT-4o, Gemini, Mistral from the dropdown
 - **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
 - **Export conversation** — save the full chat as markdown
-- **Gateway-first keys** — set `ANTHROPIC_API_KEY` once in `packages/gateway/.env`, the console auto-connects. No key prompts in the browser.
+- **Gateway-first keys** — set `ANTHROPIC_API_KEY` once in `packages/gateway/.env` and the console auto-connects (optional — only needed if you want to use the chat console)
 - **Ctrl+Enter to send** — keyboard-driven workflow
 - **Templates (Ctrl+K)** — quick command presets
 
@@ -188,17 +188,7 @@ npm ci
 cd packages/gateway && bun install && cd ../..
 ```
 
-### 2. Configure API Key (once — all clients share it)
-
-```bash
-# packages/gateway/.env
-ANTHROPIC_API_KEY=sk-ant-...
-# OPENAI_API_KEY=sk-...
-# GEMINI_API_KEY=...
-# MISTRAL_API_KEY=...
-```
-
-### 3. Start Everything
+### 2. Start Everything
 
 ```bash
 # Option A: one command
@@ -209,11 +199,27 @@ npm run dev:gateway    # Gateway on :47890
 npm run dev:web        # Dashboard on :47380
 ```
 
-### 4. Open the Dashboard
+### 3. Open the Dashboard
 
 ```
 http://localhost:47380
 ```
+
+That's it. **No API keys needed.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. Your agents already have their own API keys — Agent Arcade just watches the telemetry.
+
+### 4. (Optional) Enable the AI Chat Console
+
+If you want to use the built-in chat console to talk to AI models from the dashboard, add keys to `packages/gateway/.env`:
+
+```bash
+# packages/gateway/.env — OPTIONAL, only for the Console Chat feature
+ANTHROPIC_API_KEY=sk-ant-...      # Enables Claude in the console
+# OPENAI_API_KEY=sk-...           # Enables GPT-4o in the console
+# GEMINI_API_KEY=...              # Enables Gemini in the console
+# MISTRAL_API_KEY=...             # Enables Mistral in the console
+```
+
+Set once → every browser session auto-uses it. No per-client configuration needed.
 
 ### 5. Hook into Claude Code (optional — you're using it RIGHT NOW)
 
@@ -434,15 +440,16 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ## Cost Intelligence
 
-Real-time cost tracking for 25+ AI models:
+Real-time cost tracking for 29 AI models:
 
 | Provider | Models |
 |----------|--------|
-| **Anthropic** | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5 |
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3-mini |
-| **Google** | Gemini 2.0 Flash, 1.5 Pro |
-| **Mistral** | Mistral Large, Medium, Small |
-| **Local** | Ollama (free) |
+| **Anthropic** | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5, Sonnet 4, Opus 4, 3.5 Sonnet, 3 Opus |
+| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4.1, GPT-4.1-mini, GPT-4.1-nano, o3, o4-mini |
+| **Google** | Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash, 1.5 Pro, 1.5 Flash |
+| **Mistral** | Mistral Large, Mistral Small |
+| **DeepSeek** | DeepSeek V3, DeepSeek R1 |
+| **Local** | Llama 3/3.1/3.2, Qwen, Phi-3, CodeLlama (free) |
 
 Budget warning at 80% of configured threshold in dashboard. Configurable cost threshold notifications via Slack/Discord/Email. Export cost reports as JSON.
 
@@ -458,6 +465,7 @@ flowchart LR
     AA[Anthropic Adapter]
     LC[LangChain Adapter]
     CR[CrewAI / AutoGen]
+    OC[OpenClaw Adapter]
   end
 
   subgraph ZeroCode["Zero-Code Tools"]
@@ -621,10 +629,11 @@ npm run prod:start
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ANTHROPIC_API_KEY` | — | Claude API key (shared by all clients) |
-| `OPENAI_API_KEY` | — | OpenAI API key |
-| `GEMINI_API_KEY` | — | Google Gemini key |
-| `MISTRAL_API_KEY` | — | Mistral API key |
+| **Console Chat Keys** *(optional — only needed for the AI Chat Console, not for observability)* | | |
+| `ANTHROPIC_API_KEY` | — | Enables Claude in the console chat |
+| `OPENAI_API_KEY` | — | Enables GPT-4o in the console chat |
+| `GEMINI_API_KEY` | — | Enables Gemini in the console chat |
+| `MISTRAL_API_KEY` | — | Enables Mistral in the console chat |
 | `PORT` | `47890` | Gateway port |
 | `REQUIRE_AUTH` | `0` | Enable JWT auth |
 | `JWT_SECRET` | — | Auth token signing |
