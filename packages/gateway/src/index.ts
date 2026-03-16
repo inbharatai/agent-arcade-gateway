@@ -482,6 +482,35 @@ class InMemoryStorage {
     this.agents.set(sessionId, map)
   }
 
+  async deleteAgent(sessionId: string, agentId: string) {
+    const map = this.agents.get(sessionId)
+    if (map) {
+      map.delete(agentId)
+      if (map.size === 0) this.agents.delete(sessionId)
+    }
+  }
+
+  /** Remove done/error agents older than maxAgeMs, and sessions with no agents older than maxAgeMs */
+  pruneStaleAgents(maxAgeMs: number) {
+    const now = Date.now()
+    let pruned = 0
+    for (const [sessionId, agentMap] of this.agents) {
+      for (const [agentId, agent] of agentMap) {
+        const stale = (agent.state === 'done' || agent.state === 'error') && now - agent.lastUpdate > maxAgeMs
+        if (stale) { agentMap.delete(agentId); pruned++ }
+      }
+      if (agentMap.size === 0) this.agents.delete(sessionId)
+    }
+    // Prune sessions with no activity
+    for (const [sessionId, session] of this.sessions) {
+      if (now - session.lastActivity > maxAgeMs && !this.agents.has(sessionId)) {
+        this.sessions.delete(sessionId)
+        this.events.delete(sessionId)
+      }
+    }
+    if (pruned > 0) console.log(`[storage] pruned ${pruned} stale agents`)
+  }
+
   async listSessions(): Promise<SessionMeta[]> {
     return Array.from(this.sessions.values())
   }
@@ -600,6 +629,13 @@ setInterval(() => {
     if (now - entry.startedAt > 60_000) localRate.delete(key)
   }
 }, 60_000).unref()
+
+// Prune done/error agents from InMemoryStorage every 30s (30s retention for completed agents)
+setInterval(() => {
+  if (storage instanceof InMemoryStorage) {
+    storage.pruneStaleAgents(30_000)
+  }
+}, 30_000).unref()
 
 // ---- Event processing -------------------------------------------------------
 async function processEvent(ev: TelemetryEvent, principal: Principal) {
@@ -721,10 +757,16 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
 }
 
 async function sessionSnapshot(sessionId: string) {
-  const [agents, events] = await Promise.all([
+  const [allAgents, events] = await Promise.all([
     storage.getAgents(sessionId),
     storage.getReplay(sessionId, REPLAY_COUNT),
   ])
+  // Filter out done/error agents older than 30s — they cause ghost agent replays on reconnect
+  const now = Date.now()
+  const agents = allAgents.filter(a => {
+    if (a.state === 'done' || a.state === 'error') return now - a.lastUpdate < 30_000
+    return true
+  })
   return { agents, events }
 }
 

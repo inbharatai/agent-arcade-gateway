@@ -174,18 +174,24 @@ export function AgentArcadePanel({
       speak(cleaned, agentId, agent ? agents.indexOf(agent) : 0)
     },
     onDone: (agentId: string) => {
-      if (!settings.soundEnabled || !settings.sfxEnabled) return
       const agent = agents.find(a => a.id === agentId)
-      playDoneSfx()
-      // Trust chime on completion
-      if (agent) playTrustChime(agent.trustScore ?? 0.5)
+      if (settings.soundEnabled && settings.sfxEnabled) {
+        playDoneSfx()
+        if (agent) playTrustChime(agent.trustScore ?? 0.5)
+      }
+      if (settings.voiceEnabled && agent) {
+        speak(`${agent.name} completed`, agentId, agents.indexOf(agent))
+      }
     },
     onError: (agentId: string) => {
-      if (!settings.soundEnabled || !settings.sfxEnabled) return
-      playErrorSfx()
       const agent = agents.find(a => a.id === agentId)
-      // Recovery sound if agent previously had errors and recovered
-      if (agent && agent.recoveryCount > 0) playRecoverySfx()
+      if (settings.soundEnabled && settings.sfxEnabled) {
+        playErrorSfx()
+        if (agent && agent.recoveryCount > 0) playRecoverySfx()
+      }
+      if (settings.voiceEnabled && agent) {
+        speak(`${agent.name} encountered an error`, agentId, agents.indexOf(agent))
+      }
     },
     onSelect: (_agentId: string | null) => { if (settings.soundEnabled && settings.sfxEnabled) playSelectSfx() },
   }), [settings.soundEnabled, settings.sfxEnabled, settings.voiceEnabled, agents])

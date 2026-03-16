@@ -67,7 +67,7 @@ export function speak(text: string, agentId: string, agentIndex: number) {
   if (!text.trim()) return
 
   // Keep queue short
-  if (queue.length > 5) queue.splice(0, queue.length - 5)
+  if (queue.length >= 5) queue.splice(0, queue.length - 4)
 
   queue.push({ text: text.slice(0, 80), agentIndex, agentId })
   processQueue()
