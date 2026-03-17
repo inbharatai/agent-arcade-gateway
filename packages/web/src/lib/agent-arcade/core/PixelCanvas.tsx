@@ -195,11 +195,11 @@ export function PixelCanvas({
   // Ambient dust motes
   const motesRef = useRef<DustMote[]>([])
 
-  // Connection state refs (avoid useEffect dependency array size changes)
+  // Connection state refs (synced via useEffect to satisfy React lint rules)
   const connectionStatusRef = useRef(connectionStatus)
   const errorMessageRef = useRef(errorMessage)
-  connectionStatusRef.current = connectionStatus
-  errorMessageRef.current = errorMessage
+  useEffect(() => { connectionStatusRef.current = connectionStatus }, [connectionStatus])
+  useEffect(() => { errorMessageRef.current = errorMessage }, [errorMessage])
 
   const theme = useMemo(() => getTheme(themeId), [themeId])
   const pxConf = useMemo(() => PIXEL_CONFIGS[pixelLevel] || PIXEL_CONFIGS['16bit'], [pixelLevel])

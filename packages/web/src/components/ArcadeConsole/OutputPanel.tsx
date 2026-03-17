@@ -38,11 +38,10 @@ function extractFiles(text: string): string[] {
 export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelProps) {
   const [tab, setTab] = useState<Tab>('code')
   const [selectedBlock, setSelectedBlock] = useState(0)
+  const codeBlocks = useMemo(() => lastResponse ? extractCodeBlocks(lastResponse) : [], [lastResponse])
+  const files = useMemo(() => lastResponse ? extractFiles(lastResponse) : [], [lastResponse])
 
   if (!isVisible || !lastResponse) return null
-
-  const codeBlocks = useMemo(() => extractCodeBlocks(lastResponse), [lastResponse])
-  const files = useMemo(() => extractFiles(lastResponse), [lastResponse])
   const selectedCode = codeBlocks[selectedBlock]
 
   const copyCode = (code: string) => navigator.clipboard.writeText(code)
