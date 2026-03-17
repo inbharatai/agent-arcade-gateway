@@ -12,7 +12,6 @@ import { AchievementToast } from './AchievementToast'
 import { XPBar } from './XPBar'
 import { Leaderboard } from './Leaderboard'
 import { CostDashboard } from './CostDashboard'
-import { ReplayControls } from './ReplayControls'
 import { TracePanel } from './TracePanel'
 import { SessionReplay } from './SessionReplay'
 import { AchievementEngine } from '../achievements'
@@ -77,7 +76,6 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
   const [streakDays, setStreakDays] = useState(0)
   const [streakMultiplier, setStreakMultiplier] = useState(1.0)
   const [replayEngine, setReplayEngine] = useState<ReplayEngine | null>(null)
-  const [savedReplayCount, setSavedReplayCount] = useState(0)
 
   // Cost state (derived from events)
   const [sessionCost, setSessionCost] = useState<SessionCost>({
@@ -157,7 +155,9 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
         }
       }
 
-      if (isRecording) {
+      // Capture events whenever the engine is recording (covers both tab-bar and
+      // in-panel record buttons, since they all call engine.startRecording())
+      if (replayEngine.isRecording()) {
         replayEngine.captureEvent(event)
       }
     }
@@ -171,7 +171,8 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
       const streak = xpEngine.getStreak()
       setStreakDays(streak.days)
       setStreakMultiplier(streak.multiplier)
-      setSavedReplayCount(replayEngine.listRecordings().length)
+      // Sync recording indicator from engine state (covers SessionReplay's own record button)
+      setIsRecording(replayEngine.isRecording())
 
       // Cost calculation — prefer real token data from span records, fall back to estimation
       const agentCosts = agents.map(a => {
@@ -217,7 +218,7 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
     }, 0)
 
     return () => clearTimeout(timer)
-  }, [events, agentsMap, agents, sessionId, isRecording, leaderboardCategory])
+  }, [events, agentsMap, agents, sessionId, leaderboardCategory])
 
   // ── Leaderboard category change ───────────────────────────────────
   const handleCategoryChange = useCallback((cat: LeaderboardCategory) => {
@@ -226,23 +227,6 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
       const timer = setTimeout(() => {
         setLeaderboardEntries(leaderboardRef.current!.getLeaderboard(cat))
       }, 0)
-      return () => clearTimeout(timer)
-    }
-  }, [])
-
-  // ── Replay controls ───────────────────────────────────────────────
-  const handleStartRecording = useCallback(() => {
-    if (replayEngineRef.current) {
-      replayEngineRef.current.startRecording(sessionId)
-      const timer = setTimeout(() => setIsRecording(true), 0)
-      return () => clearTimeout(timer)
-    }
-  }, [sessionId])
-
-  const handleStopRecording = useCallback(() => {
-    if (replayEngineRef.current) {
-      replayEngineRef.current.stopRecording()
-      const timer = setTimeout(() => setIsRecording(false), 0)
       return () => clearTimeout(timer)
     }
   }, [])
@@ -363,22 +347,9 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
             </button>
           ))}
 
-          {/* Recording toggle */}
           <div className="ml-auto flex items-center gap-2">
-            {!isRecording ? (
-              <button
-                onClick={handleStartRecording}
-                className="text-[8px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-red-400 hover:border-red-400/50 transition-colors"
-              >
-                {'\u23FA'} Record
-              </button>
-            ) : (
-              <button
-                onClick={handleStopRecording}
-                className="text-[8px] px-2 py-1 rounded border border-red-500/50 text-red-400 animate-pulse"
-              >
-                {'\u23F9'} Stop
-              </button>
+            {isRecording && (
+              <span className="text-[8px] text-red-400 animate-pulse select-none">{'\u23FA'} REC</span>
             )}
             <button
               onClick={onToggle}
@@ -445,7 +416,6 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
             <div className="p-2">
               <SessionReplay
                 engine={replayEngine}
-                agents={agents}
                 events={events}
                 sessionId={sessionId}
                 processEvent={() => {}}

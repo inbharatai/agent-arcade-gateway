@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.2.4-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.5.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -17,6 +17,9 @@
 [![Zero Config](https://img.shields.io/badge/Zero_Config-Auto--Detect_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
 
 [![Directive Bridge](https://img.shields.io/badge/Directive_Bridge-Console_%E2%86%94_AI_Tools-10B981?style=for-the-badge)](#directive-bridge--console--ai-tool-loop)
+[![LangSmith Traces](https://img.shields.io/badge/LangSmith--grade-Span_Traces-2DD4BF?style=for-the-badge)](#-execution-traces--langsmith-grade)
+[![AgentOps Replay](https://img.shields.io/badge/AgentOps--grade-Session_Replay-F472B6?style=for-the-badge)](#-session-replay--agentops-grade)
+[![Helicone Analytics](https://img.shields.io/badge/Helicone--grade-Cost_Analytics-FFD700?style=for-the-badge)](#-cost-analytics--helicone-grade)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
@@ -40,12 +43,14 @@
 - [AI Chat Console](#-ai-chat-console)
 - [Agent Intervention System](#%EF%B8%8F-agent-intervention-system)
 - [Goal Mode](#-goal-mode)
+- [Execution Traces — LangSmith-grade](#-execution-traces--langsmith-grade)
+- [Session Replay — AgentOps-grade](#-session-replay--agentops-grade)
+- [Cost Analytics — Helicone-grade](#-cost-analytics--helicone-grade)
 - [Settings Panel](#%EF%B8%8F-settings-panel)
 - [Quick Start](#-quick-start)
 - [Framework Integrations](#-framework-integrations)
 - [All Supported Frameworks](#-all-supported-frameworks)
 - [Gamification System](#-gamification-system)
-- [Cost Intelligence](#-cost-intelligence)
 - [Audio & Voice System](#-audio--voice-system)
 - [What Makes Agent Arcade Unique](#-what-makes-agent-arcade-unique)
 - [Architecture](#%EF%B8%8F-architecture)
@@ -55,7 +60,7 @@
 - [Production Deployment](#-production-deployment)
 - [Environment Variables](#environment-variables)
 - [Security](#-security)
-- [Recent Changes](#-recent-changes-v321--v324)
+- [Recent Changes](#-recent-changes-v321--v350)
 - [Contributing](#-contributing)
 
 ---
@@ -120,7 +125,9 @@ Directives Queue
 
 Pixel-Art Canvas
 XP & Achievements
-Cost Tracking
+Execution Traces 🔍
+Session Replay ⏪
+Cost Analytics 💰
 Agent Intervention
 AI Chat Console
 
@@ -135,7 +142,7 @@ AI Chat Console
 | Problem | Agent Arcade Solution |
 |---------|----------------------|
 | "I can't see what my AI agents are doing" | Live pixel-art visualization with speech bubbles showing every action |
-| "I don't know how much my agents cost" | Real-time cost tracking for 29 models across 6 providers |
+| "I don't know how much my agents cost" | Real-time cost tracking with per-model breakdown, budget alerts, and historical charts |
 | "My agent is stuck and I can't intervene" | Pause, redirect, stop, or hand off any agent mid-task |
 | "I need different control surfaces" | REST API + WhatsApp + Dashboard + CLI — control from anywhere |
 | "Each framework needs different tooling" | One platform for Claude Code, OpenAI, LangChain, CrewAI, and 8 more |
@@ -144,6 +151,9 @@ AI Chat Console
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
 | "I need to manually enter my API key" | Auto-detects Claude Code OAuth subscription tokens + inline key entry in the Console banner |
 | "My console shows stale messages from the last session" | Fresh session on every mount — no stale history on new connections |
+| "LangSmith has better tracing" | Built-in span tree with I/O, token streams, and cost per span — no 3rd party account needed |
+| "AgentOps has better session replay" | Built-in timeline scrubber, agent swimlanes, and event inspector — works offline |
+| "Helicone has better cost analytics" | Per-model breakdowns from real token data, budget progress bars, budget alerts |
 
 ### How It Works
 
@@ -579,7 +589,123 @@ Control any agent from any framework via your personal WhatsApp — [see the ful
 
 ---
 
-## Settings Panel
+## 🔍 Execution Traces — LangSmith-grade
+
+Agent Arcade ships a built-in **span tree viewer** inside the **Traces** tab of the Game Panel. No LangSmith account, no API key, no 3rd-party service.
+
+### What You Get
+
+| Feature | Detail |
+|---------|--------|
+| **Hierarchical span tree** | Parent → child spans collapsed/expanded on click |
+| **I/O expansion** | Click any span to reveal full input & output payloads |
+| **Token stream log** | LLM spans show token-by-token streaming output |
+| **Cost per span** | Every LLM span reports `$0.000N` cost in gold |
+| **Status indicators** | `started` → `ok` → `error` with glow on errors |
+| **Summary bar** | Total spans, duration, prompt→completion tokens, total cost |
+| **Agent filter** | Filter tree by individual agent |
+
+### Emitting Spans
+
+Send `agent.span` events from any framework:
+
+```typescript
+// Via HTTP POST /v1/ingest
+{
+  "v": 1,
+  "type": "agent.span",
+  "agentId": "my-agent",
+  "sessionId": "my-session",
+  "ts": Date.now(),
+  "payload": {
+    "spanId": "span-abc-123",
+    "parentSpanId": "span-root",      // optional — for hierarchy
+    "name": "claude-3-5-sonnet",
+    "kind": "llm",                    // llm | tool | chain | retriever | custom
+    "status": "ok",                   // started | ok | error
+    "startTs": 1735000000000,
+    "endTs":   1735000002500,
+    "durationMs": 2500,
+    "promptTokens": 1024,
+    "completionTokens": 512,
+    "cost": 0.0024,
+    "model": "claude-3-5-sonnet-20241022",
+    "input": { "messages": [...] },   // any JSON
+    "output": { "content": "..." }    // any JSON
+  }
+}
+```
+
+### REST API
+
+```bash
+# Get all spans for a session
+GET /v1/session/:sessionId/traces
+
+# Filter by agent
+GET /v1/session/:sessionId/traces?agentId=my-agent
+```
+
+---
+
+## ⏪ Session Replay — AgentOps-grade
+
+The **Replay** tab provides a full **DVR-style session replay** system. Record any live session and replay it later with full fidelity — no 3rd-party service, works completely offline.
+
+### What You Get
+
+| Feature | Detail |
+|---------|--------|
+| **Timeline bar** | Colour-coded event markers (spawn=green, tool=amber, error=red) with click-to-seek |
+| **Agent swimlanes** | Per-agent Gantt-style state segments — see when each agent was thinking, using tools, done |
+| **Event inspector** | Events near the playhead shown with type, agent ID, and payload summary |
+| **Agent state snapshot** | Shows reconstructed agent state (name, state, tool count) at any point in time |
+| **Speed control** | 0.25× · 0.5× · 1× · 2× · 4× · 8× |
+| **Recording management** | Up to 50 recordings saved in localStorage, importable/exportable as JSON |
+
+### How to Use
+
+1. Open the **Replay** tab in the Game Panel
+2. Click **⏺ Record** — the engine captures every telemetry event with real timestamps
+3. Click **⏹ Stop Rec** — recording is saved automatically
+4. Select a saved recording → click ▶ to replay
+5. Drag the progress bar to seek, use speed selector to fast-forward
+
+Recordings are exported as JSON and can be shared between team members for debugging.
+
+---
+
+## 💰 Cost Analytics — Helicone-grade
+
+The **Costs** tab gives real-time and historical cost visibility — powered by real token data from `agent.span` events when available, falling back to smart estimates.
+
+### What You Get
+
+| Feature | Detail |
+|---------|--------|
+| **Session total** | Large, colour-coded cost display (green → amber → red as budget fills) |
+| **Budget progress bar** | Configurable budget limit with 80% warning threshold |
+| **Per-model breakdown** | Cost + token counts per model (Claude, GPT-4o, Gemini, Mistral, DeepSeek, Llama, etc.) |
+| **Per-agent table** | Every agent's model, input tokens, output tokens, and cost — sorted by cost |
+| **Real vs. estimated** | Uses actual span `promptTokens`/`completionTokens` when available; estimates otherwise |
+
+### Pricing (current rates)
+
+| Model | Input (per 1M tokens) | Output (per 1M tokens) |
+|-------|----------------------|------------------------|
+| Claude Opus | $15 | $75 |
+| Claude Sonnet | $3 | $15 |
+| Claude Haiku | $0.25 | $1.25 |
+| GPT-4o | $2.50 | $10 |
+| GPT-4o mini | $0.15 | $0.60 |
+| Gemini 1.5 Pro | $1.25 | $5 |
+| Mistral Large | $3 | $9 |
+| DeepSeek | $0.27 | $1.10 |
+| Llama / Ollama | free | free |
+
+---
+
+## ⚙️ Settings Panel
 
 The Settings panel (7 tabs) is accessible from the toolbar:
 
@@ -959,7 +1085,9 @@ Theme-based background loops that match the selected visual theme. Volume contro
 | | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
 | | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
 | | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
-| | **Session Replay** | Record, save, and replay agent sessions. Speed control (0.25x-8x), seeking, import/export JSON. Up to 50 saved replays in localStorage. |
+| | **Execution Traces** | LangSmith-grade span tree viewer. Hierarchical parent→child spans, I/O expansion, token stream log, cost per span. `agent.span` event type + `GET /v1/session/:id/traces` endpoint. No 3rd-party account needed. |
+| | **Session Replay** | AgentOps-grade DVR replay. Timeline scrubber, per-agent swimlanes (Gantt-style), event inspector, state snapshot at any seek point. Speed control 0.25×–8×, up to 50 recordings in localStorage. |
+| | **Cost Analytics** | Helicone-grade cost dashboard. Real token data from spans, per-model breakdowns, budget progress bar, 80% warning + over-budget alert. |
 | | **Arcade Bridge** | Console interactions emit telemetry events so the Console agent appears on the canvas alongside your other agents — complete with cost tracking and state transitions. |
 
 ---
@@ -1056,7 +1184,9 @@ flowchart LR
     CON["AI Chat Console"]
     SET["Settings Panel"]
     XP["XP + Achievements"]
-    RP["Session Replay"]
+    RP["Session Replay ⏪"]
+    TR["Execution Traces 🔍"]
+    CA["Cost Analytics 💰"]
   end
 
   subgraph Control["Control Surfaces"]
@@ -1262,7 +1392,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.2.4
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.5.0
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1390,10 +1520,19 @@ npm run prod:start
 
 ---
 
-## Recent Changes (v3.2.1 -> v3.2.4)
+## Recent Changes (v3.2.1 → v3.5.0)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.5.0** | **LangSmith-grade Execution Traces** — `TracePanel` component: hierarchical span tree, collapsible I/O, token stream log, cost per span, agent filter | Feature |
+| **v3.5.0** | **AgentOps-grade Session Replay** — `SessionReplay` component: timeline scrubber, agent swimlanes, event inspector, state snapshot at any point in time | Feature |
+| **v3.5.0** | **Helicone-grade Cost Analytics** — per-model breakdowns, real token data from spans, budget progress bar, 80% warning threshold | Feature |
+| **v3.5.0** | **`agent.span` event type** — gateway accepts span records, stores them with upsert (started→ok updates in place), exposes `GET /v1/session/:id/traces` endpoint | Feature |
+| **v3.5.0** | **Traces + Replay tabs** — GamePanel now has 6 tabs: XP / Achievements / Leaderboard / Costs / **Traces** / **Replay** | Feature |
+| **v3.5.0** | **Recording sync fix** — event capture now uses `engine.isRecording()` directly, so both tab-bar and in-panel record buttons work correctly | Fix |
+| **v3.5.0** | **Dead code cleanup** — removed unused `agents` prop from `SessionReplay`, unused `dur` variable, duplicate Record button, `ReplayControls` import, `savedReplayCount` state | Fix |
+| **v3.5.0** | **Milestone off-by-one fix** — tool milestone fires at 5th, 10th, 15th… tool (was firing at 1st, 6th, 11th…) | Fix |
+| **v3.5.0** | **State mutation fix** — `milestones` array is now always cloned before pushing, preventing Zustand state mutation | Fix |
 | **v3.2.4** | **Directive Bridge** — `directive-bridge.ts` polls `/v1/directives`, executes via `claude -p`, posts responses back. Console ↔ Claude Code fully interlinked. | Feature |
 | **v3.2.4** | **SSE interlink** — Console subscribes to gateway SSE stream. Responses from ALL connected AI tools (Claude Code, Cursor, WhatsApp) appear in Console chat with friendly agent names. | Feature |
 | **v3.2.4** | **Agent name mapping** — Known agent IDs mapped to emoji+name (🤖 Claude Code, 📱 WhatsApp AI, 📝 Cursor, 🧠 OpenAI, 💎 Gemini, 👥 CrewAI, 🔄 AutoGen, 🔗 LangChain, 🦞 OpenClaw) | Feature |
@@ -1407,13 +1546,10 @@ npm run prod:start
 | **v3.2.3** | Always fresh session on mount — no stale history on new connections | Fix |
 | **v3.2.3** | Stale chat history, cost reporting, and agent task announcement fixes | Fix |
 | **v3.2.3** | World-class pixel art — unique character silhouettes, props, and environment upgrades | Feature |
-| **v3.2.3** | Console button always visible with bold gradient styling | Fix |
 | **v3.2.2** | Comprehensive security, stability & performance audit — 55 issues fixed | Fix |
 | **v3.2.2** | WhatsApp self-chat AI relay + non-streaming `/v1/chat/sync` endpoint | Feature |
 | **v3.2.2** | Directives Queue — Console/WhatsApp commands bridged to connected tools via `/v1/directives` | Feature |
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
-| **v3.2.1** | Agent auto-cleanup bug + voice TTS + memory leak fixes | Fix |
-| **v3.2.1** | CI lint errors resolved (Date.now() purity, useMemo ordering, refs in useEffect) | Fix |
 | **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0.
@@ -1445,9 +1581,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.2.4                                                  |
+ |   AGENT ARCADE v3.5.0                                                  |
  |                                                                        |
- |   See every AI agent. Track every token. Control from anywhere.        |
+ |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |
  |                                                                        |
  +========================================================================+

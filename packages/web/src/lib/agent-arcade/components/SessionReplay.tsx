@@ -8,7 +8,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { ReplayEngine } from '../replay'
 import type { ReplayRecording } from '../replay'
-import type { Agent, AgentState, TelemetryEvent } from '../types'
+import type { AgentState, TelemetryEvent } from '../types'
 import { STATE_VISUALS, isValidState } from '../types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -283,12 +283,13 @@ function EventInspector({ events, currentTime }: { events: TelemetryEvent[]; cur
 interface SessionReplayProps {
   engine: ReplayEngine
   events: TelemetryEvent[]
-  agents: Agent[]
   sessionId: string
+  /** Called for each replayed event so callers can feed it back into the store.
+   *  Pass a no-op if you only want to view the recording without re-driving state. */
   processEvent: (event: TelemetryEvent) => void
 }
 
-export function SessionReplay({ engine, events, agents, sessionId, processEvent }: SessionReplayProps) {
+export function SessionReplay({ engine, events, sessionId, processEvent }: SessionReplayProps) {
   const [replayState, setReplayState] = useState(engine.getState())
   const [progress, setProgress] = useState(0)
   const [speed, setSpeed] = useState(1)
@@ -308,7 +309,6 @@ export function SessionReplay({ engine, events, agents, sessionId, processEvent 
       setReplayState(engine.getState())
       setProgress(engine.getProgress())
       if (engine.getState() === 'playing') {
-        const dur = engine.getDuration()
         setCurrentTime(engine.getCurrentTime())
       }
     }, 100)

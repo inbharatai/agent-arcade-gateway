@@ -84,8 +84,9 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
       const events = [...state.events, event].slice(-200)
       const narrative = { ...state.narrative, totalEvents: state.narrative.totalEvents + 1 }
 
+      // Always create a new array — never mutate previous state in place
       const milestonesCap = narrative.milestones.length > 100
-        ? narrative.milestones.slice(-80) : narrative.milestones
+        ? narrative.milestones.slice(-80) : [...narrative.milestones]
 
       const addMilestone = (m: NarrativeMilestone) => { milestonesCap.push(m) }
 
@@ -269,7 +270,8 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
             activeTime: computeActiveTime(a),
             lastUpdate: event.ts,
           })
-          if (a.tools.length % 5 === 0) {
+          // Fire a milestone every 5th tool (after the new tool is added, count is a.tools.length + 1)
+          if ((a.tools.length + 1) % 5 === 0) {
             addMilestone({ ts: event.ts, type: 'tool', agentId: event.agentId, agentName: a.name, description: `Used ${toolName} (${a.tools.length + 1} total)` })
           }
           break
