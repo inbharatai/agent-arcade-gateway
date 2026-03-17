@@ -580,6 +580,13 @@ export function AgentArcadePanel({
               </div>
               <button onClick={() => handleSelect(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
             </div>
+            {/* ── Agent Control Bar ─────────────────────────────────────── */}
+            <AgentControlBar
+              agent={selectedAgent}
+              gatewayUrl={gatewayUrl}
+              sessionId={sessionId}
+              authToken={authToken}
+            />
             <AgentDetails agent={selectedAgent} />
           </div>
         )}
@@ -620,6 +627,113 @@ export function AgentArcadePanel({
 
       {/* ── Debug panel ────────────────────────────────────────────────── */}
       {showDebug && <DebugPanel />}
+    </div>
+  )
+}
+
+// ── Agent Control Bar ────────────────────────────────────────────────────────
+
+interface AgentControlBarProps {
+  agent: Agent
+  gatewayUrl: string
+  sessionId: string
+  authToken?: string
+}
+
+function AgentControlBar({ agent, gatewayUrl, sessionId, authToken }: AgentControlBarProps) {
+  const [redirectText, setRedirectText] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)  // which action is in-flight
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+  const ctrl = async (action: 'pause' | 'resume' | 'stop' | 'redirect') => {
+    setBusy(action)
+    setFeedback(null)
+    try {
+      const url = `${gatewayUrl}/v1/agents/${encodeURIComponent(sessionId)}/${encodeURIComponent(agent.id)}/${action}`
+      const body = action === 'redirect' ? JSON.stringify({ instruction: redirectText.trim() }) : undefined
+      const res = await fetch(url, { method: 'POST', headers, body })
+      const json = await res.json().catch(() => ({})) as Record<string, unknown>
+      if (res.ok) {
+        setFeedback({ ok: true, msg: action === 'redirect' ? '↪️ Redirected' : action === 'stop' ? '⏹ Stopped' : action === 'pause' ? '⏸ Paused' : '▶️ Resumed' })
+        if (action === 'redirect') setRedirectText('')
+      } else {
+        setFeedback({ ok: false, msg: String(json.error || `Error ${res.status}`) })
+      }
+    } catch (e) {
+      setFeedback({ ok: false, msg: String((e as Error).message) })
+    } finally {
+      setBusy(null)
+      setTimeout(() => setFeedback(null), 3000)
+    }
+  }
+
+  const isPaused = agent.state === 'idle' && agent.label?.toLowerCase().includes('paused')
+  const isStopped = agent.state === 'done' || agent.state === 'idle'
+  const isActive = !isStopped
+
+  return (
+    <div className="space-y-2">
+      {/* Control buttons */}
+      <div className="flex gap-1.5">
+        {/* Pause / Resume */}
+        <button
+          onClick={() => ctrl(isPaused ? 'resume' : 'pause')}
+          disabled={!!busy}
+          title={isPaused ? 'Resume agent' : 'Pause agent'}
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-bold border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 disabled:opacity-50 transition-colors"
+        >
+          {busy === 'pause' || busy === 'resume'
+            ? <span className="animate-spin">⟳</span>
+            : isPaused ? '▶️' : '⏸'}
+          <span>{isPaused ? 'Resume' : 'Pause'}</span>
+        </button>
+
+        {/* Stop */}
+        <button
+          onClick={() => ctrl('stop')}
+          disabled={!!busy || !isActive}
+          title="Stop agent"
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-bold border border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 transition-colors"
+        >
+          {busy === 'stop' ? <span className="animate-spin">⟳</span> : '⏹'}
+          <span>Stop</span>
+        </button>
+      </div>
+
+      {/* Redirect input */}
+      <div className="space-y-1">
+        <label className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">Change Task</label>
+        <textarea
+          value={redirectText}
+          onChange={e => setRedirectText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && redirectText.trim()) ctrl('redirect') }}
+          placeholder="Type new task… (Ctrl+Enter to send)"
+          rows={2}
+          className="w-full px-2 py-1.5 rounded border border-border bg-background text-[10px] text-foreground placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-1 focus:ring-purple-500/50"
+        />
+        <button
+          onClick={() => ctrl('redirect')}
+          disabled={!!busy || !redirectText.trim()}
+          className="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded text-[10px] font-bold border border-purple-500/40 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 disabled:opacity-40 transition-colors"
+        >
+          {busy === 'redirect' ? <span className="animate-spin">⟳</span> : '↪️'}
+          <span>Redirect Agent</span>
+        </button>
+      </div>
+
+      {/* Feedback toast */}
+      {feedback && (
+        <div className={`px-2 py-1.5 rounded text-[10px] font-medium text-center border ${
+          feedback.ok
+            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        }`}>
+          {feedback.msg}
+        </div>
+      )}
     </div>
   )
 }
