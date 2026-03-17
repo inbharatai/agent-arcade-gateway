@@ -21,6 +21,10 @@
 [![AgentOps Replay](https://img.shields.io/badge/AgentOps--grade-Session_Replay-F472B6?style=for-the-badge)](#-session-replay--agentops-grade)
 [![Helicone Analytics](https://img.shields.io/badge/Helicone--grade-Cost_Analytics-FFD700?style=for-the-badge)](#-cost-analytics--helicone-grade)
 
+[![SQLite Persistence](https://img.shields.io/badge/SQLite-Zero--Ops_Persistence-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#-quick-start)
+[![CrewAI](https://img.shields.io/badge/CrewAI-Python_Adapter-FF6B6B?style=for-the-badge)](#crewai-python)
+[![AutoGen](https://img.shields.io/badge/AutoGen-Python_Adapter-0078D4?style=for-the-badge&logo=microsoft&logoColor=white)](#autogen-python)
+
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
 <br />
@@ -151,9 +155,10 @@ AI Chat Console
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
 | "I need to manually enter my API key" | Auto-detects Claude Code OAuth subscription tokens + inline key entry in the Console banner |
 | "My console shows stale messages from the last session" | Fresh session on every mount — no stale history on new connections |
-| "LangSmith has better tracing" | Built-in span tree with I/O, token streams, and cost per span — no 3rd party account needed |
-| "AgentOps has better session replay" | Built-in timeline scrubber, agent swimlanes, and event inspector — works offline |
-| "Helicone has better cost analytics" | Per-model breakdowns from real token data, budget progress bars, budget alerts |
+| "LangSmith has better tracing" | Span tree with search, error highlighting, and side-by-side span comparison — no 3rd party account |
+| "AgentOps has better session replay" | Timeline scrubber, agent swimlanes, event inspector, failure detection — works fully offline |
+| "Helicone has better cost analytics" | Per-model breakdown, budget alerts (80% warning + exceeded banner), model × call table, CSV export |
+| "Data is lost when the server restarts" | SQLite persistence — `DB_PATH=./arcade.db` and everything survives restarts, zero extra services |
 
 ### How It Works
 
