@@ -34,7 +34,8 @@ function formatTokens(n?: number): string {
 
 function formatCost(c?: number): string {
   if (c == null) return ''
-  if (c < 0.01) return `$${(c * 100).toFixed(2)}¢`
+  if (c === 0) return '$0.00'
+  if (c < 0.01) return `¢${(c * 100).toFixed(2)}`
   return `$${c.toFixed(4)}`
 }
 
@@ -91,9 +92,7 @@ function SpanRow({ node, depth, search, compareMode, compareSpans, onToggleCompa
   const isError = s.status === 'error'
   const isSelectedForCompare = compareSpans.includes(s.spanId)
 
-  const rowBackground = isError
-    ? (expanded ? '#1a0a0a' : '#1a0a0a')
-    : (expanded ? 'rgba(255,255,255,0.02)' : 'transparent')
+  const rowBackground = isError ? '#1a0a0a' : (expanded ? 'rgba(255,255,255,0.02)' : 'transparent')
 
   return (
     <>
@@ -217,7 +216,7 @@ function SpanRow({ node, depth, search, compareMode, compareSpans, onToggleCompa
               <span style={{ color: '#a78bfa', fontSize: 7 }}>TOKEN STREAM ({s.tokens.length} tokens)</span>
               <div style={{ background: '#0a0a1a', borderRadius: 4, padding: 6, maxHeight: 80, overflow: 'auto', fontSize: 8, color: '#ccc', lineHeight: 1.5 }}>
                 {s.tokens.map((t, i) => (
-                  <span key={i} title={`+${t.ts}ms`} style={{ borderBottom: '1px dotted #333' }}>
+                  <span key={`${i}-${t.ts}`} title={`+${t.ts}ms`} style={{ borderBottom: '1px dotted #333' }}>
                     {t.text}
                   </span>
                 ))}

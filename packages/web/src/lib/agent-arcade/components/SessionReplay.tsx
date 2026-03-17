@@ -123,7 +123,7 @@ function Timeline({ events, duration, startTs, currentTime, onSeek }: TimelinePr
           if (!marker) return null
           return (
             <div
-              key={i}
+              key={`${ev.type}-${ev.ts}-${i}`}
               title={`${ev.type} @ ${formatTime(ev.ts - startTs)}`}
               style={{
                 position: 'absolute', left: `${pct}%`, top: 2, bottom: 2,
@@ -233,7 +233,7 @@ function Swimlanes({ events, duration, startTs, currentTime, onSeek }: Swimlanes
             >
               {segments.map((seg, i) => (
                 <div
-                  key={i}
+                  key={`${seg.state}-${seg.left}-${i}`}
                   title={seg.state}
                   style={{
                     position: 'absolute', left: `${seg.left}%`, width: `${seg.width}%`,
@@ -274,7 +274,7 @@ function EventInspector({ events, currentTime }: { events: TelemetryEvent[]; cur
           const marker = EVENT_MARKERS[ev.type]
           const p = ev.payload as Record<string, unknown>
           return (
-            <div key={i} style={{ display: 'flex', gap: 6, fontSize: 8, color: '#aaa', padding: '2px 4px', background: '#0a0a1a', borderRadius: 3 }}>
+            <div key={`${ev.type}-${ev.ts}-${i}`} style={{ display: 'flex', gap: 6, fontSize: 8, color: '#aaa', padding: '2px 4px', background: '#0a0a1a', borderRadius: 3 }}>
               <span>{marker?.icon || '📡'}</span>
               <span style={{ color: marker?.color || '#888' }}>{ev.type.replace('agent.', '')}</span>
               <span style={{ color: '#666', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -308,6 +308,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
   const [selectedRecording, setSelectedRecording] = useState<ReplayRecording | null>(null)
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [showErrorsOnly, setShowErrorsOnly] = useState(false)
+  const [showAllRecordings, setShowAllRecordings] = useState(false)
   const updateRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   // Load recordings list
@@ -530,32 +531,43 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
           <div style={{ fontSize: 8, color: '#444', padding: '8px 0' }}>
             {showErrorsOnly
               ? 'No recordings with errors found.'
-              : 'No recordings. Click \u201cRecord\u201d to capture a session.'}
+              : 'No recordings yet. Click \u201cRecord\u201d to capture a session.'}
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 4 }}>
-            {displayedRecordings.slice(0, 10).map(rec => (
-              <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#111', borderRadius: 4, padding: '4px 8px', fontSize: 7 }}>
-                <button onClick={() => handlePlay(rec.id)} style={{ background: '#222', border: '1px solid #333', borderRadius: 3, color: '#4ade80', cursor: 'pointer', padding: '2px 6px', fontSize: 7 }}>
-                  ▶
-                </button>
-                <span style={{ color: '#ccc', flex: 1 }}>
-                  {rec.sessionName || rec.sessionId.slice(0, 12)}
-                  {errorRecordingIds.has(rec.id) && (
-                    <span
-                      title="This recording contains agent errors"
-                      style={{ marginLeft: 5, color: '#ef4444', fontSize: 8 }}
-                    >
-                      ⚠
-                    </span>
-                  )}
-                </span>
-                <span style={{ color: '#666' }}>{rec.eventCount} events</span>
-                <span style={{ color: '#666' }}>{rec.agentCount} agents</span>
-                <span style={{ color: '#555' }}>{formatTime(rec.duration)}</span>
-                <button onClick={() => handleDelete(rec.id)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 7 }}>✕</button>
-              </div>
-            ))}
+            {(showAllRecordings ? displayedRecordings : displayedRecordings.slice(0, 10)).map(rec => {
+              const name = rec.sessionName || (rec.sessionId.length > 12 ? rec.sessionId.slice(0, 12) + '…' : rec.sessionId)
+              return (
+                <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#111', borderRadius: 4, padding: '4px 8px', fontSize: 7 }}>
+                  <button onClick={() => handlePlay(rec.id)} style={{ background: '#222', border: '1px solid #333', borderRadius: 3, color: '#4ade80', cursor: 'pointer', padding: '2px 6px', fontSize: 7 }}>
+                    ▶
+                  </button>
+                  <span style={{ color: '#ccc', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {name}
+                    {errorRecordingIds.has(rec.id) && (
+                      <span
+                        title="This recording contains agent errors"
+                        style={{ marginLeft: 5, color: '#ef4444', fontSize: 8 }}
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ color: '#666', flexShrink: 0 }}>{rec.eventCount}ev</span>
+                  <span style={{ color: '#666', flexShrink: 0 }}>{rec.agentCount}ag</span>
+                  <span style={{ color: '#555', flexShrink: 0 }}>{formatTime(rec.duration)}</span>
+                  <button onClick={() => handleDelete(rec.id)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 7, flexShrink: 0 }}>✕</button>
+                </div>
+              )
+            })}
+            {displayedRecordings.length > 10 && (
+              <button
+                onClick={() => setShowAllRecordings(v => !v)}
+                style={{ background: 'none', border: '1px solid #333', borderRadius: 4, color: '#666', cursor: 'pointer', fontSize: 7, padding: '3px 0', textAlign: 'center' }}
+              >
+                {showAllRecordings ? 'Show less' : `Show all ${displayedRecordings.length} recordings`}
+              </button>
+            )}
           </div>
         )}
       </div>

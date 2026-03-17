@@ -213,7 +213,7 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
         totalCost,
         agentCosts,
         modelBreakdown,
-        budgetUsed: totalCost / 10,
+        budgetUsed: 0, // CostDashboard computes its own budgetPct from totalCost/effectiveBudget
       })
     }, 0)
 
@@ -224,23 +224,29 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
   const handleCategoryChange = useCallback((cat: LeaderboardCategory) => {
     setLeaderboardCategory(cat)
     if (leaderboardRef.current) {
-      const timer = setTimeout(() => {
-        setLeaderboardEntries(leaderboardRef.current!.getLeaderboard(cat))
-      }, 0)
-      return () => clearTimeout(timer)
+      setLeaderboardEntries(leaderboardRef.current.getLeaderboard(cat))
     }
   }, [])
 
   // ── Dismiss handlers ──────────────────────────────────────────────
   const dismissToast = useCallback(() => {
-    const timer = setTimeout(() => setToastAchievement(null), 0)
-    return () => clearTimeout(timer)
+    setToastAchievement(null)
   }, [])
 
   const dismissLevelUp = useCallback(() => {
-    const timer = setTimeout(() => setToastLevelUp(null), 0)
-    return () => clearTimeout(timer)
+    setToastLevelUp(null)
   }, [])
+
+  // ── Replay event processor — feeds replayed events through local engines ──
+  const processReplayEvent = useCallback((event: TelemetryEvent) => {
+    const achievementEngine = achievementEngineRef.current
+    const xpEngine = xpEngineRef.current
+    const leaderboard = leaderboardRef.current
+    if (!achievementEngine || !xpEngine || !leaderboard) return
+    achievementEngine.check(event, agentsMap)
+    xpEngine.processEvent(event, agentsMap)
+    leaderboard.processEvent(event, agentsMap)
+  }, [agentsMap])
 
   // ── Find the "primary" agent XP to show in the header ─────────────
   const primaryXP = useMemo(() => {
@@ -418,7 +424,7 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
                 engine={replayEngine}
                 events={events}
                 sessionId={sessionId}
-                processEvent={() => {}}
+                processEvent={processReplayEvent}
               />
             </div>
           )}

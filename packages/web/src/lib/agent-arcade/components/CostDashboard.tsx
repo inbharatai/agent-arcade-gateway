@@ -36,7 +36,8 @@ interface CostDashboardProps {
 }
 
 function formatCost(cost: number): string {
-  if (cost < 0.01) return `$${(cost * 100).toFixed(2)}c`
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return `¢${(cost * 100).toFixed(2)}`
   return `$${cost.toFixed(4)}`
 }
 
@@ -289,7 +290,7 @@ export function CostDashboard({ sessionCost, budgetLimit, onClose }: CostDashboa
         </div>
       </div>
 
-      {/* Model Breakdown */}
+      {/* Model quick-view */}
       {modelEntries.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <h3 style={{ fontSize: 9, color: '#888', marginBottom: 8 }}>Cost by Model</h3>
@@ -316,9 +317,9 @@ export function CostDashboard({ sessionCost, budgetLimit, onClose }: CostDashboa
         </div>
       )}
 
-      {/* Model Breakdown Table */}
+      {/* Detailed model × call breakdown table */}
       <div style={{ marginBottom: 16 }}>
-        <h3 style={{ fontSize: 9, color: '#888', marginBottom: 8 }}>Model Breakdown</h3>
+        <h3 style={{ fontSize: 9, color: '#888', marginBottom: 8 }}>Model × Calls</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
