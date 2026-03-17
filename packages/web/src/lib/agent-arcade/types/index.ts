@@ -8,6 +8,7 @@ export const PROTOCOL_VERSION = 1
 export const EVENT_TYPES = [
   'agent.spawn', 'agent.state', 'agent.tool', 'agent.message',
   'agent.link', 'agent.position', 'agent.end',
+  'agent.span',
   'session.start', 'session.end',
 ] as const
 export type EventType = (typeof EVENT_TYPES)[number]
@@ -84,6 +85,10 @@ export interface Agent {
   outputTokens?: number
   /** Cumulative cost in USD */
   cost?: number
+
+  // ── Rich Tracing ────────────────────────────────────────────────
+  /** Execution spans for detailed tracing (capped at 200) */
+  spans: SpanRecord[]
 }
 
 export interface AgentStateEntry {
@@ -149,4 +154,86 @@ export const AGENT_COLORS = [
 
 export function isValidState(s: string): s is AgentState {
   return (AGENT_STATES as readonly string[]).includes(s)
+}
+
+// ── Rich Tracing (LangSmith-grade) ─────────────────────────────────────────
+
+export type SpanKind = 'llm' | 'tool' | 'chain' | 'retriever' | 'custom'
+export type SpanStatus = 'started' | 'ok' | 'error'
+
+export interface SpanRecord {
+  spanId: string
+  agentId: string
+  sessionId: string
+  parentSpanId?: string
+  name: string
+  kind: SpanKind
+  status: SpanStatus
+  startTs: number
+  endTs?: number
+  durationMs?: number
+  input?: unknown
+  output?: unknown
+  error?: string
+  metadata?: Record<string, unknown>
+  /** Token-level streaming log for LLM spans */
+  tokens?: Array<{ ts: number; text: string }>
+  /** Model used (for LLM spans) */
+  model?: string
+  /** Token counts for LLM spans */
+  promptTokens?: number
+  completionTokens?: number
+  /** Cost for this span */
+  cost?: number
+}
+
+export interface SpanTree {
+  span: SpanRecord
+  children: SpanTree[]
+}
+
+/** Build a tree structure from flat span records */
+export function buildSpanTree(spans: SpanRecord[]): SpanTree[] {
+  const byId = new Map<string, SpanTree>()
+  const roots: SpanTree[] = []
+  const sorted = [...spans].sort((a, b) => a.startTs - b.startTs)
+  for (const span of sorted) {
+    const node: SpanTree = { span, children: [] }
+    byId.set(span.spanId, node)
+    if (span.parentSpanId && byId.has(span.parentSpanId)) {
+      byId.get(span.parentSpanId)!.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+  return roots
+}
+
+// ── Cost Analytics (Helicone-grade) ────────────────────────────────────────
+
+export interface CostRecord {
+  sessionId: string
+  agentId: string
+  model: string
+  inputTokens: number
+  outputTokens: number
+  cost: number
+  ts: number
+  spanId?: string
+}
+
+export interface DailyCost {
+  date: string    // YYYY-MM-DD
+  cost: number
+  inputTokens: number
+  outputTokens: number
+  sessions: number
+}
+
+export interface ModelCostBreakdown {
+  model: string
+  cost: number
+  inputTokens: number
+  outputTokens: number
+  calls: number
 }

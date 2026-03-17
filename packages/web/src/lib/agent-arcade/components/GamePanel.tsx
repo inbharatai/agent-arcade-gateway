@@ -13,6 +13,8 @@ import { XPBar } from './XPBar'
 import { Leaderboard } from './Leaderboard'
 import { CostDashboard } from './CostDashboard'
 import { ReplayControls } from './ReplayControls'
+import { TracePanel } from './TracePanel'
+import { SessionReplay } from './SessionReplay'
 import { AchievementEngine } from '../achievements'
 import type { Achievement, AchievementUnlockEvent } from '../achievements'
 import { XPEngine } from '../xp'
@@ -27,13 +29,14 @@ import type { Agent, TelemetryEvent } from '../types'
 // Tab type
 // ---------------------------------------------------------------------------
 
-type GameTab = 'xp' | 'achievements' | 'leaderboard' | 'costs' | 'replay'
+type GameTab = 'xp' | 'achievements' | 'leaderboard' | 'costs' | 'traces' | 'replay'
 
 const TABS: { key: GameTab; label: string; icon: string }[] = [
   { key: 'xp', label: 'XP', icon: '\u2B50' },
   { key: 'achievements', label: 'Achievements', icon: '\uD83C\uDFC6' },
   { key: 'leaderboard', label: 'Leaderboard', icon: '\uD83D\uDCC8' },
   { key: 'costs', label: 'Costs', icon: '\uD83D\uDCB0' },
+  { key: 'traces', label: 'Traces', icon: '\uD83D\uDD0D' },
   { key: 'replay', label: 'Replay', icon: '\u23EA' },
 ]
 
@@ -170,15 +173,27 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
       setStreakMultiplier(streak.multiplier)
       setSavedReplayCount(replayEngine.listRecordings().length)
 
-      // Inline cost calculation from agent data
-      const agentCosts = agents.map(a => ({
-        agentId: a.id,
-        agentName: a.name,
-        model: a.aiModel || 'unknown',
-        inputTokens: a.tools.length * 500,
-        outputTokens: a.messages.length * 300,
-        totalCost: estimateCost(a.aiModel || 'unknown', a.tools.length * 500, a.messages.length * 300),
-      }))
+      // Cost calculation — prefer real token data from span records, fall back to estimation
+      const agentCosts = agents.map(a => {
+        // Accumulate real token counts from span records
+        const realInput = a.spans?.reduce((s, sp) => s + (sp.promptTokens || 0), 0) || 0
+        const realOutput = a.spans?.reduce((s, sp) => s + (sp.completionTokens || 0), 0) || 0
+        const realCost = a.spans?.reduce((s, sp) => s + (sp.cost || 0), 0) || 0
+
+        // Fall back to estimates only when no real data is available
+        const inputTokens = realInput > 0 ? realInput : a.tools.length * 500
+        const outputTokens = realOutput > 0 ? realOutput : a.messages.length * 300
+        const totalCost = realCost > 0 ? realCost : estimateCost(a.aiModel || 'unknown', inputTokens, outputTokens)
+
+        return {
+          agentId: a.id,
+          agentName: a.name,
+          model: a.aiModel || 'unknown',
+          inputTokens,
+          outputTokens,
+          totalCost,
+        }
+      })
 
       const modelBreakdown: Record<string, { inputTokens: number; outputTokens: number; cost: number }> = {}
       for (const ac of agentCosts) {
@@ -420,13 +435,21 @@ export function GamePanel({ agents, agentsMap, events, sessionId, visible, onTog
             </div>
           )}
 
+          {activeTab === 'traces' && (
+            <div className="p-2">
+              <TracePanel agents={agents} />
+            </div>
+          )}
+
           {activeTab === 'replay' && replayEngine && (
-            <div className="p-3 space-y-3">
-              <ReplayControls engine={replayEngine} />
-              <div className="text-[8px] text-muted-foreground space-y-1">
-                <p>{'\uD83D\uDCBE'} Saved replays: {savedReplayCount} / 50</p>
-                <p>{'\u2139\uFE0F'} Click Record to capture the current session, then replay it with speed control.</p>
-              </div>
+            <div className="p-2">
+              <SessionReplay
+                engine={replayEngine}
+                agents={agents}
+                events={events}
+                sessionId={sessionId}
+                processEvent={() => {}}
+              />
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand'
-import { Agent, AgentState, AgentStateEntry, ConnectionStatus, GatewayConfig, TelemetryEvent, SessionNarrative, NarrativeMilestone, isValidState } from '../types'
+import { Agent, AgentState, AgentStateEntry, ConnectionStatus, GatewayConfig, TelemetryEvent, SessionNarrative, NarrativeMilestone, SpanRecord, isValidState } from '../types'
 import { loadSettings, saveSettings, ArcadeSettings, DEFAULT_SETTINGS } from '../settings'
 
 interface ArcadeStore {
@@ -166,6 +166,7 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
           spawnedAt: event.ts,
           errorCount: 0,
           recoveryCount: 0,
+          spans: [],
         }
         agents.set(event.agentId, created)
         return created
@@ -202,6 +203,7 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
             spawnedAt: event.ts,
             errorCount: 0,
             recoveryCount: 0,
+            spans: [],
           })
           addMilestone({ ts: event.ts, type: 'spawn', agentId: event.agentId, agentName: name || 'Agent', description: `${name || 'Agent'} joined as ${typeof p.role === 'string' ? p.role : 'assistant'}` })
           break
@@ -334,6 +336,44 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
           addMilestone({ ts: event.ts, type: 'done', agentId: event.agentId, agentName: a.name, description: reason })
           break
         }
+        case 'agent.span': {
+          const a = ensureAgent()
+          const p = event.payload as Record<string, unknown>
+          if (typeof p.spanId !== 'string') break
+          const span: SpanRecord = {
+            spanId: p.spanId,
+            agentId: event.agentId,
+            sessionId: event.sessionId,
+            parentSpanId: typeof p.parentSpanId === 'string' ? p.parentSpanId : undefined,
+            name: typeof p.name === 'string' ? p.name : 'span',
+            kind: (['llm', 'tool', 'chain', 'retriever', 'custom'].includes(String(p.kind)) ? p.kind : 'custom') as SpanRecord['kind'],
+            status: (['started', 'ok', 'error'].includes(String(p.status)) ? p.status : 'started') as SpanRecord['status'],
+            startTs: typeof p.startTs === 'number' ? p.startTs : event.ts,
+            endTs: typeof p.endTs === 'number' ? p.endTs : undefined,
+            durationMs: typeof p.durationMs === 'number' ? p.durationMs : undefined,
+            input: p.input,
+            output: p.output,
+            error: typeof p.error === 'string' ? p.error : undefined,
+            metadata: typeof p.metadata === 'object' && p.metadata ? p.metadata as Record<string, unknown> : undefined,
+            tokens: Array.isArray(p.tokens) ? p.tokens as SpanRecord['tokens'] : undefined,
+            model: typeof p.model === 'string' ? p.model : undefined,
+            promptTokens: typeof p.promptTokens === 'number' ? p.promptTokens : undefined,
+            completionTokens: typeof p.completionTokens === 'number' ? p.completionTokens : undefined,
+            cost: typeof p.cost === 'number' ? p.cost : undefined,
+          }
+          // Upsert: if span already exists (started → ok/error), update it
+          const existingIdx = a.spans.findIndex(s => s.spanId === span.spanId)
+          const updatedSpans = [...a.spans]
+          if (existingIdx >= 0) {
+            updatedSpans[existingIdx] = { ...updatedSpans[existingIdx], ...span }
+          } else {
+            updatedSpans.push(span)
+          }
+          // Cap at 200 spans per agent
+          const cappedSpans = updatedSpans.length > 200 ? updatedSpans.slice(-200) : updatedSpans
+          agents.set(event.agentId, { ...a, spans: cappedSpans, lastUpdate: event.ts })
+          break
+        }
       }
 
       const peakAgents = Math.max(narrative.peakAgents, agents.size)
@@ -355,6 +395,7 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
         spawnedAt: a.spawnedAt ?? a.lastUpdate ?? Date.now(),
         errorCount: a.errorCount ?? 0,
         recoveryCount: a.recoveryCount ?? 0,
+        spans: Array.isArray(a.spans) ? a.spans : [],
       }
       agents.set(a.id, normalized)
     })

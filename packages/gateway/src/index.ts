@@ -166,7 +166,7 @@ const notificationRouter = buildNotificationRouter()
 // ---- Types ------------------------------------------------------------------
 type EventType =
   | 'agent.spawn' | 'agent.state' | 'agent.tool' | 'agent.message'
-  | 'agent.link' | 'agent.position' | 'agent.end'
+  | 'agent.link' | 'agent.position' | 'agent.end' | 'agent.span'
   | 'session.start' | 'session.end'
 
 type AgentState =
@@ -180,7 +180,8 @@ const VALID_STATES: AgentState[] = [
 
 const VALID_EVENT_TYPES: EventType[] = [
   'agent.spawn', 'agent.state', 'agent.tool', 'agent.message',
-  'agent.link', 'agent.position', 'agent.end', 'session.start', 'session.end',
+  'agent.link', 'agent.position', 'agent.end', 'agent.span',
+  'session.start', 'session.end',
 ]
 
 interface TelemetryEvent {
@@ -579,10 +580,37 @@ async function authenticateSocket(socket: Socket): Promise<Principal | null> {
 }
 
 // ---- Storage ----------------------------------------------------------------
+
+/** Minimal span record stored in-memory for the /traces endpoint */
+interface SpanRecord {
+  spanId: string
+  agentId: string
+  sessionId: string
+  parentSpanId?: string
+  name: string
+  kind: string
+  status: string
+  startTs: number
+  endTs?: number
+  durationMs?: number
+  input?: unknown
+  output?: unknown
+  error?: string
+  model?: string
+  promptTokens?: number
+  completionTokens?: number
+  cost?: number
+  tokens?: Array<{ ts: number; text: string }>
+  metadata?: Record<string, unknown>
+}
+
+const MAX_SPANS_PER_SESSION = 1000
+
 class InMemoryStorage {
   private sessions = new Map<string, SessionMeta>()
   private agents = new Map<string, Map<string, AgentRecord>>()
   private events = new Map<string, TelemetryEvent[]>()
+  private spans = new Map<string, Map<string, SpanRecord>>()
   goals = new Map<string, GoalRecord>()
 
   getGoal(goalId: string): GoalRecord | null {
@@ -639,6 +667,25 @@ class InMemoryStorage {
       map.delete(agentId)
       if (map.size === 0) this.agents.delete(sessionId)
     }
+  }
+
+  /** Upsert a span (by spanId) for a session */
+  saveSpan(sessionId: string, span: SpanRecord): void {
+    const map = this.spans.get(sessionId) || new Map<string, SpanRecord>()
+    map.set(span.spanId, span)
+    // Cap to prevent unbounded growth
+    if (map.size > MAX_SPANS_PER_SESSION) {
+      const firstKey = map.keys().next().value
+      if (firstKey) map.delete(firstKey)
+    }
+    this.spans.set(sessionId, map)
+  }
+
+  /** Get all spans for a session, sorted by startTs */
+  getSpans(sessionId: string): SpanRecord[] {
+    const map = this.spans.get(sessionId)
+    if (!map) return []
+    return Array.from(map.values()).sort((a, b) => a.startTs - b.startTs)
   }
 
   /** Remove done/error agents older than maxAgeMs, and sessions with no agents older than maxAgeMs */
@@ -951,6 +998,49 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       agent.progress = 1
       agent.lastUpdate = ev.ts
       await storage.upsertAgent(ev.sessionId, agent)
+      break
+    }
+    case 'agent.span': {
+      // Store span record — no agent state mutation needed
+      const p = ev.payload as Record<string, unknown>
+      const spanId = typeof p.spanId === 'string' ? p.spanId : randomUUID()
+      const existing = storage.getSpans(ev.sessionId).find(s => s.spanId === spanId)
+      const span: SpanRecord = {
+        spanId,
+        agentId: ev.agentId,
+        sessionId: ev.sessionId,
+        parentSpanId: typeof p.parentSpanId === 'string' ? p.parentSpanId : undefined,
+        name: typeof p.name === 'string' ? p.name.slice(0, 200) : 'unknown',
+        kind: typeof p.kind === 'string' ? p.kind : 'custom',
+        status: typeof p.status === 'string' ? p.status : 'ok',
+        startTs: typeof p.startTs === 'number' ? p.startTs : ev.ts,
+        endTs: typeof p.endTs === 'number' ? p.endTs : undefined,
+        durationMs: typeof p.durationMs === 'number' ? p.durationMs : undefined,
+        input: p.input,
+        output: p.output,
+        error: typeof p.error === 'string' ? p.error.slice(0, 2000) : undefined,
+        model: typeof p.model === 'string' ? p.model : undefined,
+        promptTokens: typeof p.promptTokens === 'number' ? p.promptTokens : undefined,
+        completionTokens: typeof p.completionTokens === 'number' ? p.completionTokens : undefined,
+        cost: typeof p.cost === 'number' ? p.cost : undefined,
+        tokens: Array.isArray(p.tokens) ? (p.tokens as Array<{ ts: number; text: string }>).slice(0, 500) : undefined,
+        metadata: typeof p.metadata === 'object' && p.metadata !== null ? p.metadata as Record<string, unknown> : undefined,
+      }
+      // Merge with existing span so started→ok transitions update in-place
+      if (existing) {
+        Object.assign(existing, span)
+        storage.saveSpan(ev.sessionId, existing)
+      } else {
+        storage.saveSpan(ev.sessionId, span)
+      }
+      // Accumulate cost on agent record
+      if (span.cost && span.cost > 0) {
+        const a = await storage.getAgent(ev.sessionId, ev.agentId)
+        if (a) {
+          (a as AgentRecord & { totalCost?: number }).totalCost = ((a as AgentRecord & { totalCost?: number }).totalCost || 0) + span.cost
+          await storage.upsertAgent(ev.sessionId, a)
+        }
+      }
       break
     }
     default:
@@ -1931,6 +2021,29 @@ const httpServer = createServer(async (req, res) => {
       sessionId: routeSessionId,
       totalCost,
       agentBreakdown,
+    })
+  }
+
+  // GET /v1/session/:sessionId/traces — execution span tree for LangSmith-grade tracing
+  const sessionTracesMatch = url.pathname.match(/^\/v1\/session\/([^/]+)\/traces$/)
+  if (req.method === 'GET' && sessionTracesMatch) {
+    const [, routeSessionId] = sessionTracesMatch
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, routeSessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    const spans = storage.getSpans(routeSessionId)
+    const agentId = url.searchParams.get('agentId')
+    const filtered = agentId ? spans.filter(s => s.agentId === agentId) : spans
+    return jsonRes(res, 200, {
+      sessionId: routeSessionId,
+      spans: filtered,
+      count: filtered.length,
     })
   }
 
