@@ -198,8 +198,8 @@ export function PixelCanvas({
   // Connection state refs (avoid useEffect dependency array size changes)
   const connectionStatusRef = useRef(connectionStatus)
   const errorMessageRef = useRef(errorMessage)
-  useEffect(() => { connectionStatusRef.current = connectionStatus }, [connectionStatus])
-  useEffect(() => { errorMessageRef.current = errorMessage }, [errorMessage])
+  connectionStatusRef.current = connectionStatus
+  errorMessageRef.current = errorMessage
 
   const theme = useMemo(() => getTheme(themeId), [themeId])
   const pxConf = useMemo(() => PIXEL_CONFIGS[pixelLevel] || PIXEL_CONFIGS['16bit'], [pixelLevel])

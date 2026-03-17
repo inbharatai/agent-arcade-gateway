@@ -44,6 +44,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || (NODE_ENV === 'productio
   .map(s => s.trim())
   .filter(Boolean)
 
+const MAX_SSE_CLIENTS = Number.parseInt(process.env.MAX_SSE_CLIENTS || '1000', 10)
 const MAX_EVENTS = Number.parseInt(process.env.MAX_EVENTS || '500', 10)
 const REPLAY_COUNT = Number.parseInt(process.env.REPLAY_COUNT || '50', 10)
 const RETENTION_SECONDS = Number.parseInt(process.env.RETENTION_SECONDS || '86400', 10)
@@ -832,7 +833,7 @@ async function processEvent(ev: TelemetryEvent, principal: Principal) {
       const nextState = String(p.state || '')
       agent.state = VALID_STATES.includes(nextState as AgentState) ? (nextState as AgentState) : agent.state
       if (typeof p.label === 'string') agent.label = p.label.slice(0, 500)
-      if (typeof p.progress === 'number') agent.progress = Math.max(0, Math.min(1, p.progress))
+      if (typeof p.progress === 'number' && !Number.isNaN(p.progress)) agent.progress = Math.max(0, Math.min(1, p.progress))
       if (typeof p.aiModel === 'string') agent.aiModel = p.aiModel
       if (typeof p.task === 'string') agent.task = p.task
       agent.lastUpdate = ev.ts
@@ -1305,11 +1306,19 @@ const httpServer = createServer(async (req, res) => {
       return jsonRes(res, 403, { error: 'Invalid session signature' })
     }
 
+    // Enforce SSE client cap to prevent resource exhaustion
+    let totalSseClients = 0
+    for (const s of sseClients.values()) totalSseClients += s.size
+    if (totalSseClients >= MAX_SSE_CLIENTS) {
+      return jsonRes(res, 503, { error: 'Too many SSE connections' })
+    }
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
     })
     metrics.sseConnectedNow++
 
@@ -1557,6 +1566,10 @@ const httpServer = createServer(async (req, res) => {
     const goalId = body.goalId || randomUUID()
     const sessionId = String(body.sessionId || '')
     if (!sessionId) return jsonRes(res, 400, { error: 'sessionId required' })
+    if (!canAccessSession(principal, sessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
     const goal: GoalRecord = {
       id: goalId,
       sessionId,
@@ -1592,6 +1605,7 @@ const httpServer = createServer(async (req, res) => {
     if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
     const goal = storage.getGoal(goalPauseMatch[1])
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     goal.status = 'paused'
     storage.setGoal(goal)
     io.to(`session:${goal.sessionId}`).emit('goal.paused', { goalId: goal.id })
@@ -1605,6 +1619,7 @@ const httpServer = createServer(async (req, res) => {
     if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
     const goal = storage.getGoal(goalResumeMatch[1])
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     goal.status = 'executing'
     storage.setGoal(goal)
     io.to(`session:${goal.sessionId}`).emit('goal.resumed', { goalId: goal.id })
@@ -1618,6 +1633,7 @@ const httpServer = createServer(async (req, res) => {
     if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
     const goal = storage.getGoal(goalStopMatch[1])
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     goal.status = 'stopped'
     goal.completedAt = Date.now()
     storage.setGoal(goal)
@@ -1632,9 +1648,11 @@ const httpServer = createServer(async (req, res) => {
     if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
     const goal = storage.getGoal(goalApproveMatch[1])
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     const body = JSON.parse(await readBody(req))
     const phaseIndex = Number(body.phaseIndex)
     if (Number.isNaN(phaseIndex)) return jsonRes(res, 400, { error: 'phaseIndex required' })
+    if (phaseIndex < 0 || phaseIndex > goal.currentPhase) return jsonRes(res, 400, { error: 'phaseIndex out of bounds' })
     if (!goal.approvedPhases.includes(phaseIndex)) goal.approvedPhases.push(phaseIndex)
     goal.currentPhase = phaseIndex + 1
     goal.status = 'executing'
@@ -1651,6 +1669,7 @@ const httpServer = createServer(async (req, res) => {
     const [, goalId, taskId] = goalTaskUpdateMatch
     const goal = storage.getGoal(goalId)
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     const body = JSON.parse(await readBody(req))
     const existing = goal.tasks[taskId] || { status: 'pending', progress: 0, cost: 0, tokens: 0 }
     if (body.status !== undefined) existing.status = body.status
@@ -1677,6 +1696,7 @@ const httpServer = createServer(async (req, res) => {
     const [, goalId, taskId] = goalTaskRetryMatch
     const goal = storage.getGoal(goalId)
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     const task = goal.tasks[taskId]
     if (!task) return jsonRes(res, 404, { error: 'Task not found' })
     task.status = 'pending'
@@ -1695,6 +1715,7 @@ const httpServer = createServer(async (req, res) => {
     const [, goalId, taskId] = goalTaskSkipMatch
     const goal = storage.getGoal(goalId)
     if (!goal) return jsonRes(res, 404, { error: 'Goal not found' })
+    if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     const task = goal.tasks[taskId]
     if (!task) return jsonRes(res, 404, { error: 'Task not found' })
     task.status = 'skipped'
@@ -1824,6 +1845,7 @@ const httpServer = createServer(async (req, res) => {
       return `Upstream API error (HTTP ${httpStatus})`
     }
 
+    try {
     if (provider === 'claude') {
       if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.' })
       const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
@@ -1898,6 +1920,10 @@ const httpServer = createServer(async (req, res) => {
     }
 
     return jsonRes(res, 400, { error: `Provider '${provider}' not supported for chat.` })
+    } catch (e) {
+      log('error', 'Chat streaming error', { error: String(e).slice(0, 500), provider })
+      return jsonRes(res, 500, { error: `Chat error: ${String(e).slice(0, 200)}` })
+    }
   }
 
   // POST /v1/chat/sync — non-streaming AI chat (for WhatsApp relay, bots, scripts)
@@ -1987,6 +2013,7 @@ const httpServer = createServer(async (req, res) => {
 
       return jsonRes(res, 400, { error: `Provider '${prov}' not supported` })
     } catch (e) {
+      log('error', 'Chat sync error', { error: String(e).slice(0, 500) })
       return jsonRes(res, 500, { error: `Chat sync error: ${String(e).slice(0, 200)}` })
     }
   }

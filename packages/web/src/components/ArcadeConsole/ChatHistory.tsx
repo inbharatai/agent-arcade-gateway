@@ -25,9 +25,11 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
   )
 }
 
+const CODE_BLOCK_REGEX = /```(\w*)\n([\s\S]*?)```/g
+
 function renderContent(content: string) {
   const parts: React.ReactNode[] = []
-  const regex = /```(\w*)\n([\s\S]*?)```/g
+  const regex = new RegExp(CODE_BLOCK_REGEX.source, CODE_BLOCK_REGEX.flags)
   let lastIndex = 0
   let match
 
@@ -93,9 +95,13 @@ function MessageBubble({ msg, modelName }: { msg: ChatMessage; modelName: string
 
 export function ChatHistory({ messages, streamingContent, isStreaming, modelName }: ChatHistoryProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const prevMessageCountRef = useRef(messages.length)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length !== prevMessageCountRef.current) {
+      prevMessageCountRef.current = messages.length
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages.length, streamingContent])
 
   if (messages.length === 0 && !isStreaming) {

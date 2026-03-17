@@ -59,6 +59,9 @@ const SELF_CHAT_ENABLED = process.env.WHATSAPP_SELF_CHAT !== '0'  // enabled by 
 /** Max conversation history kept per self-chat session */
 const SELF_CHAT_MAX_HISTORY = 20
 
+/** Max number of concurrent self-chat conversations kept in memory */
+const SELF_CHAT_MAX_CONVERSATIONS = 50
+
 const logger = pino({ level: 'warn' })
 
 // ---------------------------------------------------------------------------
@@ -87,8 +90,8 @@ async function handleCommand(from: string, text: string): Promise<string> {
 
   // Auth guard: if WHATSAPP_ALLOWED_NUMBERS is set, only those numbers can control
   if (ALLOWED_NUMBERS.length > 0) {
-    const normalized = from.replace('@s.whatsapp.net', '').replace('whatsapp:', '')
-    if (!ALLOWED_NUMBERS.some(n => normalized.endsWith(n.replace('+', '')))) {
+    const normalized = from.replace('@s.whatsapp.net', '').replace('whatsapp:', '').replace('+', '')
+    if (!ALLOWED_NUMBERS.some(n => normalized === n.replace('+', ''))) {
       return '🚫 Your number is not authorized to control this Arcade session.'
     }
   }
@@ -208,6 +211,10 @@ async function handleSelfChat(jid: string, text: string): Promise<string> {
     history = history.slice(history.length - SELF_CHAT_MAX_HISTORY)
   }
   selfChatHistory.set(jid, history)
+  if (selfChatHistory.size > SELF_CHAT_MAX_CONVERSATIONS) {
+    const oldest = selfChatHistory.keys().next().value
+    if (oldest && oldest !== jid) selfChatHistory.delete(oldest)
+  }
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
@@ -236,6 +243,10 @@ async function handleSelfChat(jid: string, text: string): Promise<string> {
       history = history.slice(history.length - SELF_CHAT_MAX_HISTORY)
     }
     selfChatHistory.set(jid, history)
+    if (selfChatHistory.size > SELF_CHAT_MAX_CONVERSATIONS) {
+      const oldest = selfChatHistory.keys().next().value
+      if (oldest && oldest !== jid) selfChatHistory.delete(oldest)
+    }
 
     return reply
   } catch (e) {
@@ -272,10 +283,15 @@ function startHttpServer() {
         return
       }
       // Strip "data:image/png;base64," prefix
-      const b64 = currentQrDataUrl.replace(/^data:image\/png;base64,/, '')
-      const buf = Buffer.from(b64, 'base64')
-      res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': String(buf.length), ...cors })
-      res.end(buf)
+      try {
+        const b64 = currentQrDataUrl.replace(/^data:image\/png;base64,/, '')
+        const buf = Buffer.from(b64, 'base64')
+        res.writeHead(200, { ...cors, 'Content-Type': 'image/png', 'Content-Length': String(buf.length) })
+        res.end(buf)
+      } catch {
+        res.writeHead(500, cors)
+        res.end('QR generation error')
+      }
       return
     }
 
@@ -374,9 +390,6 @@ async function startWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
 
-    // Get own JID for self-chat detection
-    const myJid = sock?.user?.id?.replace(/:.*@/, '@') || ''
-
     for (const msg of messages) {
       if (!msg.message) continue
 
@@ -392,7 +405,10 @@ async function startWhatsApp() {
       // ── Self-chat detection ──────────────────────────────────────────────
       // In WhatsApp, messaging yourself shows remoteJid === your own JID
       // and fromMe is true for messages you send to yourself.
-      const isSelfChat = msg.key.fromMe && (from === myJid || from === sock?.user?.id)
+      const rawJid = sock?.user?.id
+      if (!rawJid) continue  // socket not ready yet
+      const myJid = rawJid.replace(/:.*@/, '@')
+      const isSelfChat = msg.key.fromMe && (from === myJid || from === rawJid)
 
       if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
 
@@ -403,8 +419,16 @@ async function startWhatsApp() {
 
         try {
           await sock!.sendMessage(from, { text: reply })
-        } catch (e) {
-          console.warn(`[whatsapp-client] Failed to send self-chat reply: ${e}`)
+          console.log(`[whatsapp-client] Reply sent to ${from.slice(0,6)}...`)
+        } catch (e: any) {
+          const errMsg = e?.message || String(e)
+          if (errMsg.includes('rate')) {
+            console.warn(`[whatsapp-client] Rate limited, will retry: ${errMsg}`)
+          } else if (errMsg.includes('not connected') || errMsg.includes('Connection')) {
+            console.error(`[whatsapp-client] Connection lost: ${errMsg}`)
+          } else {
+            console.warn(`[whatsapp-client] Failed to send self-chat reply: ${errMsg}`)
+          }
         }
         continue
       }
@@ -418,8 +442,16 @@ async function startWhatsApp() {
 
       try {
         await sock!.sendMessage(from, { text: reply })
-      } catch (e) {
-        console.warn(`[whatsapp-client] Failed to send reply: ${e}`)
+        console.log(`[whatsapp-client] Reply sent to ${from.slice(0,6)}...`)
+      } catch (e: any) {
+        const errMsg = e?.message || String(e)
+        if (errMsg.includes('rate')) {
+          console.warn(`[whatsapp-client] Rate limited, will retry: ${errMsg}`)
+        } else if (errMsg.includes('not connected') || errMsg.includes('Connection')) {
+          console.error(`[whatsapp-client] Connection lost: ${errMsg}`)
+        } else {
+          console.warn(`[whatsapp-client] Failed to send reply: ${errMsg}`)
+        }
       }
     }
   })

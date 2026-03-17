@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 interface OutputPanelProps {
   lastResponse: string
@@ -41,8 +41,8 @@ export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelPro
 
   if (!isVisible || !lastResponse) return null
 
-  const codeBlocks = extractCodeBlocks(lastResponse)
-  const files = extractFiles(lastResponse)
+  const codeBlocks = useMemo(() => extractCodeBlocks(lastResponse), [lastResponse])
+  const files = useMemo(() => extractFiles(lastResponse), [lastResponse])
   const selectedCode = codeBlocks[selectedBlock]
 
   const copyCode = (code: string) => navigator.clipboard.writeText(code)

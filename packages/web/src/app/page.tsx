@@ -6,6 +6,7 @@ import { ArcadeConsole } from '@/components/ArcadeConsole'
 import { SplitPanel } from '@/components/layout/SplitPanel'
 import { ControlPanel } from '@/components/AgentIntervention/ControlPanel'
 import { NotificationToast, useNotifications } from '@/components/AgentIntervention/NotificationToast'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useArcadeConsole } from '@/hooks/useArcadeConsole'
 import { useAgentIntervention } from '@/hooks/useAgentIntervention'
 
@@ -158,6 +159,7 @@ export default function Home() {
   }, [pauseAgent, stopAgent, redirectAgent, selectAgent])
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen flex flex-col bg-background" style={{ height: '100dvh' }}>
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50 shrink-0">
         <div className="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -335,5 +337,6 @@ export default function Home() {
         <span className="hidden sm:block">Agent Arcade — Universal AI Agent Cockpit</span>
       </footer>
     </div>
+    </ErrorBoundary>
   )
 }

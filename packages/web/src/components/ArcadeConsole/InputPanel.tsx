@@ -268,7 +268,7 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
       {voiceError && (
         <div className="mb-2 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-xs text-red-300 flex items-center justify-between">
           <span>{voiceError}</span>
-          <button onClick={() => setVoiceError(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
+          <button onClick={() => setVoiceError(null)} className="ml-2 opacity-60 hover:opacity-100" aria-label="Dismiss voice error">✕</button>
         </div>
       )}
 
@@ -307,6 +307,7 @@ export function InputPanel({ onSend, isStreaming, onStop, selectedModel, onComma
               ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
               : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white/90'
           }`}
+          aria-label="Toggle voice input"
         >
           🎤
         </button>
