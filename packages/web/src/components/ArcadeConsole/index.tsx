@@ -143,18 +143,14 @@ export function ArcadeConsole({
     }
   }, [gatewayUrl, sessionId])
 
-  // Initialize session — restores existing or creates fresh
+  // Initialize session — always start fresh on mount so connecting to a new
+  // tool never shows old conversation history. Old sessions remain in storage
+  // and can be browsed via the session history panel.
   useEffect(() => {
-    const activeId = getActiveSessionId()
-    const existing = activeId ? getSession(activeId) : null
-    if (existing) {
-      setSession(existing)
-    } else {
-      const newSession = createSession(selectedModel.id)
-      saveSession(newSession)
-      setActiveSessionId(newSession.id)
-      setSession(newSession)
-    }
+    const newSession = createSession(selectedModel.id)
+    saveSession(newSession)
+    setActiveSessionId(newSession.id)
+    setSession(newSession)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
