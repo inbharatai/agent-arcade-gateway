@@ -42,6 +42,16 @@ export interface ThemeDef {
   ambientTint: string
   /** Whether the theme is dark */
   isDark: boolean
+  /** Neon sign text displayed on the wall */
+  neonSignText: string
+  /** Neon sign color */
+  neonSignColor: string
+  /** Secondary accent for particle variety */
+  accentSecondary: string
+  /** Tertiary accent for particle variety */
+  accentTertiary: string
+  /** Floor reflection opacity (0-1) */
+  floorReflectionAlpha: number
 }
 
 export const THEMES: Record<string, ThemeDef> = {
@@ -62,6 +72,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'wood',
     ambientTint: '#fef3c7',
     isDark: false,
+    neonSignText: 'WORK HARD',
+    neonSignColor: '#3b82f6',
+    accentSecondary: '#f59e0b',
+    accentTertiary: '#10b981',
+    floorReflectionAlpha: 0.08,
   },
   'war-room': {
     id: 'war-room',
@@ -80,6 +95,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'metal',
     ambientTint: '#10b981',
     isDark: true,
+    neonSignText: 'OPS CENTER',
+    neonSignColor: '#10b981',
+    accentSecondary: '#ef4444',
+    accentTertiary: '#fbbf24',
+    floorReflectionAlpha: 0.06,
   },
   'retro-arcade': {
     id: 'retro-arcade',
@@ -98,6 +118,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'neon',
     ambientTint: '#f472b6',
     isDark: true,
+    neonSignText: 'ARCADE',
+    neonSignColor: '#f472b6',
+    accentSecondary: '#a855f7',
+    accentTertiary: '#fbbf24',
+    floorReflectionAlpha: 0.15,
   },
   'cyber-lab': {
     id: 'cyber-lab',
@@ -116,6 +141,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'glass',
     ambientTint: '#06b6d4',
     isDark: true,
+    neonSignText: 'CYBER LAB',
+    neonSignColor: '#06b6d4',
+    accentSecondary: '#818cf8',
+    accentTertiary: '#f472b6',
+    floorReflectionAlpha: 0.12,
   },
   'campus-ops': {
     id: 'campus-ops',
@@ -134,6 +164,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'picnic',
     ambientTint: '#86efac',
     isDark: false,
+    neonSignText: 'CAMPUS',
+    neonSignColor: '#16a34a',
+    accentSecondary: '#fbbf24',
+    accentTertiary: '#60a5fa',
+    floorReflectionAlpha: 0.05,
   },
   'deep-space': {
     id: 'deep-space',
@@ -152,6 +187,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'console',
     ambientTint: '#818cf8',
     isDark: true,
+    neonSignText: 'STATION',
+    neonSignColor: '#818cf8',
+    accentSecondary: '#a78bfa',
+    accentTertiary: '#38bdf8',
+    floorReflectionAlpha: 0.18,
   },
   'dungeon-terminal': {
     id: 'dungeon-terminal',
@@ -170,6 +210,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'stone',
     ambientTint: '#f59e0b',
     isDark: true,
+    neonSignText: 'DUNGEON',
+    neonSignColor: '#f59e0b',
+    accentSecondary: '#ef4444',
+    accentTertiary: '#a78bfa',
+    floorReflectionAlpha: 0.10,
   },
   'hacker-bunker': {
     id: 'hacker-bunker',
@@ -188,6 +233,11 @@ export const THEMES: Record<string, ThemeDef> = {
     deskStyle: 'holo',
     ambientTint: '#00ff41',
     isDark: true,
+    neonSignText: 'HACK THE PLANET',
+    neonSignColor: '#00ff41',
+    accentSecondary: '#ef4444',
+    accentTertiary: '#3b82f6',
+    floorReflectionAlpha: 0.14,
   },
 }
 

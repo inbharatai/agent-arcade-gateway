@@ -38,10 +38,8 @@ function extractFiles(text: string): string[] {
 export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelProps) {
   const [tab, setTab] = useState<Tab>('code')
   const [selectedBlock, setSelectedBlock] = useState(0)
-  const codeBlocks = useMemo(() => lastResponse ? extractCodeBlocks(lastResponse) : [], [lastResponse])
-  const files = useMemo(() => lastResponse ? extractFiles(lastResponse) : [], [lastResponse])
-
-  if (!isVisible || !lastResponse) return null
+  const codeBlocks = useMemo(() => extractCodeBlocks(lastResponse || ''), [lastResponse])
+  const files = useMemo(() => extractFiles(lastResponse || ''), [lastResponse])
   const selectedCode = codeBlocks[selectedBlock]
 
   const copyCode = (code: string) => navigator.clipboard.writeText(code)
@@ -56,6 +54,8 @@ export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelPro
   }
 
   const TABS: Tab[] = ['code', 'files']
+
+  if (!isVisible || !lastResponse) return null
 
   return (
     <div className="shrink-0 border-t border-white/10 bg-black/20" style={{ maxHeight: '40%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

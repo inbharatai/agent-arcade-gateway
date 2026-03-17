@@ -51,7 +51,8 @@ const MOVE_SPEED = 3.0   // pixels per render tick
 
 // Ambient mote config
 const MAX_MOTES = 40
-interface DustMote { x: number; y: number; vx: number; vy: number; size: number; alpha: number; phase: number }
+const COLORED_MOTES = 12 // extra accent-colored motes
+interface DustMote { x: number; y: number; vx: number; vy: number; size: number; alpha: number; phase: number; colorIdx?: number }
 
 function hashId(id: string): number {
   let h = 0
@@ -220,6 +221,19 @@ export function PixelCanvas({
           size: 0.5 + Math.random() * 1.5,
           alpha: 0.1 + Math.random() * 0.25,
           phase: Math.random() * Math.PI * 2,
+        })
+      }
+      // Add colored accent motes
+      for (let i = 0; i < COLORED_MOTES; i++) {
+        motesRef.current.push({
+          x: Math.random() * canvasW / zoom,
+          y: Math.random() * canvasH / zoom,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: -0.05 - Math.random() * 0.15,
+          size: 1 + Math.random() * 2,
+          alpha: 0.15 + Math.random() * 0.2,
+          phase: Math.random() * Math.PI * 2,
+          colorIdx: i % 3, // 0=accent, 1=secondary, 2=tertiary
         })
       }
     }
@@ -463,9 +477,10 @@ export function PixelCanvas({
         const pos = DESK_POSITIONS[i]
         const dy = pos.y * tileSize
         const agentState = agents[i]?.state
+        const charClass = chars[i]?.charClass
         drawables.push({
           y: dy + tileSize,
-          draw: () => drawDesk(ctx, pos.x * tileSize, dy, tileSize, theme, agentState, gTime),
+          draw: () => drawDesk(ctx, pos.x * tileSize, dy, tileSize, theme, agentState, gTime, i, charClass),
         })
       }
 
@@ -715,6 +730,110 @@ export function PixelCanvas({
       drawables.sort((a, b) => a.y - b.y)
       for (const d of drawables) d.draw()
 
+      // ── Floor reflections (faded mirrored sprites beneath characters) ──
+      if (!reducedMotion && theme.floorReflectionAlpha > 0) {
+        for (const c of chars) {
+          const ms = moveStatesRef.current.get(c.agent.id)
+          const spawnProg = spawnAnimRef.current.get(c.agent.id) ?? 1
+          if (spawnProg < 0.8) continue
+          let rdx: number, rdy: number
+          if (ms) { rdx = ms.pixelX + tileSize * 0.75; rdy = ms.pixelY - tileSize * 0.3 }
+          else { rdx = c.gridX * tileSize + tileSize * 0.75; rdy = c.gridY * tileSize - tileSize * 0.3 }
+
+          const sheet = getCharacterSheet(c.charClass, pixelLevel)
+          const frame = stateToFrame(c.agent.state, animTick)
+          const sw = SPRITE_SIZE * pxConf.scale
+          const sh = SPRITE_SIZE * pxConf.scale
+          const refScale = tileSize * 0.75
+          const refY = rdy + tileSize * 0.95
+
+          ctx.save()
+          ctx.globalAlpha = theme.floorReflectionAlpha
+          ctx.translate(rdx, refY)
+          ctx.scale(1, -0.6)
+          ctx.drawImage(
+            sheet,
+            frame * SPRITE_SIZE * pxConf.scale, 0, sw, sh,
+            -refScale / 2, -refScale, refScale, refScale,
+          )
+          ctx.restore()
+        }
+      }
+
+      // ── Status light indicators above each agent ──
+      if (!reducedMotion) {
+        for (const c of chars) {
+          const ms = moveStatesRef.current.get(c.agent.id)
+          let slx: number, sly: number
+          if (ms) { slx = ms.pixelX + tileSize * 0.75; sly = ms.pixelY - tileSize * 0.3 }
+          else { slx = c.gridX * tileSize + tileSize * 0.75; sly = c.gridY * tileSize - tileSize * 0.3 }
+
+          const dotY = sly - tileSize * 0.82
+          const dotR = tileSize * 0.04
+          let dotColor: string
+          switch (c.agent.state) {
+            case 'idle': case 'waiting': dotColor = '#22c55e'; break
+            case 'thinking': dotColor = '#fbbf24'; break
+            case 'error': dotColor = '#ef4444'; break
+            case 'writing': case 'reading': case 'tool': dotColor = '#06b6d4'; break
+            case 'done': dotColor = '#a855f7'; break
+            default: dotColor = '#6b7280'; break
+          }
+          const dotPulse = 0.6 + Math.sin(gTime * 4 + c.index * 1.7) * 0.4
+          ctx.globalAlpha = dotPulse
+          ctx.shadowColor = dotColor
+          ctx.shadowBlur = 5
+          ctx.fillStyle = dotColor
+          ctx.beginPath()
+          ctx.arc(slx + tileSize * 0.42, dotY, dotR, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.shadowBlur = 0
+          ctx.globalAlpha = 1
+        }
+      }
+
+      // ── Agent proximity arcs (collaboration indicators) ──
+      if (!reducedMotion && chars.length > 1) {
+        for (let i = 0; i < chars.length; i++) {
+          for (let j = i + 1; j < chars.length; j++) {
+            const ca = chars[i]; const cb = chars[j]
+            if (ca.agent.state === 'idle' && cb.agent.state === 'idle') continue
+            const msA = moveStatesRef.current.get(ca.agent.id)
+            const msB = moveStatesRef.current.get(cb.agent.id)
+            const ax = msA ? msA.pixelX + tileSize * 0.75 : ca.gridX * tileSize + tileSize * 0.75
+            const ay = msA ? msA.pixelY : ca.gridY * tileSize
+            const bx = msB ? msB.pixelX + tileSize * 0.75 : cb.gridX * tileSize + tileSize * 0.75
+            const by2 = msB ? msB.pixelY : cb.gridY * tileSize
+            const dist = Math.sqrt((ax - bx) ** 2 + (ay - by2) ** 2)
+            const proximityThreshold = tileSize * 3
+            if (dist < proximityThreshold && dist > tileSize * 0.5) {
+              const proximityAlpha = (1 - dist / proximityThreshold) * 0.35
+              ctx.globalAlpha = proximityAlpha
+              ctx.strokeStyle = theme.colors.accent
+              ctx.lineWidth = 1
+              ctx.setLineDash([3, 4])
+              ctx.lineDashOffset = tick * 0.5
+              const midX = (ax + bx) / 2
+              const midY = (ay + by2) / 2 - tileSize * 0.5
+              ctx.beginPath()
+              ctx.moveTo(ax, ay)
+              ctx.quadraticCurveTo(midX, midY, bx, by2)
+              ctx.stroke()
+              ctx.setLineDash([])
+              ctx.lineDashOffset = 0
+              // Small spark at midpoint
+              const sparkAlpha = 0.4 + Math.sin(gTime * 6 + i + j) * 0.3
+              ctx.globalAlpha = sparkAlpha * proximityAlpha * 2
+              ctx.fillStyle = theme.colors.accent
+              ctx.beginPath()
+              ctx.arc(midX, midY + tileSize * 0.25, 2, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.globalAlpha = 1
+            }
+          }
+        }
+      }
+
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       // LAYER 6: Relationship lines
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -754,12 +873,21 @@ export function PixelCanvas({
       // LAYER 8: Ambient dust motes
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
       if (!reducedMotion) {
+        const moteColors = [theme.colors.accent, theme.accentSecondary, theme.accentTertiary]
         for (const m of motesRef.current) {
           ctx.globalAlpha = m.alpha * (0.5 + Math.sin(gTime + m.phase) * 0.5)
-          ctx.fillStyle = theme.colors.wallHighlight
+          if (m.colorIdx !== undefined) {
+            ctx.fillStyle = moteColors[m.colorIdx] || theme.colors.accent
+            // Colored motes get a subtle glow
+            ctx.shadowColor = moteColors[m.colorIdx] || theme.colors.accent
+            ctx.shadowBlur = 3
+          } else {
+            ctx.fillStyle = theme.colors.wallHighlight
+          }
           ctx.beginPath()
           ctx.arc(m.x, m.y, m.size, 0, Math.PI * 2)
           ctx.fill()
+          ctx.shadowBlur = 0
         }
         ctx.globalAlpha = 1
       }
@@ -1132,6 +1260,35 @@ function drawWalls(ctx: CanvasRenderingContext2D, theme: ThemeDef, ts: number, w
   ctx.fillRect(0, 0, w, 2)
   ctx.fillRect(0, wh - 2, w, 2)
 
+  // ── Universal neon sign with flicker (drawn on top wall for all themes) ──
+  {
+    const neonText = theme.neonSignText
+    const neonColor = theme.neonSignColor
+    // Flicker: every 30-60 frames, briefly dim for 2-3 frames
+    const flickerPeriod = 35 + (hashId(theme.id) % 25)
+    const flickerFrame = tick % flickerPeriod
+    const isFlickering = flickerFrame >= (flickerPeriod - 3)
+    const flickerAlpha = isFlickering ? (0.2 + Math.random() * 0.3) : (0.85 + Math.sin(gTime * 2) * 0.15)
+    // Neon sign position: right side of top wall
+    const signX = ts * 12
+    const signY = wh * 0.6
+    ctx.save()
+    ctx.globalAlpha = flickerAlpha
+    ctx.shadowColor = neonColor
+    ctx.shadowBlur = isFlickering ? 4 : 12
+    ctx.fillStyle = neonColor
+    ctx.font = `bold ${Math.max(8, ts * 0.16)}px monospace`
+    ctx.textAlign = 'center'
+    ctx.fillText(neonText, signX, signY)
+    // Double-pass for extra glow
+    if (!isFlickering) {
+      ctx.globalAlpha = 0.3
+      ctx.shadowBlur = 20
+      ctx.fillText(neonText, signX, signY)
+    }
+    ctx.restore()
+  }
+
   if (theme.wallStyle === 'neon') {
     // Animated neon strips with pulsing glow
     const neonPulse = 0.4 + Math.sin(gTime * 3) * 0.2
@@ -1145,14 +1302,18 @@ function drawWalls(ctx: CanvasRenderingContext2D, theme: ThemeDef, ts: number, w
     ctx.fillRect(ts * 0.5, ts * 1, 3, ts * 3)
     ctx.fillRect(w - ts * 0.5 - 3, ts * 1, 3, ts * 3)
     ctx.shadowBlur = 0
-    // "GAME ON" neon text
+    // "GAME ON" neon text with flicker
+    const goFlicker = Math.floor(tick % 50)
+    const goAlpha = goFlicker < 2 ? 0.3 : 1
+    ctx.globalAlpha = goAlpha
     ctx.shadowColor = '#f472b6'
-    ctx.shadowBlur = 10
+    ctx.shadowBlur = goFlicker < 2 ? 3 : 10
     ctx.fillStyle = '#f472b6'
     ctx.font = `bold ${ts * 0.18}px monospace`
     ctx.textAlign = 'center'
     ctx.fillText('GAME ON', ts * 8, wh * 0.65)
     ctx.shadowBlur = 0
+    ctx.globalAlpha = 1
   } else if (theme.wallStyle === 'brick') {
     // Detailed brick pattern with depth
     ctx.fillStyle = theme.colors.wallHighlight + '20'
@@ -1528,6 +1689,9 @@ function drawProps(ctx: CanvasRenderingContext2D, theme: ThemeDef, ts: number, g
     ctx.moveTo(ts * 14.5, ts * 0.5)
     ctx.lineTo(ts * 14.5 + Math.cos(minAngle) * ts * 0.15, ts * 0.5 + Math.sin(minAngle) * ts * 0.15)
     ctx.stroke()
+
+    // Mini arcade cabinet in corner
+    drawMiniArcadeCab(ctx, ts * 15, ts * 6.5, ts, gTime, tick, '#3b82f6', '#60a5fa')
   } else if (id === 'war-room') {
     // Strategy table with holographic projection
     ctx.fillStyle = '#57534e'
@@ -1570,43 +1734,82 @@ function drawProps(ctx: CanvasRenderingContext2D, theme: ThemeDef, ts: number, g
     ctx.beginPath()
     ctx.arc(ts * 15.25, ts * 2.8, ts * 0.15, gTime % (Math.PI * 2), gTime % (Math.PI * 2) + Math.PI)
     ctx.stroke()
+
+    // Mini arcade cabinet for R&R
+    drawMiniArcadeCab(ctx, ts * 0.6, ts * 5.5, ts, gTime, tick, '#10b981', '#34d399')
   } else if (id === 'retro-arcade') {
-    // Arcade cabinets with animated screens
+    // Arcade cabinets with animated 2-color screens
     for (let i = 0; i < 3; i++) {
       const ax = ts * (1 + i * 0.85)
       ctx.fillStyle = ['#581c87', '#1e1b4b', '#7c2d12'][i]
       ctx.fillRect(ax, ts * 3, ts * 0.55, ts * 1.3)
-      // Screen with animation
-      ctx.fillStyle = theme.colors.accent + '50'
+      // Cabinet top trim
+      ctx.fillStyle = ['#7c3aed', '#4338ca', '#ea580c'][i]
+      ctx.fillRect(ax, ts * 3, ts * 0.55, ts * 0.06)
+      // Screen background
+      const screenColors = [
+        ['#f472b6', '#fbbf24'], ['#60a5fa', '#22c55e'], ['#fbbf24', '#ef4444']
+      ]
+      // Cycle between two colors each tick
+      const colorPhase = Math.floor(tick / 8 + i * 3) % 2
+      ctx.fillStyle = screenColors[i][colorPhase] + '30'
       ctx.fillRect(ax + 3, ts * 3.1, ts * 0.55 - 6, ts * 0.55)
-      // Scrolling game content
-      ctx.fillStyle = ['#f472b6', '#60a5fa', '#fbbf24'][i]
+      // Animated game elements on screen (invader-style)
+      ctx.fillStyle = screenColors[i][colorPhase]
       const gameY = (gTime * 20 + i * 10) % (ts * 0.55)
       ctx.fillRect(ax + 6, ts * 3.15 + gameY, ts * 0.2, 3)
+      // Second element moving opposite
+      ctx.fillStyle = screenColors[i][1 - colorPhase]
+      const gameY2 = (ts * 0.55) - (gTime * 15 + i * 8) % (ts * 0.55)
+      ctx.fillRect(ax + ts * 0.25, ts * 3.15 + gameY2, ts * 0.12, 2)
+      // Pixel "score" at top of screen
+      ctx.fillStyle = screenColors[i][colorPhase] + '80'
+      ctx.fillRect(ax + 5, ts * 3.12, ts * 0.15, 1.5)
       // Screen glow
-      ctx.shadowColor = theme.colors.accent
-      ctx.shadowBlur = 6
-      ctx.fillStyle = theme.colors.accent + '15'
+      ctx.shadowColor = screenColors[i][colorPhase]
+      ctx.shadowBlur = 8
+      ctx.fillStyle = screenColors[i][colorPhase] + '10'
       ctx.fillRect(ax + 4, ts * 3.12, ts * 0.4, ts * 0.45)
       ctx.shadowBlur = 0
+      // Control panel area
+      ctx.fillStyle = '#1e1b4b'
+      ctx.fillRect(ax + 2, ts * 3.7, ts * 0.55 - 4, ts * 0.25)
       // Joystick
       ctx.fillStyle = '#f472b6'
       ctx.beginPath()
-      ctx.arc(ax + ts * 0.27, ts * 3.9, ts * 0.04, 0, Math.PI * 2)
+      ctx.arc(ax + ts * 0.15, ts * 3.82, ts * 0.04, 0, Math.PI * 2)
+      ctx.fill()
+      // Two buttons
+      ctx.fillStyle = '#ef4444'
+      ctx.beginPath()
+      ctx.arc(ax + ts * 0.3, ts * 3.8, ts * 0.03, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#3b82f6'
+      ctx.beginPath()
+      ctx.arc(ax + ts * 0.38, ts * 3.83, ts * 0.03, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    // "ARCADE" neon sign with flicker
-    const flickerAlpha = Math.sin(gTime * 12) > -0.3 ? 1 : 0.3
-    ctx.globalAlpha = flickerAlpha
-    ctx.shadowColor = '#f472b6'
-    ctx.shadowBlur = 10
-    ctx.fillStyle = '#f472b6'
-    ctx.font = `bold ${ts * 0.22}px monospace`
-    ctx.textAlign = 'center'
-    ctx.fillText('ARCADE', ts * 11, ts * 0.7)
-    ctx.shadowBlur = 0
-    ctx.globalAlpha = 1
+    // "ARCADE" neon sign with improved flicker
+    {
+      const arcadeFlickerFrame = tick % 45
+      const arcadeFlicker = arcadeFlickerFrame < 2 ? 0.25 : (arcadeFlickerFrame < 4 ? 0.6 : 1)
+      ctx.globalAlpha = arcadeFlicker
+      ctx.shadowColor = '#f472b6'
+      ctx.shadowBlur = arcadeFlickerFrame < 2 ? 4 : 14
+      ctx.fillStyle = '#f472b6'
+      ctx.font = `bold ${ts * 0.22}px monospace`
+      ctx.textAlign = 'center'
+      ctx.fillText('ARCADE', ts * 7, ts * 0.7)
+      // Double glow pass
+      if (arcadeFlickerFrame >= 4) {
+        ctx.globalAlpha = 0.25
+        ctx.shadowBlur = 22
+        ctx.fillText('ARCADE', ts * 7, ts * 0.7)
+      }
+      ctx.shadowBlur = 0
+      ctx.globalAlpha = 1
+    }
 
     // Pixel poster
     ctx.fillStyle = '#fef08a20'
@@ -1924,7 +2127,7 @@ function drawProps(ctx: CanvasRenderingContext2D, theme: ThemeDef, ts: number, g
   }
 }
 
-function drawDesk(ctx: CanvasRenderingContext2D, dx: number, dy: number, ts: number, theme: ThemeDef, agentState?: AgentState, gTime: number = 0) {
+function drawDesk(ctx: CanvasRenderingContext2D, dx: number, dy: number, ts: number, theme: ThemeDef, agentState?: AgentState, gTime: number = 0, deskIndex: number = 0, charClass?: string) {
   const w = ts * 1.5
   const h = ts
 
@@ -2200,6 +2403,106 @@ function drawDesk(ctx: CanvasRenderingContext2D, dx: number, dy: number, ts: num
       ctx.fillRect(dx + ts * 0.31, dy + ts * (0.74 + i * 0.04), ts * 0.66, 1)
     }
   }
+
+  // ── Character-class desk variations ──
+  // Add unique desk props based on the agent's character class
+  if (charClass) {
+    const cc = charClass.toLowerCase()
+    if (cc.includes('hacker') || cc.includes('rogue')) {
+      // Triple monitor setup hint: two small side monitors
+      ctx.fillStyle = theme.colors.monitor + 'a0'
+      ctx.fillRect(dx + ts * 0.02, dy + ts * 0.15, ts * 0.14, ts * 0.35)
+      ctx.fillRect(dx + w - ts * 0.16, dy + ts * 0.15, ts * 0.14, ts * 0.35)
+      ctx.fillStyle = theme.colors.screenBg
+      ctx.fillRect(dx + ts * 0.04, dy + ts * 0.18, ts * 0.1, ts * 0.28)
+      ctx.fillRect(dx + w - ts * 0.14, dy + ts * 0.18, ts * 0.1, ts * 0.28)
+      // Green text on side screens
+      ctx.fillStyle = '#22c55e30'
+      ctx.fillRect(dx + ts * 0.05, dy + ts * 0.22, ts * 0.06, 1)
+      ctx.fillRect(dx + w - ts * 0.13, dy + ts * 0.25, ts * 0.07, 1)
+    } else if (cc.includes('scholar') || cc.includes('mage') || cc.includes('sage')) {
+      // Book-piled desk: stack of books
+      const bookColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b']
+      for (let b = 0; b < 4; b++) {
+        ctx.fillStyle = bookColors[b] + 'c0'
+        ctx.fillRect(dx + w - ts * 0.32, dy + ts * (0.35 - b * 0.06), ts * 0.22, ts * 0.05)
+      }
+      // Quill/pen
+      ctx.strokeStyle = '#78716c'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(dx + ts * 0.12, dy + ts * 0.65)
+      ctx.lineTo(dx + ts * 0.2, dy + ts * 0.5)
+      ctx.stroke()
+    } else if (cc.includes('knight') || cc.includes('warrior') || cc.includes('paladin')) {
+      // Standing desk feel: slightly raised monitor stand
+      ctx.fillStyle = theme.colors.deskHighlight + '60'
+      ctx.fillRect(dx + ts * 0.4, dy + ts * 0.02, ts * 0.4, ts * 0.06)
+    } else if (cc.includes('artificer') || cc.includes('engineer') || cc.includes('tinker')) {
+      // Workbench: tools and gears
+      ctx.fillStyle = '#94a3b8'
+      // Wrench
+      ctx.fillRect(dx + w - ts * 0.28, dy + ts * 0.55, ts * 0.18, ts * 0.03)
+      // Gear
+      ctx.strokeStyle = '#94a3b880'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(dx + ts * 0.12, dy + ts * 0.62, ts * 0.05, 0, Math.PI * 2)
+      ctx.stroke()
+    } else if (cc.includes('bard') || cc.includes('diplomat') || cc.includes('leader')) {
+      // Round table feel: small decorative plant/trophy
+      ctx.fillStyle = '#fbbf24'
+      ctx.beginPath()
+      ctx.moveTo(dx + w - ts * 0.2, dy + ts * 0.55)
+      ctx.lineTo(dx + w - ts * 0.16, dy + ts * 0.45)
+      ctx.lineTo(dx + w - ts * 0.12, dy + ts * 0.55)
+      ctx.fill() // small trophy shape
+    }
+  }
+}
+
+/** Small decorative arcade cabinet prop — 2-color animated screen */
+function drawMiniArcadeCab(
+  ctx: CanvasRenderingContext2D, x: number, y: number, ts: number,
+  gTime: number, tick: number, color1: string, color2: string,
+) {
+  const cw = ts * 0.4
+  const ch = ts * 0.9
+  // Cabinet body
+  ctx.fillStyle = '#1e1b4b'
+  ctx.fillRect(x, y, cw, ch)
+  ctx.fillStyle = '#312e81'
+  ctx.fillRect(x, y, cw, ts * 0.05) // top trim
+  // Screen
+  const phase = Math.floor(tick / 10) % 2
+  const screenColor = phase === 0 ? color1 : color2
+  ctx.fillStyle = '#0f172a'
+  ctx.fillRect(x + 2, y + ts * 0.08, cw - 4, ts * 0.35)
+  ctx.fillStyle = screenColor + '40'
+  ctx.fillRect(x + 3, y + ts * 0.1, cw - 6, ts * 0.3)
+  // Moving pixel on screen
+  ctx.fillStyle = screenColor
+  const px = x + 4 + (gTime * 12 + x) % (cw - 10)
+  ctx.fillRect(px, y + ts * 0.2, 3, 3)
+  // Screen glow
+  ctx.shadowColor = screenColor
+  ctx.shadowBlur = 4
+  ctx.fillStyle = screenColor + '08'
+  ctx.fillRect(x + 2, y + ts * 0.08, cw - 4, ts * 0.35)
+  ctx.shadowBlur = 0
+  // Control panel
+  ctx.fillStyle = '#1a1a2e'
+  ctx.fillRect(x + 2, y + ts * 0.48, cw - 4, ts * 0.15)
+  // Tiny joystick
+  ctx.fillStyle = '#f472b6'
+  ctx.beginPath()
+  ctx.arc(x + cw * 0.35, y + ts * 0.55, 2, 0, Math.PI * 2)
+  ctx.fill()
+  // Tiny button
+  ctx.fillStyle = '#ef4444'
+  ctx.beginPath()
+  ctx.arc(x + cw * 0.7, y + ts * 0.54, 1.5, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 function drawBubble(
