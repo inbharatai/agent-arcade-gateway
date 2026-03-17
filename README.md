@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.6.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.7.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -24,6 +24,9 @@
 [![SQLite Persistence](https://img.shields.io/badge/SQLite-Zero--Ops_Persistence-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#-quick-start)
 [![CrewAI](https://img.shields.io/badge/CrewAI-Python_Adapter-FF6B6B?style=for-the-badge)](#crewai-python)
 [![AutoGen](https://img.shields.io/badge/AutoGen-Python_Adapter-0078D4?style=for-the-badge&logo=microsoft&logoColor=white)](#autogen-python)
+
+[![Try Live Demo](https://img.shields.io/badge/%F0%9F%8E%AE_Try_Live_Demo-brightgreen?style=for-the-badge)](https://agent-arcade.vercel.app)
+[![Deploy to Fly.io](https://img.shields.io/badge/Deploy_to-Fly.io-8b5cf6?style=for-the-badge&logo=fly-dot-io&logoColor=white)](#-hosted-demo--one-click-deploy)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
@@ -61,10 +64,11 @@
 - [API Reference](#-api-reference)
 - [Monorepo Map](#-monorepo-map)
 - [Testing](#-testing)
+- [Hosted Demo — One-Click Deploy](#-hosted-demo--one-click-deploy)
 - [Production Deployment](#-production-deployment)
 - [Environment Variables](#environment-variables)
 - [Security](#-security)
-- [Recent Changes](#-recent-changes-v321--v360)
+- [Recent Changes](#-recent-changes-v321--v370)
 - [Contributing](#-contributing)
 
 ---
@@ -1579,7 +1583,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.6.0
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.7.0
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1618,6 +1622,50 @@ bun test packages/adapter-openai/src/index.test.ts  # 14 OpenAI adapter tests
 5. Run test suites: gateway integration, agent lifecycle, WhatsApp, store, i18n, OpenAI adapter, SDK (Node + Browser)
 6. Validate Docker builds
 7. Secure-mode capabilities check (`REQUIRE_AUTH=1`)
+
+---
+
+## 🎮 Hosted Demo — One-Click Deploy
+
+Want to give anyone a live URL they can open without cloning anything? Deploy the gateway + a built-in demo bot to Fly.io in under 5 minutes:
+
+```bash
+# 1. Install flyctl (once)
+curl -L https://fly.io/install.sh | sh
+
+# 2. Authenticate
+fly auth login
+
+# 3. Create app (first deploy only — changes app name in fly.toml if needed)
+fly apps create agent-arcade-gateway
+
+# 4. Create persistent volume for SQLite
+fly volumes create arcade_data --region iad --size 1
+
+# 5. Deploy (gateway + demo bot in one container)
+fly deploy --dockerfile Dockerfile.demo
+
+# 6. Open it
+fly open
+```
+
+The demo bot (`packages/demo-bot/`) runs as a sidecar inside the container and continuously emits realistic fake telemetry from 3 simulated agents (Researcher, Coder, Reviewer) so visitors always see live agents without needing to connect anything themselves.
+
+**Environment variables on Fly.io:**
+
+| Variable | Purpose |
+|----------|---------|
+| `DEMO_BOT=1` | Enable demo bot sidecar (set in fly.toml) |
+| `CYCLE_MS=300000` | Session reset interval — 5 min default |
+| `DB_PATH=/data/arcade.db` | SQLite persistence (set in Dockerfile.demo) |
+| `JWT_SECRET` | Set via `fly secrets set JWT_SECRET=...` for production auth |
+
+**Then point your Vercel frontend at the Fly.io gateway:**
+
+```bash
+# In packages/web/
+NEXT_PUBLIC_GATEWAY_URL=https://agent-arcade-gateway.fly.dev vercel deploy --prod
+```
 
 ---
 
@@ -1707,10 +1755,13 @@ npm run prod:start
 
 ---
 
-## Recent Changes (v3.2.1 → v3.6.0)
+## Recent Changes (v3.2.1 → v3.7.0)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.7.0** | **Hosted demo bot** — `packages/demo-bot/` runs as a sidecar inside the container and emits continuous realistic telemetry from 3 simulated agents (Researcher, Coder, Reviewer) so visitors see live agents without configuring anything | Feature |
+| **v3.7.0** | **Fly.io one-click deploy** — `fly.toml` + `Dockerfile.demo` + `docker-entrypoint.sh` — `fly deploy` goes from zero to a live public URL in under 5 minutes | Feature |
+| **v3.7.0** | **Try Live Demo badge** in README — direct link to hosted frontend; removes the #1 adoption barrier (nobody wants to clone to evaluate) | Docs |
 | **v3.6.0** | **SQLite persistent storage** — set `DB_PATH=./arcade.db` and all sessions, agents, spans, events survive gateway restarts. WAL mode for concurrent reads. Auto-selected when `REDIS_URL` is absent. | Feature |
 | **v3.6.0** | **TracePanel: span search** — full-text search across span name, input, output, and error text. Parent spans shown when any descendant matches. | Feature |
 | **v3.6.0** | **TracePanel: error highlighting** — spans with `status=error` get red left border, red name, red background, and inline error message | Feature |
@@ -1749,7 +1800,7 @@ npm run prod:start
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
 | **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
 
-See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0.
+See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.7.0.
 
 ---
 
@@ -1778,7 +1829,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.6.0                                                  |
+ |   AGENT ARCADE v3.7.0                                                  |
  |                                                                        |
  |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |

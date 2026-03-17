@@ -1,0 +1,43 @@
+# ── Agent Arcade: Gateway + Demo Bot (single container for Fly.io / Railway) ──
+#
+# Runs two processes:
+#   1. Gateway  — Bun HTTP/WebSocket server on $PORT
+#   2. Demo Bot — emits fake telemetry so visitors always see live agents
+#
+# The demo bot is controlled by DEMO_BOT=1 (set in fly.toml / Railway env).
+# Without that env var it starts the plain gateway (for self-hosters).
+
+FROM oven/bun:1
+
+WORKDIR /app
+
+# ── Install gateway deps ───────────────────────────────────────────────────────
+COPY packages/gateway/package.json ./gateway/package.json
+RUN cd gateway && bun install --production
+
+# ── Copy source ────────────────────────────────────────────────────────────────
+COPY packages/gateway/ ./gateway/
+COPY packages/demo-bot/ ./demo-bot/
+
+# ── Install curl for health-check ─────────────────────────────────────────────
+RUN apt-get update -qq \
+ && apt-get install -y -qq --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# ── Persistent data volume (SQLite) ───────────────────────────────────────────
+RUN mkdir -p /data
+VOLUME ["/data"]
+
+EXPOSE 3000
+ENV PORT=3000 \
+    NODE_ENV=production \
+    DB_PATH=/data/arcade.db
+
+# ── Entrypoint: launch gateway, then optionally demo bot ──────────────────────
+COPY packages/demo-bot/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT}/health || exit 1
+
+CMD ["/entrypoint.sh"]

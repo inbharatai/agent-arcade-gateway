@@ -1,0 +1,10 @@
+{
+  "name": "@agent-arcade/demo-bot",
+  "version": "1.0.0",
+  "description": "Continuous demo telemetry emitter for Agent Arcade hosted demo",
+  "private": true,
+  "scripts": {
+    "start": "bun index.ts",
+    "dev":   "bun --watch index.ts"
+  }
+}
