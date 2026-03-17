@@ -43,6 +43,11 @@ __pycache__/
 
 # Local runtime state
 .arcade-emitter.json
+*_tmp.json
+r.json
+
+# Dev scripts (local testing only)
+scripts/e2e-*.mjs
 
 # WhatsApp
 .whatsapp-auth/

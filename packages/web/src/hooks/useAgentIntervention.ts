@@ -194,7 +194,6 @@ export function useAgentIntervention(config: InterventionConfig) {
 
   return {
     selectedAgentId,
-    controlStates,
     confirmDialog,
     selectAgent,
     pauseAgent,
