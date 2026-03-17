@@ -295,7 +295,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
   const [speed, setSpeed] = useState(1)
   const [recordings, setRecordings] = useState<ReturnType<ReplayEngine['listRecordings']>>([])
   const [selectedRecording, setSelectedRecording] = useState<ReplayRecording | null>(null)
-  const [currentTime, setCurrentTime] = useState(Date.now())
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
   const updateRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   // Load recordings list
@@ -310,6 +310,8 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
       setProgress(engine.getProgress())
       if (engine.getState() === 'playing') {
         setCurrentTime(engine.getCurrentTime())
+      } else {
+        setCurrentTime(Date.now())
       }
     }, 100)
     return () => { if (updateRef.current) clearInterval(updateRef.current) }
@@ -372,7 +374,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
   const timelineEvents = selectedRecording
     ? selectedRecording.events.map(e => e.payload)
     : events
-  const startTs = selectedRecording?.startedAt || (events.length > 0 ? events[0].ts : Date.now())
+  const startTs = selectedRecording?.startedAt || (events.length > 0 ? events[0].ts : currentTime)
   const duration = selectedRecording?.duration || (events.length > 1 ? events[events.length - 1].ts - events[0].ts : 0)
 
   return (
@@ -432,7 +434,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
           events={timelineEvents}
           duration={duration}
           startTs={startTs}
-          currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : Date.now())}
+          currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : currentTime)}
           onSeek={handleSeek}
         />
       )}
@@ -443,7 +445,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
           events={timelineEvents}
           duration={duration}
           startTs={startTs}
-          currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : Date.now())}
+          currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : currentTime)}
           onSeek={handleSeek}
         />
       )}
@@ -451,7 +453,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
       {/* Event Inspector */}
       <EventInspector
         events={timelineEvents}
-        currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : Date.now())}
+        currentTime={selectedRecording ? startTs + engine.getCurrentTime() : (events.length > 0 ? events[events.length - 1].ts : currentTime)}
       />
 
       {/* Agent state snapshot */}
@@ -462,7 +464,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
             {(() => {
               const snapshot = reconstructStateAtTime(
                 timelineEvents,
-                selectedRecording ? startTs + engine.getCurrentTime() : Date.now()
+                selectedRecording ? startTs + engine.getCurrentTime() : currentTime
               )
               return Array.from(snapshot.entries()).map(([id, s]) => (
                 <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#111', borderRadius: 4, padding: '3px 6px', fontSize: 7 }}>
@@ -482,7 +484,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
         <span style={{ fontSize: 8, color: '#888' }}>Saved Recordings ({recordings.length})</span>
         {recordings.length === 0 ? (
           <div style={{ fontSize: 8, color: '#444', padding: '8px 0' }}>
-            No recordings. Click "Record" to capture a session.
+            No recordings. Click &quot;Record&quot; to capture a session.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
