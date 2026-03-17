@@ -30,7 +30,44 @@ const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || JWT_SECRET
 // Zero-config: the gateway inherits API keys from the shell environment.
 // When you run `agent-arcade start` alongside your AI tool, the Console
 // automatically picks up ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.
-const CHAT_ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY  || ''
+//
+// Auto-detection priority for Anthropic key:
+//   1. ANTHROPIC_API_KEY env var (explicit key)
+//   2. Claude Code OAuth credentials (~/.claude/.credentials.json)
+//      — uses the accessToken from a paid Claude subscription (Max/Pro)
+//   3. Inline key entry from the Console UI
+function detectAnthropicKey(): string {
+  // 1. Explicit env var
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY
+
+  // 2. Claude Code OAuth credentials file
+  try {
+    const home = process.env.HOME || process.env.USERPROFILE || ''
+    if (home) {
+      const credPath = resolve(home, '.claude', '.credentials.json')
+      if (existsSync(credPath)) {
+        const raw = require('fs').readFileSync(credPath, 'utf-8')
+        const creds = JSON.parse(raw)
+        const oauth = creds?.claudeAiOauth
+        if (oauth?.accessToken && typeof oauth.expiresAt === 'number') {
+          // Check token isn't expired (with 5 min buffer)
+          if (oauth.expiresAt > Date.now() + 300_000) {
+            console.log('[chat] Auto-detected Claude Code OAuth token (subscription: %s)', oauth.subscriptionType || 'unknown')
+            return oauth.accessToken
+          } else {
+            console.log('[chat] Claude Code OAuth token found but expired — skipping')
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.log('[chat] Could not read Claude Code credentials:', (e as Error).message)
+  }
+
+  return ''
+}
+
+const CHAT_ANTHROPIC_KEY  = detectAnthropicKey()
 const CHAT_ANTHROPIC_URL  = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
 const CHAT_OPENAI_KEY     = process.env.OPENAI_API_KEY     || ''
 const CHAT_GEMINI_KEY     = process.env.GEMINI_API_KEY     || ''
@@ -66,6 +103,18 @@ const TRUST_PROXY = process.env.TRUST_PROXY === '1'
 const WHATSAPP_QR_MODE = (process.env.WHATSAPP_QR_MODE || (NODE_ENV === 'development' ? '1' : '0')) === '1'
 const WHATSAPP_CLIENT_PORT = process.env.WHATSAPP_CLIENT_PORT || '47891'
 let whatsappChild: ChildProcess | null = null
+
+// ── Directives Queue (in-memory) ─────────────────────────────────────────
+// Commands from Console/WhatsApp that connected tools poll and execute.
+interface Directive {
+  id: string
+  agentId: string
+  instruction: string
+  source: string
+  ts: number
+  status: 'pending' | 'ack' | 'done'
+}
+const directivesQueue: Directive[] = []
 let whatsappRestarts = 0
 const WHATSAPP_MAX_RESTARTS = 5
 
@@ -1077,6 +1126,10 @@ const httpServer = createServer(async (req, res) => {
         streamSse: '/v1/stream',
         connectHttp: '/v1/connect',
         socketIoPath: '/socket.io',
+        directivesHttp: '/v1/directives',
+        chatHttp: '/v1/chat',
+        chatSyncHttp: '/v1/chat/sync',
+        chatProviders: '/v1/chat/providers',
       },
       auth: {
         required: REQUIRE_AUTH,
@@ -1517,11 +1570,110 @@ const httpServer = createServer(async (req, res) => {
       io.to(`session:${routeSessionId}`).emit('event', msgEv)
       broadcastSseEvent(routeSessionId, stateEv)
       broadcastSseEvent(routeSessionId, msgEv)
+
+      // Also queue as a directive so the connected tool (Claude Code) can execute it
+      directivesQueue.push({
+        id: randomUUID(),
+        agentId: routeAgentId,
+        instruction,
+        source: 'redirect',
+        ts: Date.now(),
+        status: 'pending',
+      })
+      if (directivesQueue.length > 100) directivesQueue.splice(0, directivesQueue.length - 50)
+
       return jsonRes(res, 200, { ok: true })
     }
 
     // No sub-action matched within agent route
     return jsonRes(res, 404, { error: 'Not found' })
+  }
+
+  // ── Directives Queue ──────────────────────────────────────────────────────
+  // Commands from Console/WhatsApp that connected tools (Claude Code, etc.) can
+  // poll and execute. This is the bridge between the UI and the real agent.
+  //
+  // POST /v1/directives          — push a new directive (from Console/WhatsApp)
+  // GET  /v1/directives          — poll pending directives (from connected tool)
+  // POST /v1/directives/:id/ack  — acknowledge completion
+
+  if (url.pathname === '/v1/directives' && req.method === 'POST') {
+    let body: { agentId?: string; instruction: string; source?: string }
+    try {
+      body = JSON.parse(await readBody(req))
+    } catch {
+      return jsonRes(res, 400, { error: 'Invalid JSON' })
+    }
+    if (!body.instruction || typeof body.instruction !== 'string') {
+      return jsonRes(res, 400, { error: 'instruction is required' })
+    }
+    const directive = {
+      id: randomUUID(),
+      agentId: body.agentId || 'claude-code-main',
+      instruction: body.instruction.slice(0, 8000),
+      source: body.source || 'console',
+      ts: Date.now(),
+      status: 'pending' as 'pending' | 'ack' | 'done',
+    }
+    directivesQueue.push(directive)
+    // Keep queue bounded
+    if (directivesQueue.length > 100) directivesQueue.splice(0, directivesQueue.length - 50)
+    log('info', 'directive queued', { id: directive.id, source: directive.source, instruction: directive.instruction.slice(0, 80) })
+
+    // Broadcast directive via Socket.IO so all connected tools get real-time notification
+    io.emit('directive', directive)
+
+    // Also emit a telemetry event so the Arcade panel shows the directive as activity
+    const directiveEvent: TelemetryEvent = {
+      v: PROTOCOL_VERSION,
+      ts: Date.now(),
+      sessionId: 'copilot-live',
+      agentId: directive.agentId,
+      type: 'agent.message',
+      payload: { text: `Directive from ${directive.source}: ${directive.instruction.slice(0, 120)}` },
+    }
+    const devPrincipal: Principal = { sub: 'system', role: 'admin', tokenId: 'system', sessions: ['*'], tokenType: 'none' }
+    await processEvent(directiveEvent, devPrincipal)
+    io.to('session:copilot-live').emit('event', directiveEvent)
+    broadcastSseEvent('copilot-live', directiveEvent)
+
+    return jsonRes(res, 200, { ok: true, id: directive.id })
+  }
+
+  if (url.pathname === '/v1/directives' && req.method === 'GET') {
+    const pending = directivesQueue.filter(d => d.status === 'pending')
+    return jsonRes(res, 200, { directives: pending })
+  }
+
+  if (url.pathname.startsWith('/v1/directives/') && req.method === 'POST') {
+    const parts = url.pathname.split('/')
+    const directiveId = parts[3]
+    const action = parts[4] // 'ack' or 'done'
+    const directive = directivesQueue.find(d => d.id === directiveId)
+    if (!directive) return jsonRes(res, 404, { error: 'Directive not found' })
+
+    let body: { response?: string } = {}
+    try { body = JSON.parse(await readBody(req)) } catch { /* no body is fine */ }
+
+    if (action === 'ack') {
+      directive.status = 'ack'
+    } else if (action === 'done') {
+      directive.status = 'done'
+      // Broadcast the response text so Console and Arcade feed show it
+      if (body.response && typeof body.response === 'string') {
+        const respEv: TelemetryEvent = {
+          v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+          agentId: directive.agentId,
+          type: 'agent.message',
+          payload: { text: body.response.slice(0, 4000), source: 'directive-response' },
+        }
+        const sysPrincipal: Principal = { sub: 'system', role: 'admin', tokenId: 'system', sessions: ['*'], tokenType: 'none' }
+        void processEvent(respEv, sysPrincipal)
+        io.to('session:copilot-live').emit('event', respEv)
+        broadcastSseEvent('copilot-live', respEv)
+      }
+    }
+    return jsonRes(res, 200, { ok: true })
   }
 
   // ── QR-code WhatsApp client status endpoints ──────────────────────────────
@@ -1801,13 +1953,17 @@ const httpServer = createServer(async (req, res) => {
 
   // GET /v1/chat/providers — which AI providers are configured on this gateway
   if (req.method === 'GET' && url.pathname === '/v1/chat/providers') {
+    // Re-detect on each request so OAuth token refresh is picked up
+    const anthropicAvailable = !!detectAnthropicKey()
     return jsonRes(res, 200, {
       providers: {
-        claude:  !!CHAT_ANTHROPIC_KEY,
+        claude:  anthropicAvailable,
         openai:  !!CHAT_OPENAI_KEY,
         gemini:  !!CHAT_GEMINI_KEY,
         mistral: !!CHAT_MISTRAL_KEY,
       },
+      // Tell the client HOW claude auth works so it knows no manual key is needed
+      authMode: anthropicAvailable ? (detectAnthropicKey().startsWith('sk-ant-oat01-') ? 'oauth-subscription' : 'api-key') : 'none',
     })
   }
 
@@ -1847,12 +2003,96 @@ const httpServer = createServer(async (req, res) => {
 
     try {
     if (provider === 'claude') {
-      if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.' })
+      // Re-detect key on each request (OAuth tokens can refresh)
+      const anthropicKey = detectAnthropicKey()
+      if (!anthropicKey) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.' })
+
+      const isOAuth = anthropicKey.startsWith('sk-ant-oat01-')
+
+      // ── OAuth path: use `claude -p` CLI (uses subscription auth) ──────────
+      if (isOAuth) {
+        const lastMsg = messages[messages.length - 1]?.content || ''
+        const contextMsgs = messages.slice(0, -1)
+        const contextStr = contextMsgs.length > 0
+          ? contextMsgs.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n') + '\n\nUser: ' + lastMsg
+          : lastMsg
+        const cliModel = model || 'claude-sonnet-4-6'
+        const fullPrompt = `${CHAT_SYSTEM_PROMPT}\n\nRespond concisely and helpfully.\n\n${contextStr}`
+
+        log('info', `[chat] Using claude CLI (OAuth subscription) model=${cliModel}`)
+
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'X-Accel-Buffering': 'no',
+          'Access-Control-Allow-Origin': '*',
+        })
+
+        // Plain text mode — stdout streams the response as it's generated
+        const child = spawn('claude', ['-p', '--model', cliModel], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env },
+          shell: true,
+        })
+
+        child.stdin.write(fullPrompt)
+        child.stdin.end()
+
+        let chatFullText = ''
+        child.stdout.on('data', (chunk: Buffer) => {
+          const text = chunk.toString()
+          if (text) {
+            chatFullText += text
+            const sseData = JSON.stringify({
+              type: 'content_block_delta',
+              delta: { type: 'text_delta', text },
+            })
+            res.write(`event: content_block_delta\ndata: ${sseData}\n\n`)
+          }
+        })
+
+        child.stderr.on('data', (chunk: Buffer) => {
+          const err = chunk.toString().trim()
+          if (err && !err.includes('warning') && !err.includes('deprecated')) {
+            log('warn', `[chat] claude CLI stderr: ${err.slice(0, 200)}`)
+          }
+        })
+
+        child.on('close', (code) => {
+          res.write(`event: message_stop\ndata: {"type":"message_stop"}\n\n`)
+          res.end()
+          if (code !== 0) log('warn', `[chat] claude CLI exited with code ${code}`)
+          // Broadcast the full chat response as a telemetry event so all listeners
+          // (Arcade feed, other Console panels, etc.) see what was said
+          if (chatFullText.trim()) {
+            const chatEv: TelemetryEvent = {
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              agentId: `chat-${provider}-proxy`, type: 'agent.message',
+              payload: { text: chatFullText.slice(0, 2000), model: cliModel, source: 'chat-proxy' },
+            }
+            void processEvent(chatEv, devPrincipal)
+            io.to('session:copilot-live').emit('event', chatEv)
+            broadcastSseEvent('copilot-live', chatEv)
+          }
+        })
+
+        child.on('error', (err) => {
+          log('error', `[chat] claude CLI spawn error: ${err.message}`)
+          if (!res.headersSent) {
+            return jsonRes(res, 500, { error: 'Failed to start claude CLI' })
+          }
+          res.end()
+        })
+
+        return
+      }
+
+      // ── Standard API key path ─────────────────────────────────────────────
       const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': CHAT_ANTHROPIC_KEY,
+          'x-api-key': anthropicKey,
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
@@ -1877,9 +2117,35 @@ const httpServer = createServer(async (req, res) => {
         'X-Accel-Buffering': 'no',
         'Access-Control-Allow-Origin': '*',
       })
+      // Collect streamed text for telemetry broadcast
+      let apiFullText = ''
       upstream.body?.pipeTo(new WritableStream({
-        write(chunk) { res.write(chunk) },
-        close() { res.end() },
+        write(chunk) {
+          res.write(chunk)
+          // Parse SSE chunks to extract text deltas for broadcast
+          try {
+            const str = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+            for (const line of str.split('\n')) {
+              if (!line.startsWith('data: ')) continue
+              const d = JSON.parse(line.slice(6))
+              const delta = d?.delta?.text
+              if (typeof delta === 'string') apiFullText += delta
+            }
+          } catch { /* ignore parse errors in stream */ }
+        },
+        close() {
+          res.end()
+          if (apiFullText.trim()) {
+            const chatEv: TelemetryEvent = {
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              agentId: `chat-${provider}-proxy`, type: 'agent.message',
+              payload: { text: apiFullText.slice(0, 2000), model: model || 'claude-sonnet-4-6', source: 'chat-proxy' },
+            }
+            void processEvent(chatEv, devPrincipal)
+            io.to('session:copilot-live').emit('event', chatEv)
+            broadcastSseEvent('copilot-live', chatEv)
+          }
+        },
         abort() { res.end() },
       })).catch(() => res.end())
       return
@@ -1911,9 +2177,34 @@ const httpServer = createServer(async (req, res) => {
         'X-Accel-Buffering': 'no',
         'Access-Control-Allow-Origin': '*',
       })
+      // Collect streamed text for telemetry broadcast (OpenAI format: choices[0].delta.content)
+      let oaiFullText = ''
       upstream.body?.pipeTo(new WritableStream({
-        write(chunk) { res.write(chunk) },
-        close() { res.end() },
+        write(chunk) {
+          res.write(chunk)
+          try {
+            const str = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+            for (const line of str.split('\n')) {
+              if (!line.startsWith('data: ') || line.includes('[DONE]')) continue
+              const d = JSON.parse(line.slice(6))
+              const content = d?.choices?.[0]?.delta?.content
+              if (typeof content === 'string') oaiFullText += content
+            }
+          } catch { /* ignore */ }
+        },
+        close() {
+          res.end()
+          if (oaiFullText.trim()) {
+            const chatEv: TelemetryEvent = {
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              agentId: `chat-${provider}-proxy`, type: 'agent.message',
+              payload: { text: oaiFullText.slice(0, 2000), model, source: 'chat-proxy' },
+            }
+            void processEvent(chatEv, devPrincipal)
+            io.to('session:copilot-live').emit('event', chatEv)
+            broadcastSseEvent('copilot-live', chatEv)
+          }
+        },
         abort() { res.end() },
       })).catch(() => res.end())
       return
@@ -1942,17 +2233,59 @@ const httpServer = createServer(async (req, res) => {
     }
 
     // Auto-detect provider: prefer claude, fallback to openai, then gemini
-    const prov = provider || (CHAT_ANTHROPIC_KEY ? 'claude' : CHAT_OPENAI_KEY ? 'openai' : CHAT_GEMINI_KEY ? 'gemini' : '')
+    const syncAnthropicKey = detectAnthropicKey()
+    const prov = provider || (syncAnthropicKey ? 'claude' : CHAT_OPENAI_KEY ? 'openai' : CHAT_GEMINI_KEY ? 'gemini' : '')
     if (!prov) return jsonRes(res, 401, { error: 'No AI provider configured' })
 
     try {
       if (prov === 'claude') {
-        if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured' })
+        if (!syncAnthropicKey) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured' })
+        const isOAuthSync = syncAnthropicKey.startsWith('sk-ant-oat01-')
+
+        // ── OAuth: use claude CLI for sync chat ──────────────────────────────
+        if (isOAuthSync) {
+          const lastMsg = messages[messages.length - 1]?.content || ''
+          const contextMsgs = messages.slice(0, -1)
+          const contextStr = contextMsgs.length > 0
+            ? contextMsgs.map(m => `${m.role}: ${m.content}`).join('\n') + '\n\nUser: ' + lastMsg
+            : lastMsg
+          const cliModel = model || 'claude-sonnet-4-6'
+          const fullPrompt = `${CHAT_SYSTEM_PROMPT}\n\n${contextStr}`
+
+          return new Promise<void>((resolve) => {
+            const child = spawn('claude', ['-p', '--model', cliModel], {
+              stdio: ['pipe', 'pipe', 'pipe'],
+              env: { ...process.env },
+              shell: true,
+            })
+            let stdout = ''
+            let stderr = ''
+            child.stdin.write(fullPrompt)
+            child.stdin.end()
+            child.stdout.on('data', (c: Buffer) => { stdout += c.toString() })
+            child.stderr.on('data', (c: Buffer) => { stderr += c.toString() })
+            child.on('close', (code) => {
+              if (code !== 0 || !stdout.trim()) {
+                log('warn', `[chat/sync] claude CLI error: ${stderr.slice(0, 200)}`)
+                jsonRes(res, 500, { error: `Claude CLI error: ${stderr.slice(0, 100) || 'no output'}` })
+              } else {
+                jsonRes(res, 200, { reply: stdout.trim(), provider: 'claude', model: cliModel })
+              }
+              resolve()
+            })
+            child.on('error', (err) => {
+              jsonRes(res, 500, { error: `Failed to start claude CLI: ${err.message}` })
+              resolve()
+            })
+          })
+        }
+
+        // ── Standard API key path ────────────────────────────────────────────
         const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': CHAT_ANTHROPIC_KEY,
+            'x-api-key': syncAnthropicKey,
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({

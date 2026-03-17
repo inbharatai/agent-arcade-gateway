@@ -27,7 +27,7 @@ import {
   playTrustChime, playRecoverySfx, playMilestoneSfx,
 } from '../audio/synth'
 import { startMusic, stopMusic } from '../audio/music'
-import { speak, stopVoice, unlockVoice, setVoiceVolume } from '../audio/voice'
+import { speak, stopVoice, unlockVoice, preloadVoices, setVoiceVolume } from '../audio/voice'
 
 // ── Status badge ────────────────────────────────────────────────────────────
 const STATUS_STYLE: Record<ConnectionStatus, { bg: string; text: string; pulse?: boolean }> = {
@@ -102,18 +102,18 @@ export function AgentArcadePanel({
   }, [settings.soundEnabled, settings.musicEnabled, settings.theme])
 
   useEffect(() => {
-    // Attempt immediate voice unlock on mount (works without gesture on Firefox/Safari)
-    unlockVoice()
+    // Pre-load voices on mount (doesn't unlock — Chrome still requires gesture)
+    preloadVoices()
 
-    // Re-attempt on first pointer/key interaction — fires before 'click' so voice
-    // starts on the very first user action, not the second
+    // Unlock on first real user interaction (pointerdown/click/keydown).
+    // Chrome requires this to allow speechSynthesis.speak().
     const handleInteraction = () => { initAudio(); unlockVoice() }
     document.addEventListener('pointerdown', handleInteraction)
     document.addEventListener('keydown', handleInteraction)
     document.addEventListener('click', handleInteraction)
 
-    // Also unlock when tab regains focus (user switching back to the page)
-    const handleVisibility = () => { if (document.visibilityState === 'visible') unlockVoice() }
+    // Pre-load voices again when tab regains focus (NOT unlock — no gesture context)
+    const handleVisibility = () => { if (document.visibilityState === 'visible') preloadVoices() }
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
@@ -152,8 +152,7 @@ export function AgentArcadePanel({
       }
     },
     onStateChange: (agentId: string, newState: AgentState) => {
-      if (!settings.soundEnabled) return
-      if (settings.sfxEnabled) {
+      if (settings.sfxEnabled && settings.soundEnabled) {
         if (newState === 'tool') playToolUseSfx()
         else playStateChangeSfx()
       }
@@ -161,19 +160,23 @@ export function AgentArcadePanel({
         const agent = agents.find(a => a.id === agentId)
         if (!agent) return
         const agentIdx = agents.indexOf(agent)
+        // Priority states that MUST be announced loudly
+        const isPriority = newState === 'thinking' || newState === 'error'
         if (agent.label && agent.label.trim().length > 6) {
           // Label contains real execution info — speak it
-          speak(agent.label, agentId, agentIdx)
+          speak(agent.label, agentId, agentIdx, isPriority)
         } else {
           // Label is too short or absent — fall back to a state phrase for key transitions
           const STATE_PHRASES: Partial<Record<AgentState, string>> = {
             thinking: `${agent.name} is thinking`,
+            writing:  `${agent.name} is writing a response`,
             tool:     `${agent.name} using a tool`,
             error:    `${agent.name} hit an error`,
             done:     `${agent.name} is done`,
+            waiting:  `${agent.name} needs your input`,
           }
           const phrase = STATE_PHRASES[newState]
-          if (phrase) speak(phrase, agentId, agentIdx)
+          if (phrase) speak(phrase, agentId, agentIdx, isPriority)
         }
       }
     },
@@ -185,7 +188,9 @@ export function AgentArcadePanel({
         .replace(/^(Output:|Processing:|Done:|Error:|Redirected:)\s*/i, '')
         .trim()
       if (cleaned.length < 3) return
-      speak(cleaned, agentId, agent ? agents.indexOf(agent) : 0)
+      // Priority for thinking and error messages
+      const isPriority = /thinking|error/i.test(text)
+      speak(cleaned, agentId, agent ? agents.indexOf(agent) : 0, isPriority)
     },
     onDone: (agentId: string) => {
       const agent = agents.find(a => a.id === agentId)
@@ -204,7 +209,7 @@ export function AgentArcadePanel({
         if (agent && agent.recoveryCount > 0) playRecoverySfx()
       }
       if (settings.voiceEnabled && agent) {
-        speak(`${agent.name} encountered an error`, agentId, agents.indexOf(agent))
+        speak(`${agent.name} encountered an error`, agentId, agents.indexOf(agent), true)
       }
     },
     onSelect: (_agentId: string | null) => { if (settings.soundEnabled && settings.sfxEnabled) playSelectSfx() },

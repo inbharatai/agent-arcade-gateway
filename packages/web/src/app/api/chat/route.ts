@@ -1,18 +1,40 @@
 import { NextRequest } from 'next/server'
+import { existsSync, readFileSync } from 'fs'
+import { resolve } from 'path'
+import { execSync } from 'child_process'
 
 /**
  * Server-side chat proxy route — zero configuration required.
  *
- * API keys are inherited automatically from the shell environment:
- *   1. Gateway /v1/chat  — gateway process inherits keys from the same shell as your AI tool
- *   2. Local env vars    — fallback if gateway is unreachable
+ * API keys are resolved in priority order:
+ *   1. Gateway /v1/chat  — gateway auto-detects Claude Code OAuth + env vars
+ *   2. Claude Code OAuth — ~/.claude/.credentials.json (paid subscription)
+ *   3. Local env vars    — ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.
  *
- * When you start Agent Arcade in the same terminal as Claude Code, Cursor,
- * or any AI tool, the Console auto-detects ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.
- * No separate configuration needed — the observatory and the console are one system.
+ * When connected to any paid AI tool (Claude Code, Cursor, etc.), the Console
+ * automatically piggybacks on its authentication — no separate key needed.
  */
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:47890'
+
+/** Detect Anthropic key from Claude Code OAuth or env */
+function detectAnthropicKey(): string {
+  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY
+  try {
+    const home = process.env.HOME || process.env.USERPROFILE || ''
+    if (home) {
+      const credPath = resolve(home, '.claude', '.credentials.json')
+      if (existsSync(credPath)) {
+        const creds = JSON.parse(readFileSync(credPath, 'utf-8'))
+        const oauth = creds?.claudeAiOauth
+        if (oauth?.accessToken && typeof oauth.expiresAt === 'number' && oauth.expiresAt > Date.now() + 300_000) {
+          return oauth.accessToken
+        }
+      }
+    }
+  } catch { /* ignore */ }
+  return ''
+}
 
 const SYSTEM_PROMPT = `You are an expert assistant inside Agent Arcade — a universal AI agent cockpit.
 Help the user understand and direct the AI agents visible in the current session.
@@ -29,9 +51,9 @@ export async function GET() {
     }
   } catch { /* gateway unreachable, fall through to local */ }
 
-  // Fall back to local env
+  // Fall back to local env + Claude Code OAuth detection
   const providers: Record<string, boolean> = {
-    claude:  !!process.env.ANTHROPIC_API_KEY,
+    claude:  !!detectAnthropicKey(),
     openai:  !!process.env.OPENAI_API_KEY,
     gemini:  !!process.env.GEMINI_API_KEY,
     mistral: !!process.env.MISTRAL_API_KEY,
@@ -74,7 +96,7 @@ export async function POST(req: NextRequest) {
 
   // ── 2. Fall back to local env vars ────────────────────────────────────────
   if (provider === 'claude') {
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = detectAnthropicKey()
     const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
     if (!apiKey) {
       return Response.json({
@@ -82,6 +104,35 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
+    // OAuth tokens can't hit the public API — use claude CLI (subscription auth)
+    const isOAuth = apiKey.startsWith('sk-ant-oat01-')
+    if (isOAuth) {
+      try {
+        const lastMsg = messages[messages.length - 1]?.content || ''
+        const cliModel = model || 'claude-sonnet-4-6'
+        const prompt = `${SYSTEM_PROMPT}\n\n${lastMsg}`
+        const reply = execSync(
+          `echo ${JSON.stringify(prompt)} | claude -p --model ${cliModel}`,
+          { timeout: 60_000, encoding: 'utf-8', shell: 'cmd.exe' }
+        ).trim()
+
+        // Wrap as a single SSE event for client compatibility
+        const encoder = new TextEncoder()
+        const sseData = JSON.stringify({
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: reply },
+        })
+        const stopData = JSON.stringify({ type: 'message_stop' })
+        const body = `event: content_block_delta\ndata: ${sseData}\n\nevent: message_stop\ndata: ${stopData}\n\n`
+        return new Response(encoder.encode(body), {
+          headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' },
+        })
+      } catch (e) {
+        return Response.json({ error: `Claude CLI error: ${String(e).slice(0, 150)}` }, { status: 500 })
+      }
+    }
+
+    // Standard API key path
     const upstream = await fetch(`${baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {

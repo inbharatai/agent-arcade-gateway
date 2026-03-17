@@ -145,6 +145,87 @@ export function ArcadeConsole({
     }
   }, [gatewayUrl, sessionId])
 
+  // Subscribe to gateway SSE stream for messages from external AI tools
+  // This makes the Console a universal panel — responses from Claude Code,
+  // Cursor, WhatsApp relay, or any connected tool appear in the chat.
+  const sseSourceRef = useRef<EventSource | null>(null)
+  useEffect(() => {
+    if (!gatewayUrl || !sessionId) return
+
+    // Build SSE URL with auth params
+    const params = new URLSearchParams({ sessionId })
+    if (authToken) params.set('token', authToken)
+    if (sessionSignature) params.set('sig', sessionSignature)
+    const sseUrl = `${gatewayUrl}/v1/stream?${params.toString()}`
+
+    const es = new EventSource(sseUrl)
+    sseSourceRef.current = es
+
+    es.addEventListener('event', (e) => {
+      try {
+        const ev = JSON.parse(e.data)
+        // Only insert chat messages from NON-console agents (to avoid duplicates)
+        if (ev.type === 'agent.message' && ev.agentId && !ev.agentId.includes('console')) {
+          const text = ev.payload?.text
+          if (!text || typeof text !== 'string') return
+          // Skip chat-proxy broadcasts (Console already has these from its own stream)
+          if (ev.payload?.source === 'chat-proxy') return
+          // Skip directive broadcast notifications (raw "Directive from X: ..." text)
+          // Only show directive-response (the actual AI response to a directive)
+          if (/^Directive from /i.test(text) && ev.payload?.source !== 'directive-response') return
+          // Skip short status messages (state changes, not real responses)
+          if (text.length < 20) return
+          // Skip messages that are just state announcements
+          if (/^(thinking|writing|done|error|waiting)/i.test(text)) return
+          if (/^I am thinking about:/i.test(text)) return
+          if (/^Now writing/i.test(text)) return
+          if (/^Done:/i.test(text)) return
+          if (/^Error:/i.test(text)) return
+          // Skip WhatsApp command echoes
+          if (/^WhatsApp command:/i.test(text)) return
+
+          // Map known agent IDs to friendly names
+          const AGENT_NAMES: Record<string, string> = {
+            'claude-code-main': '🤖 Claude Code',
+            'whatsapp-relay': '📱 WhatsApp AI',
+            'cursor-main': '📝 Cursor',
+            'openai-main': '🧠 OpenAI',
+            'gemini-main': '💎 Gemini',
+            'crewai-main': '👥 CrewAI',
+            'autogen-main': '🔄 AutoGen',
+            'langchain-main': '🔗 LangChain',
+            'openclaw-main': '🦞 OpenClaw',
+          }
+          const agentName = AGENT_NAMES[ev.agentId] || ev.agentId.replace(/[^a-zA-Z0-9 _-]/g, '').trim() || 'External AI'
+          const aiMsg: ChatMessage = {
+            id: `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            role: 'assistant',
+            content: text,
+            timestamp: Date.now(),
+            model: agentName,
+          }
+          setSession(prev => {
+            if (!prev) return prev
+            const updated = addMessage(prev.id, aiMsg)
+            return updated ? { ...updated } : prev
+          })
+        }
+      } catch { /* ignore parse errors */ }
+    })
+
+    es.onerror = () => {
+      // EventSource auto-reconnects — just log for debugging
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[console] SSE stream error — will auto-reconnect')
+      }
+    }
+
+    return () => {
+      es.close()
+      sseSourceRef.current = null
+    }
+  }, [gatewayUrl, sessionId, authToken, sessionSignature])
+
   // Initialize session — always start fresh on mount so connecting to a new
   // tool never shows old conversation history. Old sessions remain in storage
   // and can be browsed via the session history panel.
@@ -205,6 +286,18 @@ export function ArcadeConsole({
     if (updatedSession) setSession({ ...updatedSession })
 
     consoleAgentThinking(userInput)
+
+    // Also push as a directive so the connected tool (Claude Code, Cursor, etc.) can execute it
+    if (gatewayUrl) {
+      const dirHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) dirHeaders['Authorization'] = `Bearer ${authToken}`
+      if (sessionSignature) dirHeaders['X-Session-Signature'] = sessionSignature
+      fetch(`${gatewayUrl}/v1/directives`, {
+        method: 'POST',
+        headers: dirHeaders,
+        body: JSON.stringify({ instruction: userInput, source: 'console-chat' }),
+      }).catch((e) => console.warn('[console] Directive push failed:', e.message))
+    }
 
     setIsStreaming(true)
     setStreamingContent('')
@@ -285,7 +378,7 @@ export function ArcadeConsole({
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl])
+  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl, gatewayUrl, authToken, sessionSignature])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()

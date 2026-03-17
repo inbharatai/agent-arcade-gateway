@@ -365,6 +365,19 @@ async function startWhatsApp() {
       currentQrDataUrl = ''
       currentQrSvg     = ''
       console.log('[whatsapp-client] ✅ WhatsApp connected! Message yourself to chat with AI, or send "help" for commands.')
+
+      // Register WhatsApp relay agent in the Arcade
+      const spawnHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (GATEWAY_TOKEN) spawnHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+      fetch(`${GATEWAY_URL}/v1/ingest`, {
+        method: 'POST', headers: spawnHeaders,
+        body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
+          type: 'agent.spawn', payload: { name: '📱 WhatsApp', role: 'relay', characterClass: 'healer',
+            task: 'WhatsApp message relay — self-chat AI', aiModel: 'Claude (via gateway)' } }),
+      }).catch(() => {})
+
+      // Start SSE listener to forward Console messages to WhatsApp
+      startSSEListener()
     }
 
     if (connection === 'close') {
@@ -388,7 +401,9 @@ async function startWhatsApp() {
 
   // ── Incoming messages ──────────────────────────────────────────────────────
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return
+    console.log(`[whatsapp-client] messages.upsert type=${type} count=${messages.length}`)
+    // Accept both 'notify' (real-time) and 'append' (self-chat on newer WhatsApp)
+    if (type !== 'notify' && type !== 'append') return
 
     for (const msg of messages) {
       if (!msg.message) continue
@@ -405,17 +420,65 @@ async function startWhatsApp() {
       // ── Self-chat detection ──────────────────────────────────────────────
       // In WhatsApp, messaging yourself shows remoteJid === your own JID
       // and fromMe is true for messages you send to yourself.
+      // Some WhatsApp versions set participant instead of remoteJid for self-chat.
       const rawJid = sock?.user?.id
       if (!rawJid) continue  // socket not ready yet
       const myJid = rawJid.replace(/:.*@/, '@')
-      const isSelfChat = msg.key.fromMe && (from === myJid || from === rawJid)
+      const myNumber = rawJid.split(':')[0].split('@')[0]
+      const fromNumber = from.split(':')[0].split('@')[0]
+      // Also check the LID (Linked ID) — newer WhatsApp uses @lid JIDs for self-chat
+      const myLid = (sock?.user as any)?.lid || ''
+
+      // Debug: log all incoming messages so we can diagnose routing
+      console.log(`[whatsapp-client] MSG: from=${from} fromMe=${msg.key.fromMe} myJid=${myJid} rawJid=${rawJid} myNum=${myNumber} fromNum=${fromNumber} myLid=${myLid} text=${text.slice(0, 60)}`)
+
+      // Self-chat detection: match by JID, phone number, or LID
+      const jidMatch = from === myJid || from === rawJid || fromNumber === myNumber
+      const lidMatch = from.endsWith('@lid') && (from === myLid || msg.key.fromMe === true)
+      const isSelfChat = (jidMatch || lidMatch)
+        && (msg.key.fromMe !== false) // fromMe can be true or undefined for self-chat
 
       if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
 
       if (isSelfChat && SELF_CHAT_ENABLED) {
-        console.log(`[whatsapp-client] Self-chat: ${text.slice(0, 100)}`)
+        console.log(`[whatsapp-client] Self-chat from ${fromNumber}: ${text.slice(0, 100)}`)
+
+        // Fire telemetry so the Arcade shows WhatsApp activity
+        const telHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (GATEWAY_TOKEN) telHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+        const ts = Date.now()
+        fetch(`${GATEWAY_URL}/v1/ingest`, {
+          method: 'POST', headers: telHeaders,
+          body: JSON.stringify({ v: 1, ts, sessionId: 'copilot-live', agentId: 'whatsapp-relay',
+            type: 'agent.state', payload: { state: 'thinking', label: `WhatsApp: ${text.slice(0, 80)}` } }),
+        }).catch(() => {})
+        fetch(`${GATEWAY_URL}/v1/ingest`, {
+          method: 'POST', headers: telHeaders,
+          body: JSON.stringify({ v: 1, ts: ts + 50, sessionId: 'copilot-live', agentId: 'whatsapp-relay',
+            type: 'agent.message', payload: { text: `WhatsApp command: ${text.slice(0, 120)}` } }),
+        }).catch(() => {})
+
+        // Also push as a directive so connected tools can execute it
+        fetch(`${GATEWAY_URL}/v1/directives`, {
+          method: 'POST', headers: telHeaders,
+          body: JSON.stringify({ instruction: text, source: 'whatsapp-self-chat' }),
+        }).catch(() => {})
 
         const reply = await handleSelfChat(from, text)
+
+        // Fire done telemetry
+        fetch(`${GATEWAY_URL}/v1/ingest`, {
+          method: 'POST', headers: telHeaders,
+          body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
+            type: 'agent.state', payload: { state: 'idle', label: 'Response sent' } }),
+        }).catch(() => {})
+
+        // Broadcast the AI reply to the Console via SSE so it appears in chat
+        fetch(`${GATEWAY_URL}/v1/ingest`, {
+          method: 'POST', headers: telHeaders,
+          body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
+            type: 'agent.message', payload: { text: reply.slice(0, 2000), source: 'whatsapp-ai-response' } }),
+        }).catch(() => {})
 
         try {
           await sock!.sendMessage(from, { text: reply })
@@ -454,6 +517,89 @@ async function startWhatsApp() {
         }
       }
     }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// SSE listener — forward Console/tool responses to WhatsApp self-chat
+// ---------------------------------------------------------------------------
+
+let sseAbortController: AbortController | null = null
+
+function startSSEListener() {
+  if (sseAbortController) sseAbortController.abort()
+  sseAbortController = new AbortController()
+
+  const sseUrl = `${GATEWAY_URL}/v1/stream?sessionId=copilot-live`
+  console.log(`[whatsapp-client] Connecting SSE listener to ${sseUrl}`)
+
+  const sseHeaders: Record<string, string> = { Accept: 'text/event-stream' }
+  if (GATEWAY_TOKEN) sseHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+
+  fetch(sseUrl, { headers: sseHeaders, signal: sseAbortController.signal })
+    .then(async (res) => {
+      if (!res.ok || !res.body) {
+        console.warn(`[whatsapp-client] SSE connection failed: HTTP ${res.status}`)
+        setTimeout(startSSEListener, 5000) // retry
+        return
+      }
+      console.log(`[whatsapp-client] SSE connected — forwarding Console messages to WhatsApp`)
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      const reader = res.body.getReader()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        // Parse SSE events from buffer
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // keep incomplete last line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const ev = JSON.parse(line.slice(6))
+            // Only forward chat-proxy messages (Console chat responses) to WhatsApp
+            // Skip messages originating from WhatsApp to avoid echo loops
+            if (ev.type === 'agent.message' &&
+                ev.payload?.source === 'chat-proxy' &&
+                ev.payload?.text &&
+                !ev.payload.text.startsWith('WhatsApp command:')) {
+              forwardToWhatsApp(ev.payload.text)
+            }
+          } catch {
+            // ignore parse errors for heartbeats etc.
+          }
+        }
+      }
+      // Stream ended — reconnect
+      console.log(`[whatsapp-client] SSE stream ended, reconnecting...`)
+      setTimeout(startSSEListener, 3000)
+    })
+    .catch((err: Error) => {
+      if (err.name === 'AbortError') return // intentional abort
+      console.warn(`[whatsapp-client] SSE error: ${err.message}, reconnecting...`)
+      setTimeout(startSSEListener, 5000)
+    })
+}
+
+/** Forward a Console/tool response to the user's WhatsApp self-chat */
+function forwardToWhatsApp(text: string) {
+  if (!sock || currentStatus !== 'connected') return
+  const rawJid = sock.user?.id
+  if (!rawJid) return
+
+  const myJid = rawJid.replace(/:.*@/, '@')
+  const truncated = text.length > 2000 ? text.slice(0, 2000) + '…' : text
+  const formatted = `🎮 Console:\n${truncated}`
+
+  sock.sendMessage(myJid, { text: formatted }).then(() => {
+    console.log(`[whatsapp-client] Forwarded Console message to WhatsApp self-chat (${text.slice(0, 60)}...)`)
+  }).catch((e: Error) => {
+    console.warn(`[whatsapp-client] Failed to forward to WhatsApp: ${e.message}`)
   })
 }
 

@@ -15,7 +15,10 @@ export function initArcadeBridge(config: ArcadeBridgeConfig): void {
 }
 
 async function ingest(type: string, agentId: string, payload: Record<string, unknown>): Promise<void> {
-  if (!bridgeConfig?.gatewayUrl || !bridgeConfig.sessionId) return
+  if (!bridgeConfig?.gatewayUrl || !bridgeConfig.sessionId) {
+    if (typeof console !== 'undefined') console.warn('[arcade-bridge] Cannot ingest — bridge not initialized (no gatewayUrl or sessionId)')
+    return
+  }
   const event = {
     v: 1,
     ts: Date.now(),
@@ -29,13 +32,17 @@ async function ingest(type: string, agentId: string, payload: Record<string, unk
   if (bridgeConfig.sessionSignature) headers['X-Session-Signature'] = bridgeConfig.sessionSignature
 
   try {
-    await fetch(`${bridgeConfig.gatewayUrl}/v1/ingest`, {
+    const res = await fetch(`${bridgeConfig.gatewayUrl}/v1/ingest`, {
       method: 'POST',
       headers,
       body: JSON.stringify(event),
     })
-  } catch {
-    // Silently fail — gateway may not be running during SSR or offline
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }))
+      console.warn(`[arcade-bridge] Ingest ${type} failed (${res.status}):`, err?.error || res.statusText)
+    }
+  } catch (e) {
+    console.warn('[arcade-bridge] Ingest fetch error:', (e as Error).message)
   }
 }
 
@@ -52,28 +59,37 @@ export function consoleAgentSpawn(): void {
 }
 
 export function consoleAgentThinking(prompt: string): void {
-  const taskText = prompt.slice(0, 80)
-  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'thinking', task: taskText })
-  // Emit the raw prompt so the agent "says" what it received —
-  // the onMessage voice callback will speak this directly
+  const taskText = prompt.slice(0, 120)
+  void ingest('agent.state', CONSOLE_AGENT_ID, {
+    state: 'thinking',
+    label: `Thinking: ${taskText}`,
+    task: taskText,
+  })
+  // Emit a message so voice narration announces what the agent is working on
   void ingest('agent.message', CONSOLE_AGENT_ID, {
-    text: `Task: ${taskText}${prompt.length > 80 ? '…' : ''}`,
+    text: `I am thinking about: ${taskText}${prompt.length > 120 ? '…' : ''}`,
   })
 }
 
 export function consoleAgentWriting(model: string): void {
-  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'writing' })
+  void ingest('agent.state', CONSOLE_AGENT_ID, {
+    state: 'writing',
+    label: `Generating response with ${model}`,
+  })
   void ingest('agent.tool', CONSOLE_AGENT_ID, { name: `${model}-generation` })
+  void ingest('agent.message', CONSOLE_AGENT_ID, {
+    text: `Now writing a response using ${model}`,
+  })
 }
 
 export function consoleAgentDone(summary: string): void {
-  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'idle' })
-  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Done: ${summary.slice(0, 80)}` })
+  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'idle', label: 'Complete' })
+  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Done: ${summary.slice(0, 120)}` })
 }
 
 export function consoleAgentError(error: string): void {
-  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'error' })
-  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Error: ${error.slice(0, 80)}` })
+  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'error', label: error.slice(0, 200) })
+  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Error: ${error.slice(0, 120)}` })
 }
 
 export function consoleAgentCodeDetected(): void {

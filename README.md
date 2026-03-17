@@ -8,13 +8,15 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.2.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.2.4-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
 [![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Universal_Remote-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
 [![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deepest-ai-brain-observability)
 [![Zero Config](https://img.shields.io/badge/Zero_Config-Auto--Detect_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
+
+[![Directive Bridge](https://img.shields.io/badge/Directive_Bridge-Console_%E2%86%94_AI_Tools-10B981?style=for-the-badge)](#directive-bridge--console--ai-tool-loop)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
 
@@ -28,6 +30,36 @@
 
 ---
 
+## Table of Contents
+
+- [What Is Agent Arcade?](#what-is-agent-arcade)
+- [Directive Bridge](#-directive-bridge--console--ai-tool-loop)
+- [WhatsApp Agent Control](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
+- [OpenClaw Deep Integration](#-openclaw--deepest-ai-brain-observability)
+- [Live Dashboard](#-live-dashboard)
+- [AI Chat Console](#-ai-chat-console)
+- [Agent Intervention System](#%EF%B8%8F-agent-intervention-system)
+- [Goal Mode](#-goal-mode)
+- [Settings Panel](#%EF%B8%8F-settings-panel)
+- [Quick Start](#-quick-start)
+- [Framework Integrations](#-framework-integrations)
+- [All Supported Frameworks](#-all-supported-frameworks)
+- [Gamification System](#-gamification-system)
+- [Cost Intelligence](#-cost-intelligence)
+- [Audio & Voice System](#-audio--voice-system)
+- [What Makes Agent Arcade Unique](#-what-makes-agent-arcade-unique)
+- [Architecture](#%EF%B8%8F-architecture)
+- [API Reference](#-api-reference)
+- [Monorepo Map](#-monorepo-map)
+- [Testing](#-testing)
+- [Production Deployment](#-production-deployment)
+- [Environment Variables](#environment-variables)
+- [Security](#-security)
+- [Recent Changes](#-recent-changes-v321--v324)
+- [Contributing](#-contributing)
+
+---
+
 ## What Is Agent Arcade?
 
 Agent Arcade is a **universal AI agent cockpit** — a live command center that lets you watch, debug, and control any AI agent, from any framework, in real-time. Think of it as the game dashboard your AI agents didn't know they needed.
@@ -38,7 +70,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 <tr>
 <td align="center" width="280">
 
-**🎮 Your AI Agents**
+**Your AI Agents**
 
 [![Claude Code](https://img.shields.io/badge/Claude_Code-7C3AED?style=flat-square&logo=anthropic&logoColor=white)](#)
 [![OpenAI](https://img.shields.io/badge/OpenAI-10A37F?style=flat-square&logo=openai&logoColor=white)](#)
@@ -55,7 +87,7 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 </td>
 <td align="center" width="60">
 
-**▶▶▶**
+**>>>**
 
 *Socket.IO*
 *SSE*
@@ -64,38 +96,39 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 </td>
 <td align="center" width="200">
 
-**⚡ Gateway**
+**Gateway**
 **`:47890`**
 
-🎯 Event Ingestion
-💰 Cost Calculator
-🔔 Notification Router
-💬 Chat Proxy
+Event Ingestion
+Cost Calculator
+Notification Router
+Chat Proxy
+Directives Queue
 
 </td>
 <td align="center" width="60">
 
-**▶▶▶**
+**>>>**
 
 *Real-time*
 
 </td>
 <td align="center" width="220">
 
-**🕹️ Live Dashboard**
+**Live Dashboard**
 **`:47380`**
 
-🎨 Pixel-Art Canvas
-🏆 XP & Achievements
-💵 Cost Tracking
-⏸️ Agent Intervention
-💬 AI Chat Console
+Pixel-Art Canvas
+XP & Achievements
+Cost Tracking
+Agent Intervention
+AI Chat Console
 
 </td>
 </tr>
 </table>
 
-**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use. The Console **auto-detects which AI model your agents are using** and selects it automatically — no manual model switching needed.
+**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use. It also **auto-detects Claude Code OAuth credentials** from `~/.claude/.credentials.json`, so if you have a Claude Max/Pro subscription, the Console works instantly — no key needed. The Console **auto-detects which AI model your agents are using** and selects it automatically — no manual model switching needed. If no key is found in the environment, an **inline API key entry** appears directly in the Console banner — paste your key and start chatting without navigating to Settings.
 
 ### Why Agent Arcade?
 
@@ -106,24 +139,92 @@ Agent Arcade is a **universal AI agent cockpit** — a live command center that 
 | "My agent is stuck and I can't intervene" | Pause, redirect, stop, or hand off any agent mid-task |
 | "I need different control surfaces" | REST API + WhatsApp + Dashboard + CLI — control from anywhere |
 | "Each framework needs different tooling" | One platform for Claude Code, OpenAI, LangChain, CrewAI, and 8 more |
+| "My console can't talk back to my AI tool" | Directive Bridge: Console/WhatsApp commands execute on Claude Code and the response shows in chat |
 | "I have to configure the console model manually" | Console auto-detects the AI model from your running agents and inherits API keys |
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
+| "I need to manually enter my API key" | Auto-detects Claude Code OAuth subscription tokens + inline key entry in the Console banner |
+| "My console shows stale messages from the last session" | Fresh session on every mount — no stale history on new connections |
 
-### 🕹️ How It Works
+### How It Works
 
 ```
- ╔══════════════════════════════════════════════════════════════════════╗
- ║  1. 🚀 START     →  npm run dev:arcade                             ║
- ║  2. 🤖 USE AI    →  Claude Code, Cursor, your Python app           ║
- ║  3. 🎮 WATCH     →  http://localhost:47380                         ║
- ╚══════════════════════════════════════════════════════════════════════╝
+ +======================================================================+
+ |  1. START     ->  npm run dev:arcade                                 |
+ |  2. USE AI    ->  Claude Code, Cursor, your Python app               |
+ |  3. WATCH     ->  http://localhost:47380                             |
+ +======================================================================+
 ```
 
-The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console auto-detects the AI model your agents are using and inherits API keys from the environment. The WhatsApp QR client auto-starts with the gateway — scan once and control any agent from your phone. Observatory, console, WhatsApp, and arcade are one unified system.
+The gateway (`localhost:47890`) receives telemetry via Socket.IO, SSE, or HTTP POST. Your AI tool connects to it via an adapter (one-line wrapper) or the zero-code proxy (just change the base URL). The dashboard (`localhost:47380`) renders everything in real-time — pixel-art agents, live cost, XP progression, intervention controls. The Console auto-detects the AI model your agents are using and inherits API keys from the environment (including Claude Code OAuth tokens from `~/.claude/.credentials.json`). Every Console message is also pushed to the **Directives Queue** (`/v1/directives`), which connected tools like Claude Code can poll and execute — closing the loop between the human operator and the AI agent. The **Directive Bridge** (`directive-bridge.ts`) polls the queue, executes commands via `claude -p`, and posts responses back — the Console shows the AI's response in real-time alongside its own chat stream. The WhatsApp QR client auto-starts with the gateway — scan once and control any agent from your phone. Message yourself on WhatsApp to chat with AI via the **self-chat relay** — your message is routed to the gateway, executed, and the response appears both in WhatsApp and the Arcade feed. Observatory, console, WhatsApp, directives, bridge, and arcade are one unified system — **everything is interlinked**.
 
 ---
 
-## 💚 WhatsApp Agent Control — Universal Remote for Every AI Agent
+## Directive Bridge — Console ↔ AI Tool Loop
+
+<div align="center">
+
+> **Type in the Console. Claude Code executes it. The response shows in the Console chat. Everything is interlinked.**
+
+</div>
+
+The Directive Bridge is the key piece that makes Agent Arcade a **true universal control panel** — not just an observer. When you send a message in the Console (or WhatsApp), three things happen simultaneously:
+
+1. **Direct chat** — the Console streams an AI response from the selected model (Claude, GPT-4o, Gemini, etc.)
+2. **Directive pushed** — the message is queued as a directive at `/v1/directives`
+3. **Bridge executes** — the Directive Bridge polls the queue, runs `claude -p`, and posts the response back via `/v1/directives/:id/done`
+4. **SSE broadcast** — the gateway broadcasts the response to all listeners — the Console chat shows it as a message from "🤖 Claude Code"
+
+```mermaid
+flowchart LR
+  U["User types in Console"] -->|"POST /v1/directives"| GW["Gateway :47890"]
+  GW -->|"Socket.IO broadcast"| BR["Directive Bridge"]
+  BR -->|"claude -p"| CC["Claude Code CLI"]
+  CC -->|"stdout"| BR
+  BR -->|"POST /v1/directives/:id/done"| GW
+  GW -->|"SSE broadcast"| CON["Console Chat"]
+  GW -->|"SSE broadcast"| ARC["Arcade Feed"]
+
+  U -->|"POST /v1/chat"| GW
+  GW -->|"Streaming response"| CON
+
+  style U fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+  style GW fill:#7c2d12,stroke:#f97316,stroke-width:2px,color:#fed7aa
+  style BR fill:#1a3a2a,stroke:#10b981,stroke-width:2px,color:#d1fae5
+  style CC fill:#2d1b69,stroke:#7c3aed,stroke-width:2px,color:#e9d5ff
+  style CON fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe
+  style ARC fill:#164e63,stroke:#06b6d4,stroke-width:2px,color:#cffafe
+```
+
+### Starting the Bridge
+
+```bash
+# Starts automatically with dev:arcade, or run manually:
+GATEWAY_URL=http://localhost:47890 bun run packages/gateway/src/directive-bridge.ts
+```
+
+The bridge registers as a **🤖 Claude Code** agent in the Arcade — visible on the pixel-art canvas with state transitions (thinking → idle) and telemetry events.
+
+### Agent Name Mapping
+
+The Console maps known agent IDs to friendly display names:
+
+| Agent ID | Display Name |
+|----------|-------------|
+| `claude-code-main` | 🤖 Claude Code |
+| `whatsapp-relay` | 📱 WhatsApp AI |
+| `cursor-main` | 📝 Cursor |
+| `openai-main` | 🧠 OpenAI |
+| `gemini-main` | 💎 Gemini |
+| `crewai-main` | 👥 CrewAI |
+| `autogen-main` | 🔄 AutoGen |
+| `langchain-main` | 🔗 LangChain |
+| `openclaw-main` | 🦞 OpenClaw |
+
+Any new tool can integrate by: (1) emitting telemetry to `/v1/ingest`, (2) polling `/v1/directives`, and (3) posting responses to `/v1/directives/:id/done`.
+
+---
+
+## WhatsApp Agent Control — Universal Remote for Every AI Agent
 
 <div align="center">
 
@@ -141,14 +242,14 @@ This is **not a chatbot** and **not specific to any one framework**. It's a comm
 
 ```mermaid
 flowchart LR
-  WA["📱 Your WhatsApp"] -->|"Baileys WebSocket"| QR["💚 QR Client :47891"]
-  QR -->|"HTTP POST"| GW["⚡ Gateway :47890"]
-  GW -->|"pause/stop/redirect"| A1["🟣 Claude Code"]
-  GW -->|"pause/stop/redirect"| A2["🟢 OpenAI GPT-4o"]
-  GW -->|"pause/stop/redirect"| A3["🔴 LangChain"]
-  GW -->|"pause/stop/redirect"| A4["🟧 OpenClaw"]
-  GW -->|"pause/stop/redirect"| A5["🔵 CrewAI / AutoGen"]
-  GW -->|"pause/stop/redirect"| A6["⬛ Any Framework"]
+  WA["Your WhatsApp"] -->|"Baileys WebSocket"| QR["QR Client :47891"]
+  QR -->|"HTTP POST"| GW["Gateway :47890"]
+  GW -->|"pause/stop/redirect"| A1["Claude Code"]
+  GW -->|"pause/stop/redirect"| A2["OpenAI GPT-4o"]
+  GW -->|"pause/stop/redirect"| A3["LangChain"]
+  GW -->|"pause/stop/redirect"| A4["OpenClaw"]
+  GW -->|"pause/stop/redirect"| A5["CrewAI / AutoGen"]
+  GW -->|"pause/stop/redirect"| A6["Any Framework"]
   GW -->|"status update"| QR
   QR -->|"reply message"| WA
 
@@ -171,7 +272,7 @@ All locations work automatically — the gateway auto-starts the WhatsApp client
 
 | Location | How |
 |:---------|:----|
-| **Dashboard** | Settings → WhatsApp tab — QR code appears automatically with live status (Starting → QR → Connected) |
+| **Dashboard** | Settings -> WhatsApp tab — QR code appears automatically with live status (Starting -> QR -> Connected) |
 | **Terminal** | QR code prints directly in the gateway terminal output |
 | **HTTP endpoint** | `GET http://localhost:47891/qr.png` serves the QR as a PNG image |
 
@@ -179,7 +280,7 @@ All locations work automatically — the gateway auto-starts the WhatsApp client
 
 ![Settings Panel](docs/screenshots/aa-04-settings.png)
 
-*The Settings → WhatsApp tab shows real-time connection status: Starting → QR displayed → Connected. The QR code renders directly in the dashboard — scan from your phone's WhatsApp → Linked Devices.*
+*The Settings -> WhatsApp tab shows real-time connection status: Starting -> QR displayed -> Connected. The QR code renders directly in the dashboard — scan from your phone's WhatsApp -> Linked Devices.*
 
 </div>
 
@@ -194,9 +295,9 @@ All locations work automatically — the gateway auto-starts the WhatsApp client
 ```bash
 # Automatic (default in dev mode):
 npm run dev:arcade
-# → Gateway starts on :47890
-# → WhatsApp client auto-spawns on :47891
-# → QR code appears in Settings → WhatsApp tab
+# -> Gateway starts on :47890
+# -> WhatsApp client auto-spawns on :47891
+# -> QR code appears in Settings -> WhatsApp tab
 
 # Manual (production or custom setup):
 GATEWAY_URL=http://localhost:47890 \
@@ -234,19 +335,34 @@ Every command works with **any framework** — the agent could be Claude Code, O
 </tr>
 </table>
 
+### Self-Chat AI Relay
+
+**Message yourself on WhatsApp to chat with AI.** Like OpenClaw's self-chat, but universal:
+
+1. Open WhatsApp → tap your own chat (or "Message Yourself")
+2. Type anything — your message goes to the gateway's `/v1/chat/sync` endpoint
+3. The AI responds directly in your WhatsApp chat
+4. The interaction appears in the **Arcade feed** as a 📱 WhatsApp agent event
+5. The message is also pushed as a **directive** so connected tools (Claude Code) can execute it
+
+Self-chat supports conversation history (up to 20 messages per session, 50 concurrent sessions), special commands (`/clear`, `/reset`), and all regular agent control commands (`pause`, `stop`, `redirect`, etc.).
+
+**Telemetry integration:** Every self-chat interaction fires `agent.state` (thinking → idle) and `agent.message` events to the gateway, so the Arcade pixel-art canvas shows WhatsApp activity in real-time with voice announcements.
+
 ### What Makes This Different
 
 | Feature | Agent Arcade WhatsApp | Typical WhatsApp Bots |
 |:--------|:---------------------|:---------------------|
-| **Cost** | Free — uses your personal WhatsApp | Twilio: $0.005–$0.08 per message |
+| **Cost** | Free — uses your personal WhatsApp | Twilio: $0.005-$0.08 per message |
 | **Setup** | Scan QR code once | Register business account, buy phone number, configure webhooks |
 | **Scope** | Controls any AI agent from any framework | Usually tied to one specific bot |
+| **Self-Chat AI** | Message yourself → get AI response + Arcade telemetry | Not supported |
 | **Auth** | Number allowlist (`WHATSAPP_ALLOWED_NUMBERS`) | API keys, tokens, webhook secrets |
 | **Persistence** | Session saved in `.whatsapp-auth/` — survives restarts | Requires external session store |
 | **Dashboard** | QR + status displayed in Arcade Settings tab | No dashboard integration |
 
 <details>
-<summary><strong>🔧 WhatsApp Environment Variables</strong></summary>
+<summary><strong>WhatsApp Environment Variables</strong></summary>
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -256,12 +372,13 @@ Every command works with **any framework** — the agent could be Claude Code, O
 | `WHATSAPP_CLIENT_PORT` | `47891` | Internal QR server port |
 | `WHATSAPP_ALLOWED_NUMBERS` | *(empty = all)* | Comma-separated E.164 numbers allowed to send commands |
 | `WHATSAPP_GATEWAY_TOKEN` | — | Optional gateway auth token |
+| `WHATSAPP_SELF_CHAT` | `1` | Enable self-chat AI relay (set `0` to disable) |
 
 </details>
 
 ---
 
-## 🐙 OpenClaw — Deepest AI Brain Observability
+## OpenClaw — Deepest AI Brain Observability
 
 <div align="center">
 
@@ -300,11 +417,11 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 | OpenClaw Component | Tracked Events | Dashboard View |
 |:-------------------|:--------------|:--------------|
-| 🧠 **Brain** | think, plan, act, observe, respond, error | Agent states: thinking → tool → writing |
-| 🔧 **Skills** | start, end, error | Child agent per skill execution |
-| 💾 **Memory** | read, write, search | Tool events with payload |
-| 💓 **Heartbeat** | start, end | Persistent child agent per scheduled task |
-| 🌐 **Channels** | receive, send (WhatsApp/Slack) | Message flow in real-time |
+| **Brain** | think, plan, act, observe, respond, error | Agent states: thinking -> tool -> writing |
+| **Skills** | start, end, error | Child agent per skill execution |
+| **Memory** | read, write, search | Tool events with payload |
+| **Heartbeat** | start, end | Persistent child agent per scheduled task |
+| **Channels** | receive, send (WhatsApp/Slack) | Message flow in real-time |
 
 </td>
 </tr>
@@ -312,7 +429,7 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 ---
 
-## 🎮 Live Dashboard
+## Live Dashboard
 
 <div align="center">
 
@@ -324,16 +441,41 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 ### What You See on the Canvas
 
-- **Pixel-art agents** — each AI worker rendered as a unique character based on their model (Claude → purple, GPT/OpenAI → green, Gemini → blue, Mistral → navy, Ollama → neon-green, Copilot → blue, Cursor → orange)
+- **Pixel-art agents** — each AI worker rendered as a unique character with distinct silhouettes based on their model (Claude -> purple, GPT/OpenAI -> green, Gemini -> blue, Mistral -> navy, Ollama -> neon-green, Copilot -> blue, Cursor -> orange)
 - **Live speech bubbles** — real-time task labels (e.g. "Designing microservices layout...", "Running Jest tests...", "Deploying to production...")
-- **State indicators** — thinking 🤔, writing ✍️, tool use 🔧, done ✅, error ❌
+- **State indicators** — thinking, writing, tool use, done, error
 - **Progress bars** — per-agent task completion
-- **XP & cost** — session totals in the status bar (1385 XP · 15 🏆 · $0.17)
+- **XP & cost** — session totals in the status bar (1385 XP, 15 achievements, $0.17)
 - **CONNECTED badge** — live WebSocket/SSE status to the gateway
+
+### Canvas Rendering Engine
+
+The dashboard uses a **custom 60fps canvas renderer** (not DOM) with:
+
+- **16x10 grid layout** with A* pathfinding for agent movement
+- **Y-sorted depth rendering** for proper sprite layering
+- **8 character classes** — Developer, Designer, Manager, Researcher, Writer, Engineer, Hacker, Analyst — each with unique silhouettes and 4-frame walking animations
+- **Dynamic lighting** — per-agent shadows, atmospheric haze, bloom glow
+- **Particle system** — dust motes, sparkles, environment effects
+- **Post-processing** — vignette, scanlines, bloom
+- **Accessibility** — `prefers-reduced-motion` support throughout
+
+### 8 Visual Themes
+
+| Theme | Floor | Wall | Mood |
+|-------|-------|------|------|
+| **Office** | Checker | Brick | Professional |
+| **War Room** | Metal | Panel | Tactical |
+| **Retro Arcade** | Grid | Neon | Nostalgic |
+| **Cyber Lab** | Circuit | Glass | Futuristic |
+| **Campus Ops** | Grass | Hedge | Casual |
+| **Dungeon** | Stone | Dungeon | Fantasy |
+| **Terminal** | Stars | Viewport | Hacker |
+| **Holo Arena** | Circuit | Holo | Sci-fi |
 
 ---
 
-## 💬 AI Chat Console
+## AI Chat Console
 
 <div align="center">
 
@@ -347,22 +489,40 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 - **Auto-detects AI model from your agents** — if your session has Claude agents running, the Console auto-selects Claude. GPT-4o agents? It switches to GPT-4o. No manual model selection needed — the Console matches what your agents are already using.
 - **Auto-inherits API keys** — the Console reads `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from the gateway's environment. No `.env` files. No Settings page. The observatory and the console are one unified system.
-- **Smart fallback** — if no agents are running, the Console picks the first provider with an available API key. If no keys are in the environment, a one-click "Add Key →" button opens Settings → Providers.
+- **Claude Code OAuth auto-detection** — if you have a Claude Max/Pro subscription, the gateway reads your OAuth token from `~/.claude/.credentials.json`. No API key needed — just sign into Claude Code and the Console works automatically. The auth mode (`oauth-subscription` vs `api-key`) is reported by `/v1/chat/providers`.
+- **Inline API key entry** — if no key is detected, an inline input appears directly in the Console banner. Paste your key and start chatting immediately — no need to navigate to Settings.
+- **Fresh session on mount** — every new connection starts a clean session. No stale chat history from previous page loads or disconnections.
+- **Smart fallback** — if no agents are running, the Console picks the first provider with an available API key. If no keys are in the environment, the inline key entry activates automatically.
 - **12 models across 5 providers** — Claude Sonnet/Opus/Haiku 4.6, GPT-4o/4o-mini/o3-mini, Gemini 2.0 Flash/1.5 Pro, Mistral Large/Small, plus Ollama (local/free)
 - **Token + cost counter** — live token count and `~$0.000039` cost estimate per message
+- **Directive bridge** — every Console message is also pushed to the Directives Queue (`/v1/directives`), so connected tools like Claude Code can poll and execute your instructions in real-time. The [Directive Bridge](#-directive-bridge--console--ai-tool-loop) script polls these directives, runs `claude -p`, and posts responses back — creating a complete Console ↔ AI tool feedback loop.
+- **SSE interlink** — the Console subscribes to the gateway's SSE event stream. Responses from ANY connected AI tool (Claude Code, Cursor, WhatsApp relay, etc.) appear in the Console chat with friendly agent names (🤖 Claude Code, 📱 WhatsApp AI, etc.). Duplicate and status messages are filtered automatically.
+- **Arcade Bridge** — every Console interaction emits telemetry events (`agent.spawn`, `agent.state`, `agent.tool`, `agent.message`, `agent.end`) so the Console agent appears on the pixel-art canvas alongside your other agents
+- **Session persistence** — chat history stored in localStorage with session management, export, and cleanup
 - **Export conversation** — save the full chat as markdown
 - **Ctrl+Enter to send** — keyboard-driven workflow
 - **Slash commands (Ctrl+K)** — `/fix`, `/explain`, `/test`, `/review`, `/opt`, `/docs`, `/refactor`, `/debug`, `/cost`, `/pause`, `/stop`, `/redirect`
 
+### Server-Side Chat Routing
+
+```
+Request flow:
+  Browser -> POST /api/chat -> Gateway /v1/chat/stream (preferred)
+                             -> Claude CLI (if OAuth detected)
+                             -> Direct provider API (fallback)
+```
+
+The chat route (`/api/chat`) checks for gateway availability first. If the gateway has keys configured (including auto-detected OAuth), it proxies through `/v1/chat/stream`. If not, it falls back to the Claude CLI (`claude -p`) when OAuth is detected, or direct provider APIs using local environment variables.
+
 ---
 
-## ⏸️ Agent Intervention System
+## Agent Intervention System
 
 <div align="center">
 
 ![Agent Intervention Panel](docs/screenshots/aa-05-intervention.png)
 
-*Click any agent → get full intervention controls: Pause/Stop, redirect with a new task, or hand off to another agent*
+*Click any agent -> get full intervention controls: Pause/Stop, redirect with a new task, or hand off to another agent*
 
 </div>
 
@@ -370,8 +530,8 @@ No configuration, no event wiring, no callback registration. The adapter instrum
 
 | Control | Action |
 |---------|--------|
-| **⏸ Pause** | Freeze the agent mid-task, inspect state |
-| **⏹ Stop** | Terminate the agent immediately |
+| **Pause** | Freeze the agent mid-task, inspect state |
+| **Stop** | Terminate the agent immediately |
 | **Redirect** | Send a new direction (free-text or quick preset) |
 | **Hand Off** | Reassign the task to a different agent |
 | **Presets** | One-click common redirections ("Use JWT instead of sessions", "Add TypeScript strict mode", "Skip tests for now", "Use PostgreSQL not MySQL") |
@@ -391,20 +551,42 @@ curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/redirect \
 curl -X POST http://localhost:47890/v1/agents/my-session/agent-001/stop
 ```
 
-### 💚 WhatsApp Control
+### Directives Queue — Bridge Console to Connected Tools
+
+The Directives Queue is an in-memory command pipeline that bridges the Console/WhatsApp to connected tools (Claude Code, Cursor, etc.). When you send a message in the Console or issue a WhatsApp command, it's also pushed as a directive that your connected tool can poll and execute.
+
+```bash
+# Push a directive (from Console, WhatsApp, or custom integration)
+curl -X POST http://localhost:47890/v1/directives \
+  -H "Content-Type: application/json" \
+  -d '{"instruction": "Add error handling to the auth module", "source": "console-chat"}'
+
+# Poll pending directives (from your connected tool)
+curl http://localhost:47890/v1/directives
+
+# Acknowledge receipt
+curl -X POST http://localhost:47890/v1/directives/{id}/ack
+
+# Mark complete
+curl -X POST http://localhost:47890/v1/directives/{id}/done
+```
+
+Directives are broadcast in real-time via Socket.IO (`directive` event) so connected tools get instant notification. The queue is bounded at 100 items with automatic eviction of oldest entries. Redirect commands from the intervention panel also automatically create directives. When a tool completes a directive with a `response` field, the gateway broadcasts it via SSE — the Console shows it as a chat message from the executing agent (e.g., "🤖 Claude Code"). See the [Directive Bridge section](#-directive-bridge--console--ai-tool-loop) for the full architecture.
+
+### WhatsApp Control
 
 Control any agent from any framework via your personal WhatsApp — [see the full WhatsApp section above](#-whatsapp-agent-control--universal-remote-for-every-ai-agent) for the complete architecture, setup, commands, and comparison.
 
 ---
 
-## ⚙️ Settings Panel
+## Settings Panel
 
-The ⚙️ Settings panel (7 tabs) is accessible from the toolbar:
+The Settings panel (7 tabs) is accessible from the toolbar:
 
 | Tab | What It Controls |
 |-----|-----------------|
 | **Console** | Default AI model (auto-detected from running agents), token count display, cost estimates, history retention |
-| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto ✓" when keys are inherited from environment. One-click "Add Key →" for manual entry with AES-256 encrypted storage. |
+| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto" when keys are inherited from environment. One-click "Add Key" for manual entry with AES-256 encrypted storage. |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
 | **WhatsApp** | Auto-generated QR code to pair your personal WhatsApp — scan once, control agents from your phone. Gateway auto-starts the client. |
@@ -413,7 +595,7 @@ The ⚙️ Settings panel (7 tabs) is accessible from the toolbar:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -448,13 +630,15 @@ npm run dev:web        # Dashboard on :47380
 http://localhost:47380
 ```
 
-That's it. **No API keys to configure.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. Three things happen automatically:
+That's it. **No API keys to configure.** The gateway auto-detects connected agents and the dashboard starts rendering them immediately. Five things happen automatically:
 
 1. **Console model auto-detection** — the Chat Console detects which AI model your agents are using (Claude, GPT-4o, Gemini, etc.) and selects it. No manual model switching.
-2. **API key inheritance** — the Console inherits API keys from your shell environment (the same `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. that your AI tools already use).
-3. **WhatsApp QR auto-start** — the gateway spawns the WhatsApp client automatically. Open Settings → WhatsApp to scan the QR code and control agents from your phone.
+2. **API key inheritance** — the Console inherits API keys from your shell environment (the same `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. that your AI tools already use). It also reads **Claude Code OAuth credentials** from `~/.claude/.credentials.json` — if you have a Claude Max/Pro subscription, the Console works with zero configuration.
+3. **Inline API key entry** — if no key is found, an inline input appears in the Console banner. Paste your key and start chatting — no Settings navigation needed.
+4. **Fresh session on mount** — every new page load starts a clean console session. No stale history from previous connections.
+5. **WhatsApp QR auto-start** — the gateway spawns the WhatsApp client automatically. Open Settings -> WhatsApp to scan the QR code and control agents from your phone.
 
-Observatory, Console, WhatsApp, and Arcade are one unified system.
+Observatory, Console, WhatsApp, Directives, and Arcade are one unified system.
 
 ### 4. (Optional) Hook into Claude Code
 
@@ -466,7 +650,7 @@ This registers hooks in `~/.claude/settings.json` — every tool call Claude Cod
 
 ---
 
-## 🔌 Framework Integrations
+## Framework Integrations
 
 ### Claude Code Hooks — Zero Configuration
 
@@ -476,10 +660,10 @@ agent-arcade hook claude-code
 ```
 
 From that point, every Claude Code tool invocation shows up in the dashboard:
-- **PreToolUse** → spawns agent card + emits `agent.tool` event
-- **PostToolUse** → updates state (thinking if success, error if failure)
-- **Notification** → emits `agent.message` for user-facing updates
-- **Stop** → emits `agent.end` with task summary
+- **PreToolUse** -> spawns agent card + emits `agent.tool` event
+- **PostToolUse** -> updates state (thinking if success, error if failure)
+- **Notification** -> emits `agent.message` for user-facing updates
+- **Stop** -> emits `agent.end` with task summary
 
 ### OpenAI — One Line
 
@@ -589,7 +773,7 @@ const claw = wrapOpenClaw(openClawInstance, {
 // Brain, Skills, Memory, Heartbeat, Channels — all tracked automatically
 ```
 
-> **OpenClaw is the most deeply integrated framework in Agent Arcade.** See the [full OpenClaw deep-dive above](#-openclaw--deep-ai-brain-observability) for the complete event map, WhatsApp bidirectional visibility, and architecture diagram.
+> **OpenClaw is the most deeply integrated framework in Agent Arcade.** See the [full OpenClaw deep-dive above](#-openclaw--deepest-ai-brain-observability) for the complete event map, WhatsApp bidirectional visibility, and architecture diagram.
 
 ### Node.js SDK (Manual)
 
@@ -623,7 +807,7 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ---
 
-## 🎯 All Supported Frameworks
+## All Supported Frameworks
 
 | Framework | Package | Method |
 |-----------|---------|--------|
@@ -641,70 +825,146 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 
 ---
 
-## 🏆 Gamification System
+## Gamification System
 
 ### 32 Achievements
 
 | Category | Examples |
 |----------|---------|
-| **Speed** | Lightning Reflexes, Speed Demon, Time Lord |
-| **Reliability** | Error Free, Rock Solid, Perfectionist |
-| **Tooling** | Tool User, Swiss Army, Tool Master |
-| **Endurance** | Marathon Runner, Iron Will, Unstoppable |
-| **Teamwork** | Team Player, Hivemind, Swarm Intelligence |
-| **Special** | First Blood, Night Owl, Early Bird, Century |
+| **Speed** (5) | Lightning Reflexes, Speed Demon, Flash, Time Lord, Quick Draw |
+| **Reliability** (6) | First Blood, Survivor, Bulletproof, Perfect Run, Comeback Kid, Ironclad |
+| **Tooling** (5) | Tool Time, Swiss Army Knife, Toolsmith, Master Craftsman, Precision Strike |
+| **Endurance** (5) | Marathon Runner, Iron Man, Workhorse, Unstoppable, Legendary |
+| **Teamwork** (5) | First Contact, Squad Goals, Army, Hive Mind, Chain Reaction |
+| **Special** (6) | Night Owl, Early Bird, Centurion, Versatile, Explorer, Welcome |
+
+Achievement tiers: **Bronze** (0% XP boost), **Silver** (1%), **Gold** (2%), **Diamond** (3%). Unlocking 4 achievements = 6% passive XP boost.
 
 ### 12 XP Levels
 
-| Level | Title | XP |
-|-------|-------|----|
+| Level | Title | XP Required |
+|-------|-------|-------------|
 | 1 | Novice | 0 |
 | 2 | Apprentice | 500 |
 | 3 | Journeyman | 1,500 |
 | 4 | Adept | 3,500 |
 | 5 | Expert | 7,000 |
-| 6–12 | Master → Godlike | 12K → 200K |
+| 6 | Master | 12,000 |
+| 7 | Grandmaster | 20,000 |
+| 8 | Champion | 32,000 |
+| 9 | Legend | 50,000 |
+| 10 | Mythic | 80,000 |
+| 11 | Transcendent | 120,000 |
+| 12 | Godlike | 200,000 |
 
-**Streak multiplier:** +0.1x per consecutive day, up to 3.0x
+### XP Earning Rules
+
+| Action | XP |
+|--------|-----|
+| Task complete | 100 |
+| Speed bonus (< 500ms) | 200 |
+| Speed bonus (< 1s) | 100 |
+| Speed bonus (< 2s) | 50 |
+| Error-free completion | 25 |
+| Tool usage (per unique tool) | 10 |
+| Error recovery | 50 |
+| First tool in session | 20 |
+| Achievement unlock (Bronze/Silver/Gold/Diamond) | 200/500/1000/2500 |
+
+**Streak multiplier:** +0.1x per consecutive day, up to 3.0x. All XP is persisted in localStorage.
 
 ---
 
-## 💰 Cost Intelligence
+## Cost Intelligence
 
-Real-time cost tracking for 29 AI models:
+Real-time cost tracking for **29 AI models** across **6 providers**:
 
-| Provider | Models |
-|----------|--------|
-| **Anthropic** | Claude Opus 4.6, Sonnet 4.6, Haiku 4.5, Sonnet 4, Opus 4, 3.5 Sonnet, 3 Opus |
-| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4.1, GPT-4.1-mini, GPT-4.1-nano, o3, o4-mini |
-| **Google** | Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash, 1.5 Pro, 1.5 Flash |
-| **Mistral** | Mistral Large, Mistral Small |
-| **DeepSeek** | DeepSeek V3, DeepSeek R1 |
-| **Local** | Llama 3/3.1/3.2, Qwen, Phi-3, CodeLlama (free) |
+| Provider | Models | Input / Output (per 1M tokens) |
+|----------|--------|-------------------------------|
+| **Anthropic** | Claude Opus 4.6 | $15 / $75 |
+| | Claude Sonnet 4.6 | $3 / $15 |
+| | Claude Haiku 4.5 | $0.80 / $4 |
+| | Claude Sonnet 4, Opus 4, 3.5 Sonnet, 3 Opus | Various |
+| **OpenAI** | GPT-4o | $2.50 / $10 |
+| | GPT-4o-mini | $0.15 / $0.60 |
+| | GPT-4.1 | $2 / $8 |
+| | GPT-4.1-mini, GPT-4.1-nano, o3, o4-mini | Various |
+| **Google** | Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash, 1.5 Pro, 1.5 Flash | Various |
+| **Mistral** | Mistral Large, Mistral Small | Various |
+| **DeepSeek** | DeepSeek V3, DeepSeek R1 | Various |
+| **Local** | Llama 3/3.1/3.2, Qwen, Phi-3, CodeLlama | Free |
 
-Budget warning at 80% of configured threshold in dashboard. Configurable cost threshold notifications via Slack/Discord/Email. Export cost reports as JSON.
+### Cost Features
+
+- **Per-agent cost tracking** — see exactly how much each agent has spent
+- **Per-model breakdown** — which models cost the most across your session
+- **Session cost reports** — exportable as JSON via `CostCalculator.exportCostReport()`
+- **Budget alerts** — warning at 80% of configured threshold
+- **Fuzzy model matching** — `claude-3.5-sonnet-20241022` resolves correctly
+- **Multi-channel notifications** — cost alerts via Slack, Discord, Email, WhatsApp
+- **Budget status API** — `GET /v1/session/:sessionId/cost` for programmatic access
 
 ---
 
-## 🌟 What Makes Agent Arcade Unique
+## Audio & Voice System
+
+### Text-to-Speech Narration
+
+The dashboard narrates agent activity using the browser's Web Speech Synthesis API — **when an AI agent is thinking, IT SAYS IT LOUD**:
+
+- **Priority queue** — thinking and error states skip cooldown and jump to the front of the queue. The Arcade announces "Claude Code is thinking about: designing the auth module" immediately, not after a 3-second delay.
+- **Queue system** — max 6 items with priority ordering and automatic overflow trimming
+- **Rate limiting** — 1.5s cooldown per agent to prevent audio spam (priority items bypass cooldown)
+- **Per-agent pitch** — each agent gets a unique pitch (0.8-1.4) for distinct voices
+- **Speed control** — 1.1x playback rate for natural-sounding narration
+- **Volume control** — master volume (0..1) with per-channel toggles
+- **Autoplay unlock** — resumes audio context on first user gesture (browser policy)
+- **Rich labels** — state changes include descriptive labels: "I am thinking about: [task]", "Now writing a response using [model]", "Done: [summary]"
+
+### Procedural Sound Effects
+
+All sounds are synthesized using the Web Audio API — zero external audio files:
+
+| Sound | Trigger |
+|-------|---------|
+| Spawn chime | New agent connects |
+| State change | Agent state transition |
+| Tool click | Tool invocation |
+| Done fanfare | Task completed |
+| Error buzz | Error occurred |
+| Recovery tone | Agent recovered from error |
+| Trust chime | High trust action verified |
+| Milestone | Level up or achievement |
+
+### Ambient Music
+
+Theme-based background loops that match the selected visual theme. Volume control from 0 to 3 levels.
+
+---
+
+## What Makes Agent Arcade Unique
 
 | | Innovation | Description |
 |:-:|:----------|:------------|
-| 🎨 | **Pixel-Art Visualization** | Every agent is a unique procedurally-generated character (15 classes, 13 animation frames, per-pixel shading). Model-based coloring: Claude → purple, GPT → green, Gemini → blue. 100% canvas-drawn — zero external assets. |
-| 💚 | **WhatsApp Agent Control** | Gateway auto-starts the QR client — scan a QR code from the dashboard, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. No separate process to manage. |
-| ⚡ | **Zero-Config Console** | Auto-detects the AI model from your running agents AND inherits API keys from the shell environment. If agents use Claude, the Console selects Claude. No manual setup — observatory, console, and agents share one brain. |
-| 🔌 | **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
-| 💰 | **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
-| 🏆 | **RPG Gamification** | 32 achievements, 12 XP levels (Novice → Godlike), streak multiplier up to 3.0x. Leaderboards across 5 categories. Achievement toasts with confetti animation. |
-| 🎯 | **Goal Mode** | Turn one goal into a supervised multi-agent execution plan. AI decomposes, you approve, agents execute in parallel — with phase review gates, live progress, and full stop/pause/redirect control. |
-| ⏸️ | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
-| 📊 | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
-| 🌍 | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
-| 🐙 | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+| | **Pixel-Art Visualization** | Every agent is a unique character silhouette with model-specific props and environment details (8 classes, 4-frame animations, per-pixel shading). Model-based coloring: Claude -> purple, GPT -> green, Gemini -> blue, Mistral -> navy, Ollama -> neon-green, Cursor -> orange. 100% canvas-drawn — zero external assets. |
+| | **WhatsApp Agent Control** | Gateway auto-starts the QR client — scan a QR code from the dashboard, control any AI agent from your personal WhatsApp. No Twilio. No paid APIs. No separate process to manage. |
+| | **Zero-Config Console** | Auto-detects AI model + inherits API keys from shell + reads Claude Code OAuth tokens from `~/.claude/.credentials.json`. Inline key entry in the banner when no key is found. Fresh session on every mount — no stale history. |
+| | **Directive Bridge** | Console ↔ AI tool feedback loop. Type in Console → directive queued → bridge runs `claude -p` → response broadcast via SSE → Console shows "🤖 Claude Code: [response]". Everything is interlinked. |
+| | **Directives Queue** | Console and WhatsApp messages are bridged to connected tools (Claude Code, Cursor) via `/v1/directives`. Real-time Socket.IO broadcast + HTTP polling. The UI and the agent share one command pipeline. |
+| | **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
+| | **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
+| | **RPG Gamification** | 32 achievements, 12 XP levels (Novice -> Godlike), streak multiplier up to 3.0x. Achievement toasts with confetti animation. |
+| | **Goal Mode** | Turn one goal into a supervised multi-agent execution plan. AI decomposes, you approve, agents execute in parallel — with phase review gates, live progress, and full stop/pause/redirect control. |
+| | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
+| | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
+| | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
+| | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+| | **Session Replay** | Record, save, and replay agent sessions. Speed control (0.25x-8x), seeking, import/export JSON. Up to 50 saved replays in localStorage. |
+| | **Arcade Bridge** | Console interactions emit telemetry events so the Console agent appears on the canvas alongside your other agents — complete with cost tracking and state transitions. |
 
 ---
 
-## 🎯 Goal Mode
+## Goal Mode
 
 Turn one high-level goal into a structured execution plan, delegated across multiple agents — with live visibility and full control.
 
@@ -727,22 +987,22 @@ Turn one high-level goal into a structured execution plan, delegated across mult
 ### How Goal Mode Works
 
 ```
- ╔══════════════════════════════════════════════════════════════════════╗
- ║  1. 🎯 DESCRIBE   →  "Build a complete auth system with OAuth"    ║
- ║  2. 📋 REVIEW     →  See the execution plan before anything runs  ║
- ║  3. ✅ APPROVE    →  Start supervised multi-agent execution       ║
- ║  4. 👁️ MONITOR   →  Live progress, pause/stop/redirect anytime   ║
- ║  5. 🔍 VERIFY    →  Review results between each phase             ║
- ╚══════════════════════════════════════════════════════════════════════╝
+ +======================================================================+
+ |  1. DESCRIBE   ->  "Build a complete auth system with OAuth"         |
+ |  2. REVIEW     ->  See the execution plan before anything runs       |
+ |  3. APPROVE    ->  Start supervised multi-agent execution            |
+ |  4. MONITOR    ->  Live progress, pause/stop/redirect anytime        |
+ |  5. VERIFY     ->  Review results between each phase                 |
+ +======================================================================+
 ```
 
-Toggle between **💬 Chat Mode** and **🎯 Goal Mode** in the Console header. In Goal Mode:
+Toggle between **Chat Mode** and **Goal Mode** in the Console header. In Goal Mode:
 
 | Feature | Details |
 |---------|---------|
 | **Goal Decomposition** | AI breaks your goal into 2-6 atomic tasks with dependencies |
 | **Execution Plan** | Visual phase diagram showing parallel vs sequential execution |
-| **Specialized Agents** | Each task gets a specialized agent (🔧 Backend, 🎨 Frontend, 🗄️ Database, 🧪 Testing, 🚀 DevOps) |
+| **Specialized Agents** | Each task gets a specialized agent (Backend, Frontend, Database, Testing, DevOps) |
 | **Phase Review Gates** | Approval required between phases (configurable) |
 | **Live Execution Graph** | Real-time progress bars, cost tracking, and status for every task |
 | **Human Override** | Pause All, Stop All, per-task controls, collapse to single agent |
@@ -763,45 +1023,46 @@ Use Goal Mode for structured multi-step tasks where you want AI assistance with 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-  subgraph Adapters["🎮 Plug & Play Adapters"]
-    CC["🟣 Claude Code Hooks"]
-    OA["🟢 OpenAI Adapter"]
-    AA["🟠 Anthropic Adapter"]
-    LC["⚫ LangChain Adapter"]
-    CR["🔴 CrewAI / AutoGen"]
-    OC["🟧 OpenClaw Adapter"]
+  subgraph Adapters["Plug & Play Adapters"]
+    CC["Claude Code Hooks"]
+    OA["OpenAI Adapter"]
+    AA["Anthropic Adapter"]
+    LC["LangChain Adapter"]
+    CR["CrewAI / AutoGen"]
+    OC["OpenClaw Adapter"]
   end
 
-  subgraph ZeroCode["🔌 Zero-Code Tools"]
-    PX["🌐 AI Proxy :8788"]
-    PW["👁️ Process Watcher"]
+  subgraph ZeroCode["Zero-Code Tools"]
+    PX["AI Proxy :8788"]
+    PW["Process Watcher"]
   end
 
-  subgraph Core["⚡ Gateway :47890"]
-    GY["🎯 Event Ingestion"]
-    CC2["💰 Cost Calculator"]
-    NR["🔔 Notification Router"]
-    ST["💾 Session Store"]
-    CP["💬 Chat Proxy"]
+  subgraph Core["Gateway :47890"]
+    GY["Event Ingestion"]
+    CC2["Cost Calculator"]
+    NR["Notification Router"]
+    ST["Session Store"]
+    CP["Chat Proxy"]
+    DQ["Directives Queue"]
   end
 
-  subgraph Dashboard["🕹️ Web Dashboard :47380"]
-    LV["🎨 Pixel-Art Canvas"]
-    INT["⏸️ Intervention Panel"]
-    CON["🤖 AI Chat Console"]
-    SET["⚙️ Settings Panel"]
-    XP["🏆 XP + Achievements"]
-    RP["📼 Session Replay"]
+  subgraph Dashboard["Web Dashboard :47380"]
+    LV["Pixel-Art Canvas"]
+    INT["Intervention Panel"]
+    CON["AI Chat Console"]
+    SET["Settings Panel"]
+    XP["XP + Achievements"]
+    RP["Session Replay"]
   end
 
-  subgraph Control["📱 Control Surfaces"]
-    WA["💚 WhatsApp QR :47891"]
-    API["🔷 REST API"]
-    CLI["⌨️ CLI Slash Commands"]
+  subgraph Control["Control Surfaces"]
+    WA["WhatsApp QR :47891"]
+    API["REST API"]
+    CLI["CLI Slash Commands"]
   end
 
   Adapters -->|"Socket.IO / HTTP"| Core
@@ -821,19 +1082,35 @@ flowchart LR
 
 | Layer | Port | Technology | Role |
 |:-----:|:----:|:----------:|:----:|
-| 🎮 **Adapters** | — | Socket.IO / HTTP POST | Framework-specific wrappers that emit telemetry |
-| 🔌 **Proxy** | `:8788` | Bun HTTP | Zero-code interception — just change your base URL |
-| ⚡ **Gateway** | `:47890` | Bun + Socket.IO + SSE | Event ingestion, cost calc, chat proxy, notifications |
-| 🕹️ **Dashboard** | `:47380` | Next.js + Canvas | Pixel-art viz, intervention, console, gamification |
-| 📱 **Control** | `:47891` | Baileys + HTTP | WhatsApp QR, REST API, CLI slash commands |
+| **Adapters** | — | Socket.IO / HTTP POST | Framework-specific wrappers that emit telemetry |
+| **Proxy** | `:8788` | Bun HTTP | Zero-code interception — just change your base URL |
+| **Gateway** | `:47890` | Bun + Socket.IO + SSE | Event ingestion, cost calc, chat proxy, directives, notifications |
+| **Dashboard** | `:47380` | Next.js 16 + Canvas | Pixel-art viz, intervention, console, gamification |
+| **Control** | `:47891` | Baileys + HTTP | WhatsApp QR, REST API, CLI slash commands |
 
 </div>
 
+### Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| **Gateway Runtime** | Bun 1.3+ |
+| **Web Framework** | Next.js 16.1.1 |
+| **UI Library** | React 19 |
+| **State Management** | Zustand 5.0.6 |
+| **Real-time Transport** | Socket.IO 4.8 |
+| **Styling** | TailwindCSS 4 |
+| **Auth** | jose 6.1 (JWT/JWS) |
+| **Cache/Pub-Sub** | Redis (optional, for distributed deployments) |
+| **WhatsApp** | @whiskeysockets/baileys 6.7 |
+
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Gateway (`:47890`)
+
+#### Telemetry
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -842,32 +1119,62 @@ flowchart LR
 | GET | `/v1/state?sessionId=` | Session snapshot (for SSE refresh) |
 | GET | `/v1/capabilities` | Server capabilities |
 | GET | `/health` | Health check |
+| GET | `/ready` | Readiness probe (for k8s) |
+| GET | `/metrics` | Prometheus-format metrics |
+| POST | `/v1/connect` | Register external client connection |
+| POST | `/v1/session-token` | Issue a signed session token |
+| POST | `/v1/auth/revoke` | Revoke a JWT token |
+
+#### Agent Control
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | POST | `/v1/agents/:sessionId/:agentId/pause` | Pause agent |
 | POST | `/v1/agents/:sessionId/:agentId/resume` | Resume agent |
 | POST | `/v1/agents/:sessionId/:agentId/stop` | Stop agent |
 | POST | `/v1/agents/:sessionId/:agentId/redirect` | Redirect agent `{ instruction }` |
-| GET | `/v1/chat/providers` | List available AI providers |
-| POST | `/v1/chat` | Proxy AI chat request |
-| GET | `/v1/whatsapp/status` | QR-mode connection status `{ status, qr? }` |
-| GET | `/v1/whatsapp/qr.png` | QR code image (PNG) for dashboard display |
-| POST | `/v1/goals/start` | Start a goal execution `{ taskTree, sessionId }` |
-| GET | `/v1/goals/:id/status` | Live goal execution status |
-| POST | `/v1/goals/:id/pause-all` | Pause all goal agents |
-| POST | `/v1/goals/:id/resume-all` | Resume all goal agents |
-| POST | `/v1/goals/:id/stop-all` | Stop all goal agents (saves completed work) |
-| POST | `/v1/goals/:id/approve-phase` | Approve phase and advance `{ phaseIndex }` |
-| POST | `/v1/goals/:id/tasks/:taskId/update` | Update task status/progress `{ status, progress, cost }` |
-| POST | `/v1/goals/:id/tasks/:taskId/retry` | Retry a failed task |
-| POST | `/v1/goals/:id/tasks/:taskId/skip` | Skip a blocked task |
-| POST | `/v1/connect` | Register external client connection |
-| POST | `/v1/session-token` | Issue a signed session token |
-| POST | `/v1/auth/revoke` | Revoke a JWT token |
 | GET | `/v1/agents/:sessionId/:agentId/state` | Get agent state snapshot |
 | GET | `/v1/agents/:sessionId/:agentId/history` | Get agent action history |
 | GET | `/v1/session/:sessionId/agents` | List all agents in a session |
 | GET | `/v1/session/:sessionId/cost` | Per-agent cost breakdown for a session |
-| GET | `/ready` | Readiness probe (for k8s) |
-| GET | `/metrics` | Prometheus-format metrics |
+
+#### AI Chat
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/chat/providers` | Available AI providers + auth mode (`oauth-subscription` / `api-key` / `none`) |
+| POST | `/v1/chat/stream` | Streaming AI chat via SSE |
+| POST | `/v1/chat/sync` | Non-streaming AI chat (single JSON response) |
+
+#### Directives Queue
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/directives` | Push a directive `{ instruction, source?, agentId? }` |
+| GET | `/v1/directives` | Poll pending directives |
+| POST | `/v1/directives/:id/ack` | Acknowledge directive |
+| POST | `/v1/directives/:id/done` | Mark directive complete `{ response? }` — broadcasts response via SSE to Console |
+
+#### Goal Mode
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/goals/start` | Start a goal execution `{ taskTree, sessionId }` |
+| GET | `/v1/goals/:id/status` | Live goal execution status |
+| POST | `/v1/goals/:id/pause-all` | Pause all goal agents |
+| POST | `/v1/goals/:id/resume-all` | Resume all goal agents |
+| POST | `/v1/goals/:id/stop-all` | Stop all goal agents |
+| POST | `/v1/goals/:id/approve-phase` | Approve phase and advance `{ phaseIndex }` |
+| POST | `/v1/goals/:id/tasks/:taskId/update` | Update task status/progress `{ status, progress, cost }` |
+| POST | `/v1/goals/:id/tasks/:taskId/retry` | Retry a failed task |
+| POST | `/v1/goals/:id/tasks/:taskId/skip` | Skip a blocked task |
+
+#### WhatsApp
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1/whatsapp/status` | QR-mode connection status `{ status, qr? }` |
+| GET | `/v1/whatsapp/qr.png` | QR code image (PNG) for dashboard display |
 
 ### Event Protocol
 
@@ -886,45 +1193,59 @@ flowchart LR
 }
 ```
 
+### Event Types
+
+| Type | Description |
+|------|-------------|
+| `agent.spawn` | Agent created with name, role, model |
+| `agent.state` | State changed (see states below) |
+| `agent.tool` | Tool invoked with name and parameters |
+| `agent.message` | Agent sent a message (info/warning/waiting) |
+| `agent.link` | Parent-child relationship established |
+| `agent.position` | Movement on canvas grid |
+| `agent.end` | Agent finished (success/fail) |
+| `session.start` | Session begins |
+| `session.end` | Session ends |
+
 ### Agent States
 
 | State | Description |
 |-------|-------------|
+| `idle` | Waiting for work |
 | `thinking` | Processing / reasoning |
-| `writing` | Writing code or content |
 | `reading` | Reading files or context |
+| `writing` | Writing code or content |
 | `tool` | Executing a tool |
 | `waiting` | Waiting for human input |
-| `idle` | Waiting for work |
 | `moving` | Transitioning between tasks |
 | `error` | Error occurred |
 | `done` | Task completed |
 
 ---
 
-## 📦 Monorepo Map
+## Monorepo Map
 
 ```
 agent-arcade-gateway/
 ├── packages/
-│   ├── gateway/             # Bun telemetry gateway (HTTP + Socket.IO + SSE)
-│   ├── web/                 # Next.js dashboard (canvas, console, settings, intervention)
+│   ├── gateway/             # Bun telemetry gateway (HTTP + Socket.IO + SSE) + directive-bridge.ts
+│   ├── web/                 # Next.js 16 dashboard (canvas, console, settings, intervention)
 │   ├── proxy/               # Zero-code AI API proxy (Bun)
 │   ├── cli/                 # CLI tool (init, start, demo, hook claude-code)
 │   ├── core/                # Canonical protocol types and constants
 │   ├── embed/               # React embed widget + URL builder
 │   │
 │   ├── adapter-openai/      # OpenAI SDK wrapper (streaming + tool calls)
-│   ├── adapter-anthropic/   # Anthropic SDK wrapper (streaming + tool use)
+│   ├── adapter-anthropic/   # Anthropic SDK wrapper (streaming + tool use + extended thinking)
 │   ├── adapter-langchain/   # LangChain callback handler
 │   ├── adapter-llamaindex/  # LlamaIndex callback handler
 │   ├── adapter-crewai/      # CrewAI Python adapter
 │   ├── adapter-autogen/     # AutoGen Python adapter
-│   ├── adapter-openclaw/    # OpenClaw integration adapter
+│   ├── adapter-openclaw/    # OpenClaw integration adapter (Brain + Skills + Memory + Heartbeat)
 │   │
 │   ├── sdk-node/            # Node.js client SDK
 │   ├── sdk-browser/         # Browser client SDK
-│   ├── sdk-python/          # Python client SDK
+│   ├── sdk-python/          # Python client SDK (Beta)
 │   │
 │   ├── watcher/             # AI process auto-detector (Claude, Cursor, Aider, Ollama)
 │   ├── git-watcher/         # Git index change watcher
@@ -932,18 +1253,33 @@ agent-arcade-gateway/
 │   ├── notifications/       # Slack / Discord / Email alerts
 │   └── whatsapp-client/     # QR-code WhatsApp client (Baileys) — scan once, control from phone
 │
-├── docs/screenshots/        # Real screenshots from live sessions
+├── docs/
+│   ├── screenshots/         # Real screenshots from live sessions
+│   ├── assets/              # SVG diagrams, logos
+│   ├── DEPLOYMENT_RUNBOOK.md
+│   ├── LOAD_TESTING.md
+│   ├── PROD_READINESS_GAPS.md
+│   └── UNIVERSAL_CLIENT_INTEGRATION.md
+├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-└── docker-compose.yml       # Production deployment
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.2.4
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── Dockerfile.gateway
+├── Dockerfile.web
+├── docker-compose.yml       # Production deployment (gateway + web + Redis)
+└── ecosystem.config.js      # PM2 configuration
 ```
+
+**21 packages** — 7 adapters, 3 SDKs, 3 core services, 8 utilities.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Full CI pipeline
-npm run ci           # lint → typecheck → build → test
+npm run ci           # lint -> typecheck -> build -> test
 
 # Individual suites
 npm run test:gateway  # Gateway tests (gateway.test.ts + agent-lifecycle.test.ts + whatsapp.test.ts)
@@ -956,9 +1292,19 @@ npm run typecheck:web # TypeScript
 bun test packages/adapter-openai/src/index.test.ts  # 14 OpenAI adapter tests
 ```
 
+### CI Pipeline (`.github/workflows/ci.yml`)
+
+1. Lint web (ESLint, 0 warnings)
+2. Typecheck web (`tsc --noEmit`)
+3. Build web (`next build`)
+4. Start gateway (Bun)
+5. Run test suites: gateway integration, agent lifecycle, WhatsApp, store, i18n, OpenAI adapter, SDK (Node + Browser)
+6. Validate Docker builds
+7. Secure-mode capabilities check (`REQUIRE_AUTH=1`)
+
 ---
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ```bash
 # Docker Compose
@@ -974,14 +1320,28 @@ npm run prod:start
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | **AI Provider Keys** *(auto-inherited from your shell — no manual setup needed)* | | |
-| `ANTHROPIC_API_KEY` | — | Auto-detected from environment. Enables Claude in the Console and cost tracking. |
+| `ANTHROPIC_API_KEY` | — | Auto-detected from environment OR from Claude Code OAuth credentials (`~/.claude/.credentials.json`). Enables Claude in the Console and cost tracking. If you have a Claude Max/Pro subscription, no key is needed. |
 | `OPENAI_API_KEY` | — | Auto-detected from environment. Enables GPT-4o in the Console. |
 | `GEMINI_API_KEY` | — | Auto-detected from environment. Enables Gemini in the Console. |
 | `MISTRAL_API_KEY` | — | Auto-detected from environment. Enables Mistral in the Console. |
+| **Gateway** | | |
 | `PORT` | `47890` | Gateway port |
 | `REQUIRE_AUTH` | `0` | Enable JWT auth |
 | `JWT_SECRET` | — | Auth token signing |
+| `SESSION_SIGNING_SECRET` | — | HMAC-SHA256 session signatures (separate from JWT_SECRET) |
 | `ALLOWED_ORIGINS` | `*` | CORS allowlist |
+| `TRUST_PROXY` | `0` | Set to `1` to honour `X-Forwarded-For` behind a reverse proxy |
+| **Rate Limiting** | | |
+| `RATE_WINDOW_MS` | `1000` | Rate window in milliseconds |
+| `RATE_MAX_IP` | `120` | Max requests per IP per window |
+| `RATE_MAX_TOKEN` | `240` | Max requests per token per window |
+| `SESSION_FLOOD_MAX` | `600` | Max events per session per second |
+| **Data Retention** | | |
+| `MAX_EVENTS` | `500` | Max events per session in memory |
+| `RETENTION_SECONDS` | `86400` | Session data TTL (24h default) |
+| **Redis (optional)** | | |
+| `REDIS_URL` | — | Redis connection URL (e.g., `redis://localhost:6379`) |
+| `ENABLE_REDIS_ADAPTER` | `0` | Enable Redis adapter for Socket.IO clustering |
 | **Notifications** | | |
 | `SLACK_WEBHOOK_URL` | — | Slack incoming webhook URL |
 | `DISCORD_WEBHOOK_URL` | — | Discord webhook URL |
@@ -992,15 +1352,24 @@ npm run prod:start
 | `NOTIFY_EMAIL_TO` | — | Alert recipient email address |
 | `NOTIFY_COST_THRESHOLD` | `5` | USD cost threshold for cost alerts |
 | **WhatsApp QR Mode** | | |
-| `WHATSAPP_QR_MODE` | `1` (dev) / `0` (prod) | Auto-start the WhatsApp client with the gateway. QR code appears automatically in the dashboard. |
+| `WHATSAPP_QR_MODE` | `1` (dev) / `0` (prod) | Auto-start the WhatsApp client with the gateway |
 | `WHATSAPP_AUTH_DIR` | `./.whatsapp-auth` | Directory to persist Baileys session credentials |
 | `WHATSAPP_CLIENT_PORT` | `47891` | Port for the QR code HTTP server |
-| `WHATSAPP_ALLOWED_NUMBERS` | — | Comma-separated E.164 numbers allowed to send commands (empty = all) |
-| `WHATSAPP_GATEWAY_TOKEN` | — | Auth token the QR client uses when calling gateway endpoints |
+| `WHATSAPP_ALLOWED_NUMBERS` | — | Comma-separated E.164 numbers (empty = all) |
+| `WHATSAPP_GATEWAY_TOKEN` | — | Auth token the QR client uses for gateway endpoints |
+| `WHATSAPP_SELF_CHAT` | `1` | Enable self-chat AI relay (set `0` to disable) |
+| **Directive Bridge** | | |
+| `DIRECTIVE_POLL_MS` | `2000` | Polling interval for directive bridge (ms) |
+| `GATEWAY_TOKEN` | — | Auth token for directive bridge → gateway communication |
+| **Web Dashboard** | | |
+| `NEXT_PUBLIC_GATEWAY_URL` | — | Gateway URL (baked at build time) |
+| `NEXT_PUBLIC_DEFAULT_SESSION_ID` | `copilot-live` | Default session ID |
+| `NEXT_PUBLIC_LOCK_SESSION_ID` | — | Lock to a single session |
+| `GATEWAY_JWT_SECRET` | — | Server-side JWT secret (same as gateway JWT_SECRET) |
 
 ---
 
-## 🔒 Security
+## Security
 
 | Feature | Details |
 |---------|---------|
@@ -1008,15 +1377,50 @@ npm run prod:start
 | **API key isolation** | AI provider keys never leave the server. The Console proxies through the gateway — no browser-side key exposure. |
 | **AES-256 encryption** | Optional client-side API keys encrypted with AES-256-GCM in localStorage |
 | **CORS** | Configurable allowlist with ReDoS-safe regex validation |
-| **Input validation** | Names ≤200, labels ≤500, messages ≤4000 chars. Body size limit: 1MB. |
+| **Input validation** | Names <= 200, labels <= 500, messages <= 4000 chars. Body size limit: 1MB. |
 | **Rate limiting** | Per-IP (120 req/s), per-token (240 req/s), and session flood protection (600/s) |
 | **Session signing** | HMAC-SHA256 session signatures in production. Prevents cross-session access. |
 | **Proxy safety** | `TRUST_PROXY=1` required to honour `X-Forwarded-For` — prevents IP spoofing by default |
 | **Error sanitization** | Upstream AI API errors are stripped of API keys before returning to clients |
+| **55-issue security audit** | Comprehensive security, stability & performance audit covering XSS, injection, memory leaks, race conditions, and input validation across the entire codebase (v3.2.2) |
+| **HSTS** | Strict-Transport-Security header in production mode |
+| **Security headers** | X-Content-Type-Options: nosniff on all responses |
+| **OAuth token validation** | Claude Code OAuth tokens are checked for expiry (5 min buffer) before use |
+| **Directive bounds** | Instructions capped at 8000 chars. Queue bounded at 100 items with auto-eviction. |
 
 ---
 
-## 🤝 Contributing
+## Recent Changes (v3.2.1 -> v3.2.4)
+
+| Version | Change | Type |
+|---------|--------|------|
+| **v3.2.4** | **Directive Bridge** — `directive-bridge.ts` polls `/v1/directives`, executes via `claude -p`, posts responses back. Console ↔ Claude Code fully interlinked. | Feature |
+| **v3.2.4** | **SSE interlink** — Console subscribes to gateway SSE stream. Responses from ALL connected AI tools (Claude Code, Cursor, WhatsApp) appear in Console chat with friendly agent names. | Feature |
+| **v3.2.4** | **Agent name mapping** — Known agent IDs mapped to emoji+name (🤖 Claude Code, 📱 WhatsApp AI, 📝 Cursor, 🧠 OpenAI, 💎 Gemini, 👥 CrewAI, 🔄 AutoGen, 🔗 LangChain, 🦞 OpenClaw) | Feature |
+| **v3.2.4** | **Priority voice queue** — Thinking/error states skip cooldown and jump to front of queue. AI agents announce what they're thinking about immediately. | Feature |
+| **v3.2.4** | **WhatsApp self-chat telemetry** — Self-chat fires `agent.state` and `agent.message` events to gateway + pushes directives. WhatsApp activity visible in Arcade feed. | Feature |
+| **v3.2.4** | **Console directive auth** — Console sends proper `Authorization` and `X-Session-Signature` headers with directive pushes | Fix |
+| **v3.2.4** | **Arcade bridge error logging** — `ingest()` no longer silently swallows errors. Logs status codes and error messages for debugging. | Fix |
+| **v3.2.4** | **WhatsApp JID detection** — Self-chat now uses number-based comparison and LID matching for reliable detection across WhatsApp versions | Fix |
+| **v3.2.4** | **SSE duplicate filtering** — Console filters directive broadcast notifications, chat-proxy echoes, state announcements, and WhatsApp command echoes to prevent duplicate messages | Fix |
+| **v3.2.3** | Inline API key entry in Console banner — paste key without navigating to Settings | Feature |
+| **v3.2.3** | Always fresh session on mount — no stale history on new connections | Fix |
+| **v3.2.3** | Stale chat history, cost reporting, and agent task announcement fixes | Fix |
+| **v3.2.3** | World-class pixel art — unique character silhouettes, props, and environment upgrades | Feature |
+| **v3.2.3** | Console button always visible with bold gradient styling | Fix |
+| **v3.2.2** | Comprehensive security, stability & performance audit — 55 issues fixed | Fix |
+| **v3.2.2** | WhatsApp self-chat AI relay + non-streaming `/v1/chat/sync` endpoint | Feature |
+| **v3.2.2** | Directives Queue — Console/WhatsApp commands bridged to connected tools via `/v1/directives` | Feature |
+| **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
+| **v3.2.1** | Agent auto-cleanup bug + voice TTS + memory leak fixes | Fix |
+| **v3.2.1** | CI lint errors resolved (Date.now() purity, useMemo ordering, refs in useEffect) | Fix |
+| **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0.
+
+---
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -1025,8 +1429,8 @@ npm run prod:start
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
-## 👥 Contributors
-  
+## Contributors
+
 | Contributor | Role | Description |
 |-------------|------|-------------|
 | **[InBharat AI](https://github.com/inbharatai)** | Core Maintainer | Concept, Architecture, and Lead Development |
@@ -1039,14 +1443,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 <div align="center">
 
 ```
- ╔══════════════════════════════════════════════════════════════════════════╗
- ║                                                                        ║
- ║   🕹️  A G E N T   A R C A D E   v 3 . 2                               ║
- ║                                                                        ║
- ║   See every AI agent. Track every token. Control from anywhere.        ║
- ║   Level up.                                                            ║
- ║                                                                        ║
- ╚══════════════════════════════════════════════════════════════════════════╝
+ +========================================================================+
+ |                                                                        |
+ |   AGENT ARCADE v3.2.4                                                  |
+ |                                                                        |
+ |   See every AI agent. Track every token. Control from anywhere.        |
+ |   Everything is interlinked. Level up.                                 |
+ |                                                                        |
+ +========================================================================+
 ```
 
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
@@ -1057,8 +1461,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 [![Models](https://img.shields.io/badge/Cost_Profiles-29-EF4444?style=for-the-badge)](#)
 [![Achievements](https://img.shields.io/badge/Achievements-32-FBBF24?style=for-the-badge)](#)
 
-*Claude Code · OpenAI · Anthropic · LangChain · CrewAI · AutoGen · LlamaIndex · OpenClaw · Mistral · Ollama · Cursor · Copilot · Aider · DeepSeek*
+*Claude Code, OpenAI, Anthropic, LangChain, CrewAI, AutoGen, LlamaIndex, OpenClaw, Mistral, Ollama, Cursor, Copilot, Aider, DeepSeek*
 
-[Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) · [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
+[Report Bug](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Request Feature](https://github.com/inbharatai/agent-arcade-gateway/issues) | [Discussions](https://github.com/inbharatai/agent-arcade-gateway/discussions)
 
 </div>
