@@ -77,6 +77,8 @@ export function ArcadeConsole({
   const [settingsTab, setSettingsTab] = useState<'console' | 'providers' | 'language' | 'appearance' | 'whatsapp' | 'goalmode' | 'about'>('console')
   const [sessionStart] = useState(Date.now())
   const [consoleMode, setConsoleMode] = useState<'chat' | 'goal'>('chat')
+  const [inlineKeyInput, setInlineKeyInput] = useState('')
+  const [inlineKeyExpanded, setInlineKeyExpanded] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const autoDetectedRef = useRef(false)
 
@@ -430,17 +432,61 @@ export function ArcadeConsole({
         </button>
       </div>
 
-      {/* Provider not yet detected — offer to enter key directly */}
+      {/* Provider not yet detected — inline quick key entry */}
       {!apiKeys[selectedModel.provider] && !serverProviders[selectedModel.provider] && selectedModel.provider !== 'ollama' && messages.length === 0 && !error && (
-        <div className="shrink-0 mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center gap-2">
-          <span>🔑</span>
-          <span className="flex-1">No <strong>{selectedModel.provider}</strong> API key detected.</span>
-          <button
-            onClick={() => { setSettingsTab('providers'); setSettingsOpen(true) }}
-            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-200 shrink-0 font-medium whitespace-nowrap"
-          >
-            Add Key →
-          </button>
+        <div className="shrink-0 mx-3 mt-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 overflow-hidden">
+          {!inlineKeyExpanded ? (
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span>🔑</span>
+              <span className="flex-1">No <strong>{selectedModel.provider}</strong> API key — paste yours to start chatting instantly.</span>
+              <button
+                onClick={() => setInlineKeyExpanded(true)}
+                className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-200 shrink-0 font-medium whitespace-nowrap"
+              >
+                Enter Key ▾
+              </button>
+            </div>
+          ) : (
+            <div className="px-3 py-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <span>🔑</span>
+                <span className="flex-1 font-semibold text-amber-200">Paste your {selectedModel.provider} API key:</span>
+                <button onClick={() => { setInlineKeyExpanded(false); setInlineKeyInput('') }} className="text-amber-400/60 hover:text-amber-400">✕</button>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={inlineKeyInput}
+                  onChange={e => setInlineKeyInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && inlineKeyInput.trim()) {
+                      handleApiKeyChange(selectedModel.provider as ProviderId, inlineKeyInput.trim())
+                      setInlineKeyInput('')
+                      setInlineKeyExpanded(false)
+                    }
+                    if (e.key === 'Escape') { setInlineKeyExpanded(false); setInlineKeyInput('') }
+                  }}
+                  placeholder={`sk-ant-... / sk-... / AIza...`}
+                  autoFocus
+                  className="flex-1 bg-black/30 border border-amber-500/30 rounded px-2 py-1 text-white placeholder-white/20 font-mono outline-none focus:border-amber-400/60 text-xs"
+                />
+                <button
+                  onClick={() => {
+                    if (inlineKeyInput.trim()) {
+                      handleApiKeyChange(selectedModel.provider as ProviderId, inlineKeyInput.trim())
+                      setInlineKeyInput('')
+                      setInlineKeyExpanded(false)
+                    }
+                  }}
+                  disabled={!inlineKeyInput.trim()}
+                  className="px-3 py-1 rounded bg-amber-500/30 hover:bg-amber-500/50 border border-amber-500/40 text-amber-100 font-bold disabled:opacity-40 whitespace-nowrap"
+                >
+                  Save ✓
+                </button>
+              </div>
+              <div className="text-amber-400/60 text-[10px]">Saved locally in your browser. Or set ANTHROPIC_API_KEY in packages/gateway/.env for auto-detection.</div>
+            </div>
+          )}
         </div>
       )}
 
