@@ -4,11 +4,19 @@ agent-arcade-crewai -- CrewAI adapter for Agent Arcade
 Auto-instruments CrewAI crews, agents, and tasks to emit Agent Arcade
 telemetry for real-time visualization in the pixel-art dashboard.
 
-Usage:
+Quick start::
+
     from crewai import Agent, Task, Crew
-    from agent_arcade_crewai import arcade_crew
+    from agent_arcade_crewai import wrap_crew
 
     crew = Crew(agents=[...], tasks=[...])
+    cb = wrap_crew(crew, gateway_url="http://localhost:47890", session_id="demo")
+    result = crew.kickoff()
+    cb.disconnect()
+
+Legacy API (still supported)::
+
+    from agent_arcade_crewai import arcade_crew
     wrapped = arcade_crew(crew, gateway_url="http://localhost:47890", session_id="demo")
     result = wrapped.kickoff()
 """
@@ -23,7 +31,28 @@ from typing import Any, Callable, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Lightweight HTTP emitter (avoids hard dep on agent_arcade SDK)
+# Re-export the primary public API from the src module
+# ---------------------------------------------------------------------------
+
+from agent_arcade_crewai._src import (  # noqa: E402
+    ArcadeCrewAICallback,
+    ArcadeCrewAIOptions,
+    wrap_crew,
+)
+
+__all__ = [
+    # Primary API (matches spec)
+    "ArcadeCrewAICallback",
+    "ArcadeCrewAIOptions",
+    "wrap_crew",
+    # Legacy helpers retained for backwards compatibility
+    "ArcadeCrewCallbacks",
+    "arcade_crew",
+    "arcade_agent",
+]
+
+# ---------------------------------------------------------------------------
+# Lightweight HTTP emitter (shared by legacy helpers below)
 # ---------------------------------------------------------------------------
 
 import json
@@ -97,12 +126,16 @@ class _ArcadeEmitter:
 
 
 # ---------------------------------------------------------------------------
-# CrewAI Callback Hooks
+# Legacy callback class (retained for backwards compatibility)
 # ---------------------------------------------------------------------------
+
 
 class ArcadeCrewCallbacks:
     """
     Callback hooks for CrewAI that emit Agent Arcade telemetry.
+
+    .. deprecated::
+        Use :class:`ArcadeCrewAICallback` and :func:`wrap_crew` instead.
 
     Tracks:
     - Crew kickoff/completion -> session lifecycle
@@ -114,12 +147,11 @@ class ArcadeCrewCallbacks:
 
     def __init__(self, emitter: _ArcadeEmitter) -> None:
         self._emitter = emitter
-        self._agent_ids: Dict[str, str] = {}  # crew_agent_role -> arcade_agent_id
+        self._agent_ids: Dict[str, str] = {}
         self._task_count = 0
         self._completed_tasks = 0
 
     def _get_agent_id(self, agent: Any) -> str:
-        """Get or create an Arcade agent ID for a CrewAI agent."""
         key = getattr(agent, "role", str(id(agent)))
         if key not in self._agent_ids:
             aid = _uid()
@@ -130,64 +162,55 @@ class ArcadeCrewCallbacks:
         return self._agent_ids[key]
 
     def on_crew_start(self, crew: Any) -> None:
-        """Called when a crew kicks off."""
         name = getattr(crew, "name", "CrewAI Crew")
         self._task_count = len(getattr(crew, "tasks", []))
         self._emitter.session_start(name)
 
     def on_crew_end(self, crew: Any, result: Any) -> None:
-        """Called when a crew finishes all tasks."""
-        # End all agents
         for role, aid in self._agent_ids.items():
             self._emitter.end(aid, reason="Crew completed", success=True)
         self._emitter.session_end("All tasks complete")
 
     def on_agent_start(self, agent: Any) -> None:
-        """Called when an agent begins work."""
         aid = self._get_agent_id(agent)
         self._emitter.state(aid, "thinking", "Analyzing task...")
 
     def on_agent_thinking(self, agent: Any, thought: str = "") -> None:
-        """Called when an agent is reasoning."""
         aid = self._get_agent_id(agent)
         self._emitter.state(aid, "thinking", thought[:200] or "Reasoning...")
 
     def on_tool_use(self, agent: Any, tool_name: str, tool_input: str = "") -> None:
-        """Called when an agent uses a tool."""
         aid = self._get_agent_id(agent)
         self._emitter.tool(aid, tool_name, tool_input[:200])
         self._emitter.state(aid, "tool", f"Using {tool_name}")
 
     def on_task_start(self, task: Any, agent: Any) -> None:
-        """Called when a task begins."""
         aid = self._get_agent_id(agent)
         desc = getattr(task, "description", "")[:200]
         self._emitter.state(aid, "reading", f"Task: {desc}")
 
     def on_task_complete(self, task: Any, agent: Any, output: Any = None) -> None:
-        """Called when a task is completed."""
         aid = self._get_agent_id(agent)
         self._completed_tasks += 1
         progress = self._completed_tasks / max(self._task_count, 1)
         self._emitter.state(aid, "done", f"Task complete ({self._completed_tasks}/{self._task_count})", progress)
 
     def on_delegation(self, from_agent: Any, to_agent: Any, task: Any) -> None:
-        """Called when an agent delegates to another."""
         parent_id = self._get_agent_id(from_agent)
         child_id = self._get_agent_id(to_agent)
         self._emitter.link(parent_id, child_id)
         self._emitter.state(child_id, "thinking", "Delegated task received")
 
     def on_agent_output(self, agent: Any, output: str) -> None:
-        """Called when an agent produces output."""
         aid = self._get_agent_id(agent)
         self._emitter.state(aid, "writing", output[:200])
         self._emitter.message(aid, output[:500])
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Legacy public functions (retained for backwards compatibility)
 # ---------------------------------------------------------------------------
+
 
 def arcade_crew(
     crew: Any,
@@ -195,44 +218,38 @@ def arcade_crew(
     session_id: str = "crewai-session",
     auth_token: Optional[str] = None,
 ) -> Any:
-    """
-    Wrap a CrewAI Crew instance with Agent Arcade telemetry.
+    """Wrap a CrewAI Crew with Agent Arcade telemetry (legacy API).
 
-    The wrapped crew emits real-time events to the Arcade gateway
-    for visualization. The original crew object is returned with
-    hooks injected -- all existing behavior is preserved.
+    .. deprecated::
+        Use :func:`wrap_crew` instead.  This function monkey-patches
+        ``crew.kickoff`` and returns the same crew instance.
 
     Args:
-        crew: A CrewAI Crew instance
-        gateway_url: Agent Arcade gateway URL
-        session_id: Session identifier for this run
-        auth_token: Optional authentication token
+        crew: A CrewAI ``Crew`` instance.
+        gateway_url: Agent Arcade gateway URL.
+        session_id: Session identifier for this run.
+        auth_token: Optional authentication token.
 
     Returns:
-        The same crew instance with Arcade telemetry hooks
+        The same *crew* instance with Arcade telemetry hooks injected.
 
-    Example:
-        from crewai import Agent, Task, Crew
+    Example::
+
+        from crewai import Crew
         from agent_arcade_crewai import arcade_crew
 
-        researcher = Agent(role="Researcher", goal="Find information")
-        writer = Agent(role="Writer", goal="Write content")
-        task = Task(description="Research and write about AI", agent=researcher)
-
-        crew = Crew(agents=[researcher, writer], tasks=[task])
+        crew = Crew(agents=[...], tasks=[...])
         wrapped = arcade_crew(crew, session_id="research-crew")
         result = wrapped.kickoff()
     """
     emitter = _ArcadeEmitter(gateway_url, session_id, auth_token)
     callbacks = ArcadeCrewCallbacks(emitter)
 
-    # Monkey-patch the kickoff method
     original_kickoff = crew.kickoff
 
     def patched_kickoff(*args: Any, **kwargs: Any) -> Any:
         callbacks.on_crew_start(crew)
         try:
-            # Set up step callbacks if CrewAI supports them
             if hasattr(crew, "step_callback"):
                 original_step = crew.step_callback
 
@@ -251,7 +268,6 @@ def arcade_crew(
 
                 crew.step_callback = step_hook
 
-            # Set up task callbacks
             if hasattr(crew, "task_callback"):
                 original_task_cb = crew.task_callback
 
@@ -282,12 +298,16 @@ def arcade_agent(
     session_id: str = "crewai-session",
     auth_token: Optional[str] = None,
 ) -> Callable:
-    """
-    Decorator to wrap a CrewAI agent creation function with Arcade telemetry.
+    """Decorator to wrap a CrewAI agent factory with Arcade telemetry (legacy API).
 
-    @arcade_agent(gateway_url="http://localhost:47890", session_id="demo")
-    def create_researcher():
-        return Agent(role="Researcher", goal="Find info", backstory="...")
+    .. deprecated::
+        Use :func:`wrap_crew` instead.
+
+    Example::
+
+        @arcade_agent(gateway_url="http://localhost:47890", session_id="demo")
+        def create_researcher():
+            return Agent(role="Researcher", goal="Find info", backstory="...")
     """
     emitter = _ArcadeEmitter(gateway_url, session_id, auth_token)
 

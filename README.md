@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.5.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.6.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -60,7 +60,7 @@
 - [Production Deployment](#-production-deployment)
 - [Environment Variables](#environment-variables)
 - [Security](#-security)
-- [Recent Changes](#-recent-changes-v321--v350)
+- [Recent Changes](#-recent-changes-v321--v360)
 - [Contributing](#-contributing)
 
 ---
@@ -934,7 +934,21 @@ That's it. **No API keys to configure.** The gateway auto-detects connected agen
 
 Observatory, Console, WhatsApp, Directives, and Arcade are one unified system.
 
-### 4. (Optional) Hook into Claude Code
+### 4. (Optional) Enable Persistent Storage
+
+By default the gateway stores everything in memory (cleared on restart). For persistence, pick one:
+
+```bash
+# SQLite — zero extra services, one file on disk (recommended for local dev)
+DB_PATH=./arcade.db npm run dev:gateway
+
+# Redis — for production / multi-instance deployments
+REDIS_URL=redis://localhost:6379 npm run dev:gateway
+```
+
+With `DB_PATH` set, all sessions, agents, spans, and events survive gateway restarts automatically.
+
+### 5. (Optional) Hook into Claude Code
 
 ```bash
 npx @agent-arcade/cli hook claude-code
@@ -1560,7 +1574,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.5.0
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.6.0
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1688,10 +1702,20 @@ npm run prod:start
 
 ---
 
-## Recent Changes (v3.2.1 → v3.5.0)
+## Recent Changes (v3.2.1 → v3.6.0)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.6.0** | **SQLite persistent storage** — set `DB_PATH=./arcade.db` and all sessions, agents, spans, events survive gateway restarts. WAL mode for concurrent reads. Auto-selected when `REDIS_URL` is absent. | Feature |
+| **v3.6.0** | **TracePanel: span search** — full-text search across span name, input, output, and error text. Parent spans shown when any descendant matches. | Feature |
+| **v3.6.0** | **TracePanel: error highlighting** — spans with `status=error` get red left border, red name, red background, and inline error message | Feature |
+| **v3.6.0** | **TracePanel: span comparison** — "Compare" mode lets you select any two spans and see their input/output side-by-side | Feature |
+| **v3.6.0** | **CostDashboard: budget alerts** — set a dollar threshold; orange warning at 80%, red banner when exceeded | Feature |
+| **v3.6.0** | **CostDashboard: model comparison table** — per-model breakdown: calls, input/output tokens, total cost, avg cost/call | Feature |
+| **v3.6.0** | **CostDashboard: CSV export** — one-click download of full cost history per session | Feature |
+| **v3.6.0** | **SessionReplay: failure detection** — recordings that contain error states get a red ⚠ badge. "Has errors" filter shows only failed sessions. | Feature |
+| **v3.6.0** | **Python adapter: CrewAI** — `agent_arcade_crewai.wrap_crew()` hooks into CrewAI's callback system. Thread-safe, duck-typed, non-blocking HTTP. | Feature |
+| **v3.6.0** | **Python adapter: AutoGen** — `agent_arcade_autogen.wrap_agents()` wraps AutoGen 0.3/0.4 agents. Patches `generate_reply`, `a_send`, `a_receive` with graceful fallback. | Feature |
 | **v3.5.0** | **LangSmith-grade Execution Traces** — `TracePanel` component: hierarchical span tree, collapsible I/O, token stream log, cost per span, agent filter | Feature |
 | **v3.5.0** | **AgentOps-grade Session Replay** — `SessionReplay` component: timeline scrubber, agent swimlanes, event inspector, state snapshot at any point in time | Feature |
 | **v3.5.0** | **Helicone-grade Cost Analytics** — per-model breakdowns, real token data from spans, budget progress bar, 80% warning threshold | Feature |
@@ -1749,7 +1773,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.5.0                                                  |
+ |   AGENT ARCADE v3.6.0                                                  |
  |                                                                        |
  |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |

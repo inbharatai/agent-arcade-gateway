@@ -4,19 +4,26 @@ agent-arcade-autogen -- AutoGen adapter for Agent Arcade
 Auto-instruments AutoGen multi-agent conversations to emit Agent Arcade
 telemetry for real-time visualization in the pixel-art dashboard.
 
-Usage:
+Quick start::
+
     from autogen import AssistantAgent, UserProxyAgent
-    from agent_arcade_autogen import wrap_autogen_agents
+    from agent_arcade_autogen import wrap_agents
 
     assistant = AssistantAgent("coder", llm_config={...})
     user_proxy = UserProxyAgent("executor", code_execution_config={...})
 
-    wrap_autogen_agents(
+    adapter = wrap_agents(
         [assistant, user_proxy],
         gateway_url="http://localhost:47890",
         session_id="autogen-demo",
     )
     user_proxy.initiate_chat(assistant, message="Write a hello world")
+    adapter.disconnect()
+
+Legacy API (still supported)::
+
+    from agent_arcade_autogen import wrap_autogen_agents
+    hook = wrap_autogen_agents([assistant, user_proxy], session_id="demo")
 """
 
 from __future__ import annotations
@@ -25,11 +32,38 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Union
-from urllib.request import Request, urlopen
+from typing import Any, Callable, Dict, List, Optional
 from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Re-export the primary public API from the src module
+# ---------------------------------------------------------------------------
+
+from agent_arcade_autogen._src import (  # noqa: E402
+    ArcadeAutoGenAdapter,
+    ArcadeAutoGenOptions,
+    wrap_agent,
+    wrap_agents,
+)
+
+__all__ = [
+    # Primary API (matches spec)
+    "ArcadeAutoGenAdapter",
+    "ArcadeAutoGenOptions",
+    "wrap_agent",
+    "wrap_agents",
+    # Legacy helpers retained for backwards compatibility
+    "ArcadeAutoGenHook",
+    "ArcadeGroupChat",
+    "wrap_autogen_agents",
+]
+
+# ---------------------------------------------------------------------------
+# Shared constants / helpers for legacy code below
+# ---------------------------------------------------------------------------
 
 PROTOCOL_VERSION = 1
 
@@ -95,12 +129,16 @@ class _ArcadeEmitter:
 
 
 # ---------------------------------------------------------------------------
-# AutoGen Hook
+# Legacy hook class (retained for backwards compatibility)
 # ---------------------------------------------------------------------------
+
 
 class ArcadeAutoGenHook:
     """
     Hook into AutoGen's message passing to emit Agent Arcade telemetry.
+
+    .. deprecated::
+        Use :class:`ArcadeAutoGenAdapter` and :func:`wrap_agents` instead.
 
     Tracks:
     - Assistant agent replies -> writing state
@@ -117,12 +155,13 @@ class ArcadeAutoGenHook:
         self._turn_count = 0
 
     def _get_agent_id(self, agent: Any) -> str:
-        """Get or create an Arcade agent ID for an AutoGen agent."""
         name = getattr(agent, "name", str(id(agent)))
         if name not in self._agent_ids:
             aid = _uid()
             role = "assistant"
-            if hasattr(agent, "_is_termination_msg"):
+            if getattr(agent, "code_execution_config", None):
+                role = "executor"
+            elif hasattr(agent, "_is_termination_msg"):
                 role = "user-proxy"
             elif hasattr(agent, "system_message"):
                 role = "assistant"
@@ -131,15 +170,12 @@ class ArcadeAutoGenHook:
         return self._agent_ids[name]
 
     def on_send(self, sender: Any, receiver: Any, message: Any) -> None:
-        """Called when a message is sent between agents."""
         sender_id = self._get_agent_id(sender)
         receiver_id = self._get_agent_id(receiver)
         self._turn_count += 1
 
-        # Link sender to receiver
         self._emitter.link(sender_id, receiver_id)
 
-        # Determine message content
         if isinstance(message, dict):
             content = message.get("content", "")
             func_call = message.get("function_call")
@@ -166,11 +202,8 @@ class ArcadeAutoGenHook:
             self._emitter.message(sender_id, str(content)[:500])
 
     def on_generate_reply(self, agent: Any) -> None:
-        """Called when an agent starts generating a reply."""
         aid = self._get_agent_id(agent)
         name = getattr(agent, "name", "Agent")
-
-        # Detect if this is a user proxy (code execution) or assistant (LLM)
         if hasattr(agent, "code_execution_config") and agent.code_execution_config:
             self._emitter.state(aid, "tool", "Executing code...")
             self._emitter.tool(aid, "code_executor", "Running generated code")
@@ -178,19 +211,16 @@ class ArcadeAutoGenHook:
             self._emitter.state(aid, "thinking", f"{name} reasoning...")
 
     def on_reply_generated(self, agent: Any, reply: Any) -> None:
-        """Called when an agent finishes generating a reply."""
         aid = self._get_agent_id(agent)
         self._emitter.state(aid, "writing", "Reply generated")
 
     def on_code_execution(self, agent: Any, code: str, result: str = "") -> None:
-        """Called when code is executed by a user proxy."""
         aid = self._get_agent_id(agent)
         self._emitter.tool(aid, "code_executor", code[:200])
         if result:
             self._emitter.message(aid, f"Output: {result[:300]}")
 
     def on_conversation_end(self, agents: List[Any], reason: str = "Complete") -> None:
-        """Called when a conversation ends."""
         for agent in agents:
             if getattr(agent, "name", "") in self._agent_ids:
                 aid = self._agent_ids[getattr(agent, "name", "")]
@@ -199,8 +229,9 @@ class ArcadeAutoGenHook:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Legacy public function (retained for backwards compatibility)
 # ---------------------------------------------------------------------------
+
 
 def wrap_autogen_agents(
     agents: List[Any],
@@ -208,22 +239,25 @@ def wrap_autogen_agents(
     session_id: str = "autogen-session",
     auth_token: Optional[str] = None,
 ) -> ArcadeAutoGenHook:
-    """
-    Wrap a list of AutoGen agents with Agent Arcade telemetry.
+    """Wrap a list of AutoGen agents with Agent Arcade telemetry (legacy API).
 
-    Monkey-patches the `generate_reply`, `send`, and `receive` methods
-    to emit telemetry events. All original behavior is preserved.
+    .. deprecated::
+        Use :func:`wrap_agents` instead.
+
+    Monkey-patches the ``generate_reply``, ``send``, and ``receive`` methods
+    to emit telemetry events.  All original behavior is preserved.
 
     Args:
-        agents: List of AutoGen agent instances
-        gateway_url: Agent Arcade gateway URL
-        session_id: Session identifier
-        auth_token: Optional authentication token
+        agents: List of AutoGen agent instances.
+        gateway_url: Agent Arcade gateway URL.
+        session_id: Session identifier.
+        auth_token: Optional authentication token.
 
     Returns:
-        ArcadeAutoGenHook instance for manual event control
+        :class:`ArcadeAutoGenHook` instance for manual event control.
 
-    Example:
+    Example::
+
         from autogen import AssistantAgent, UserProxyAgent
         from agent_arcade_autogen import wrap_autogen_agents
 
@@ -235,7 +269,6 @@ def wrap_autogen_agents(
             gateway_url="http://localhost:47890",
             session_id="coding-session",
         )
-
         user_proxy.initiate_chat(assistant, message="Write hello world in Python")
     """
     emitter = _ArcadeEmitter(gateway_url, session_id, auth_token)
@@ -244,7 +277,6 @@ def wrap_autogen_agents(
     emitter.session_start(f"AutoGen Session ({len(agents)} agents)")
 
     for agent in agents:
-        # Patch send method
         if hasattr(agent, "send"):
             original_send = agent.send
 
@@ -256,7 +288,6 @@ def wrap_autogen_agents(
 
             agent.send = make_send_patch(agent, original_send)
 
-        # Patch receive method
         if hasattr(agent, "receive"):
             original_receive = agent.receive
 
@@ -270,7 +301,6 @@ def wrap_autogen_agents(
 
             agent.receive = make_receive_patch(agent, original_receive)
 
-        # Patch generate_reply if it exists
         if hasattr(agent, "generate_reply"):
             original_gen = agent.generate_reply
 
@@ -287,15 +317,23 @@ def wrap_autogen_agents(
     return hook
 
 
+# ---------------------------------------------------------------------------
+# Legacy group chat wrapper (retained for backwards compatibility)
+# ---------------------------------------------------------------------------
+
+
 class ArcadeGroupChat:
-    """
-    Extended GroupChat wrapper with built-in Agent Arcade telemetry.
+    """Extended GroupChat wrapper with built-in Agent Arcade telemetry.
+
+    .. deprecated::
+        Instantiate :class:`ArcadeAutoGenAdapter` directly instead.
 
     Wraps AutoGen's GroupChat and GroupChatManager to automatically
     emit telemetry for all agent interactions.
 
-    Usage:
-        from autogen import AssistantAgent, GroupChat, GroupChatManager
+    Usage::
+
+        from autogen import AssistantAgent
         from agent_arcade_autogen import ArcadeGroupChat
 
         agents = [agent1, agent2, agent3]
@@ -324,15 +362,14 @@ class ArcadeGroupChat:
         self._group_chat_kwargs = group_chat_kwargs
 
     def run(self, message: str, sender: Optional[Any] = None) -> Any:
-        """
-        Start the group chat with an initial message.
+        """Start the group chat with an initial message.
 
         Args:
-            message: The initial message to start the conversation
-            sender: The agent that sends the initial message (default: first agent)
+            message: The initial message to start the conversation.
+            sender: The agent that sends the initial message (default: first agent).
 
         Returns:
-            The group chat result
+            The group chat result.
         """
         try:
             from autogen import GroupChat, GroupChatManager

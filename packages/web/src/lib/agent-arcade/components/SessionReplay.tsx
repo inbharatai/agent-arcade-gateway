@@ -70,6 +70,17 @@ function reconstructStateAtTime(events: TelemetryEvent[], upTo: number): Map<str
   return agents
 }
 
+/** Check if a full recording's events contain an agent error state. */
+function recordingHasErrors(recording: ReplayRecording): boolean {
+  for (const replayEv of recording.events) {
+    const telEv = replayEv.payload
+    if (telEv.type === 'agent.state' && telEv.payload['state'] === 'error') {
+      return true
+    }
+  }
+  return false
+}
+
 // ── Timeline Bar ─────────────────────────────────────────────────────────────
 
 interface TimelineProps {
@@ -296,6 +307,7 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
   const [recordings, setRecordings] = useState<ReturnType<ReplayEngine['listRecordings']>>([])
   const [selectedRecording, setSelectedRecording] = useState<ReplayRecording | null>(null)
   const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const [showErrorsOnly, setShowErrorsOnly] = useState(false)
   const updateRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   // Load recordings list
@@ -316,6 +328,18 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
     }, 100)
     return () => { if (updateRef.current) clearInterval(updateRef.current) }
   }, [engine])
+
+  // Build a set of recording IDs that have errors by loading each full recording
+  const errorRecordingIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const rec of recordings) {
+      const full = engine.loadRecording(rec.id)
+      if (full && recordingHasErrors(full)) {
+        ids.add(rec.id)
+      }
+    }
+    return ids
+  }, [recordings, engine])
 
   const handleRecord = useCallback(() => {
     if (engine.isRecording()) {
@@ -376,6 +400,12 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
     : events
   const startTs = selectedRecording?.startedAt || (events.length > 0 ? events[0].ts : currentTime)
   const duration = selectedRecording?.duration || (events.length > 1 ? events[events.length - 1].ts - events[0].ts : 0)
+
+  // Filter recordings based on "has errors" toggle
+  const displayedRecordings = useMemo(() => {
+    if (!showErrorsOnly) return recordings
+    return recordings.filter(rec => errorRecordingIds.has(rec.id))
+  }, [recordings, showErrorsOnly, errorRecordingIds])
 
   return (
     <div style={{
@@ -481,19 +511,45 @@ export function SessionReplay({ engine, events, sessionId, processEvent }: Sessi
 
       {/* Saved recordings */}
       <div style={{ padding: '8px 16px 12px', borderTop: '1px solid #222' }}>
-        <span style={{ fontSize: 8, color: '#888' }}>Saved Recordings ({recordings.length})</span>
-        {recordings.length === 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 8, color: '#888' }}>Saved Recordings ({recordings.length})</span>
+          <button
+            onClick={() => setShowErrorsOnly(v => !v)}
+            style={{
+              background: showErrorsOnly ? '#2a0a0a' : '#222',
+              border: `1px solid ${showErrorsOnly ? '#ef4444' : '#333'}`,
+              borderRadius: 4,
+              color: showErrorsOnly ? '#ef4444' : '#888',
+              cursor: 'pointer', padding: '2px 8px', fontSize: 7,
+            }}
+          >
+            Has errors
+          </button>
+        </div>
+        {displayedRecordings.length === 0 ? (
           <div style={{ fontSize: 8, color: '#444', padding: '8px 0' }}>
-            No recordings. Click &quot;Record&quot; to capture a session.
+            {showErrorsOnly
+              ? 'No recordings with errors found.'
+              : 'No recordings. Click \u201cRecord\u201d to capture a session.'}
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-            {recordings.slice(0, 10).map(rec => (
+          <div style={{ display: 'grid', gap: 4 }}>
+            {displayedRecordings.slice(0, 10).map(rec => (
               <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#111', borderRadius: 4, padding: '4px 8px', fontSize: 7 }}>
                 <button onClick={() => handlePlay(rec.id)} style={{ background: '#222', border: '1px solid #333', borderRadius: 3, color: '#4ade80', cursor: 'pointer', padding: '2px 6px', fontSize: 7 }}>
                   ▶
                 </button>
-                <span style={{ color: '#ccc', flex: 1 }}>{rec.sessionName || rec.sessionId.slice(0, 12)}</span>
+                <span style={{ color: '#ccc', flex: 1 }}>
+                  {rec.sessionName || rec.sessionId.slice(0, 12)}
+                  {errorRecordingIds.has(rec.id) && (
+                    <span
+                      title="This recording contains agent errors"
+                      style={{ marginLeft: 5, color: '#ef4444', fontSize: 8 }}
+                    >
+                      ⚠
+                    </span>
+                  )}
+                </span>
                 <span style={{ color: '#666' }}>{rec.eventCount} events</span>
                 <span style={{ color: '#666' }}>{rec.agentCount} agents</span>
                 <span style={{ color: '#555' }}>{formatTime(rec.duration)}</span>

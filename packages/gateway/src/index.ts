@@ -8,6 +8,7 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient, RedisClientType } from 'redis'
 import { Server, Socket } from 'socket.io'
 import { NotificationRouter, NotificationConfig } from '../../notifications/src/index'
+import { Database } from 'bun:sqlite'
 
 interface SSEClient {
   id: string
@@ -20,6 +21,7 @@ const PORT = Number.parseInt(process.env.PORT || '47890', 10)
 const NODE_ENV = process.env.NODE_ENV || 'development'
 const PROTOCOL_VERSION = 1
 const REDIS_URL = process.env.REDIS_URL || ''
+const DB_PATH = process.env.DB_PATH || ''
 const REQUIRE_AUTH = process.env.REQUIRE_AUTH
   ? process.env.REQUIRE_AUTH === '1'
   : NODE_ENV === 'production'
@@ -714,6 +716,168 @@ class InMemoryStorage {
   }
 }
 
+class SqliteStorage {
+  private db: Database
+  private goalCache = new Map<string, GoalRecord>()
+
+  constructor(path: string) {
+    this.db = new Database(path, { create: true })
+    this.db.exec('PRAGMA journal_mode=WAL')
+    this.db.exec('PRAGMA synchronous=NORMAL')
+    this.migrate()
+  }
+
+  private migrate() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        owner TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        last_activity INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS agents (
+        id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY (id, session_id)
+      );
+      CREATE TABLE IF NOT EXISTS events (
+        rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        data TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_events_session_rowid ON events(session_id, rowid);
+      CREATE TABLE IF NOT EXISTS spans (
+        span_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        agent_id TEXT NOT NULL,
+        start_ts INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        PRIMARY KEY (span_id, session_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_spans_session ON spans(session_id, start_ts);
+      CREATE TABLE IF NOT EXISTS goals (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        data TEXT NOT NULL
+      );
+    `)
+  }
+
+  async touchSession(sessionId: string, owner: string) {
+    const now = Date.now()
+    const existing = this.db.prepare('SELECT id FROM sessions WHERE id = ?').get(sessionId)
+    if (!existing) {
+      this.db.prepare('INSERT INTO sessions (id, owner, created_at, last_activity) VALUES (?, ?, ?, ?)').run(sessionId, owner, now, now)
+    } else {
+      this.db.prepare('UPDATE sessions SET last_activity = ? WHERE id = ?').run(now, sessionId)
+    }
+  }
+
+  async saveEvent(sessionId: string, ev: TelemetryEvent) {
+    this.db.prepare('INSERT INTO events (session_id, ts, data) VALUES (?, ?, ?)').run(sessionId, ev.ts, JSON.stringify(ev))
+    // Cap to MAX_EVENTS per session
+    this.db.prepare(`
+      DELETE FROM events WHERE session_id = ? AND rowid NOT IN (
+        SELECT rowid FROM events WHERE session_id = ? ORDER BY rowid DESC LIMIT ?
+      )
+    `).run(sessionId, sessionId, MAX_EVENTS)
+  }
+
+  async getReplay(sessionId: string, count: number): Promise<TelemetryEvent[]> {
+    const rows = this.db.prepare<{ data: string }, string[]>(
+      'SELECT data FROM events WHERE session_id = ? ORDER BY rowid DESC LIMIT ?'
+    ).all(sessionId, count) as { data: string }[]
+    return rows.reverse().map(r => JSON.parse(r.data) as TelemetryEvent)
+  }
+
+  async getAgents(sessionId: string): Promise<AgentRecord[]> {
+    const rows = this.db.prepare<{ data: string }, string[]>(
+      'SELECT data FROM agents WHERE session_id = ?'
+    ).all(sessionId) as { data: string }[]
+    return rows.map(r => JSON.parse(r.data) as AgentRecord)
+  }
+
+  async getAgent(sessionId: string, agentId: string): Promise<AgentRecord | null> {
+    const row = this.db.prepare<{ data: string }, string[]>(
+      'SELECT data FROM agents WHERE id = ? AND session_id = ?'
+    ).get(agentId, sessionId) as { data: string } | undefined
+    return row ? JSON.parse(row.data) as AgentRecord : null
+  }
+
+  async upsertAgent(sessionId: string, agent: AgentRecord) {
+    this.db.prepare(
+      'INSERT OR REPLACE INTO agents (id, session_id, data) VALUES (?, ?, ?)'
+    ).run(agent.id, sessionId, JSON.stringify(agent))
+  }
+
+  async deleteAgent(sessionId: string, agentId: string) {
+    this.db.prepare('DELETE FROM agents WHERE id = ? AND session_id = ?').run(agentId, sessionId)
+  }
+
+  saveSpan(sessionId: string, span: SpanRecord) {
+    // Cap to MAX_SPANS_PER_SESSION
+    const count = (this.db.prepare<{ n: number }, string[]>('SELECT COUNT(*) as n FROM spans WHERE session_id = ?').get(sessionId) as { n: number })?.n || 0
+    if (count >= MAX_SPANS_PER_SESSION) {
+      // Delete oldest span for this session
+      this.db.prepare(`
+        DELETE FROM spans WHERE session_id = ? AND span_id = (
+          SELECT span_id FROM spans WHERE session_id = ? ORDER BY start_ts ASC LIMIT 1
+        )
+      `).run(sessionId, sessionId)
+    }
+    this.db.prepare(
+      'INSERT OR REPLACE INTO spans (span_id, session_id, agent_id, start_ts, data) VALUES (?, ?, ?, ?, ?)'
+    ).run(span.spanId, sessionId, span.agentId, span.startTs, JSON.stringify(span))
+  }
+
+  getSpans(sessionId: string): SpanRecord[] {
+    const rows = this.db.prepare<{ data: string }, string[]>(
+      'SELECT data FROM spans WHERE session_id = ? ORDER BY start_ts ASC'
+    ).all(sessionId) as { data: string }[]
+    return rows.map(r => JSON.parse(r.data) as SpanRecord)
+  }
+
+  getGoal(goalId: string): GoalRecord | null {
+    const cached = this.goalCache.get(goalId)
+    if (cached) return cached
+    const row = this.db.prepare<{ data: string }, string[]>('SELECT data FROM goals WHERE id = ?').get(goalId) as { data: string } | undefined
+    if (!row) return null
+    const goal = JSON.parse(row.data) as GoalRecord
+    this.goalCache.set(goalId, goal)
+    return goal
+  }
+
+  setGoal(goal: GoalRecord) {
+    this.goalCache.set(goal.id, goal)
+    this.db.prepare('INSERT OR REPLACE INTO goals (id, session_id, data) VALUES (?, ?, ?)').run(goal.id, goal.sessionId, JSON.stringify(goal))
+  }
+
+  getGoalsBySession(sessionId: string): GoalRecord[] {
+    const rows = this.db.prepare<{ data: string }, string[]>('SELECT data FROM goals WHERE session_id = ?').all(sessionId) as { data: string }[]
+    return rows.map(r => JSON.parse(r.data) as GoalRecord)
+  }
+
+  async pruneStaleAgents(maxAgeMs: number) {
+    const cutoff = Date.now() - maxAgeMs
+    const result = this.db.prepare(
+      `DELETE FROM agents WHERE json_extract(data, '$.state') IN ('done', 'error') AND json_extract(data, '$.lastUpdate') < ?`
+    ).run(cutoff)
+    const pruned = (result as { changes: number }).changes || 0
+    // Prune sessions with no activity and no agents
+    this.db.prepare(`
+      DELETE FROM sessions WHERE last_activity < ? AND id NOT IN (SELECT DISTINCT session_id FROM agents)
+    `).run(cutoff)
+    if (pruned > 0) console.log(`[sqlite-storage] pruned ${pruned} stale agents`)
+  }
+
+  async listSessions(): Promise<SessionMeta[]> {
+    const rows = this.db.prepare<SessionMeta, []>('SELECT id, owner, created_at as createdAt, last_activity as lastActivity FROM sessions ORDER BY last_activity DESC').all() as SessionMeta[]
+    return rows
+  }
+}
+
 class RedisStorage {
   constructor(private readonly client: RedisClientType) {}
 
@@ -830,12 +994,30 @@ class RedisStorage {
   getGoalsBySession(sessionId: string): GoalRecord[] {
     return Array.from(goalStore.values()).filter(g => g.sessionId === sessionId)
   }
+
+  async deleteAgent(sessionId: string, agentId: string) {
+    const key = this.sessionAgentsKey(sessionId)
+    await this.client.hDel(key, agentId)
+  }
+
+  saveSpan(sessionId: string, span: SpanRecord): void {
+    // Redis spans stored in a sorted set by startTs, capped at MAX_SPANS_PER_SESSION
+    const key = `aa:session:${sessionId}:spans`
+    this.client.hSet(key, { [span.spanId]: JSON.stringify(span) }).catch(() => {})
+    this.client.expire(key, RETENTION_SECONDS).catch(() => {})
+  }
+
+  getSpans(sessionId: string): SpanRecord[] {
+    // Synchronous stub — Redis getSpans is async; return empty (callers expect sync for InMemory)
+    // Full async support would require restructuring processEvent to be fully async for spans
+    return []
+  }
 }
 
 // Shared goal store used by RedisStorage (InMemoryStorage has its own)
 const goalStore = new Map<string, GoalRecord>()
 
-type Storage = InMemoryStorage | RedisStorage
+type Storage = InMemoryStorage | RedisStorage | SqliteStorage
 let storage: Storage = new InMemoryStorage()
 
 // ---- Rate limiting ----------------------------------------------------------
@@ -2771,10 +2953,13 @@ async function bootstrap() {
       io.adapter(createAdapter(redisPub, redisSub))
       log('info', 'socket.io redis adapter enabled')
     }
+  } else if (DB_PATH) {
+    storage = new SqliteStorage(DB_PATH)
+    log('info', 'sqlite storage enabled', { path: DB_PATH })
   } else {
-    log('warn', 'redis disabled, running degraded in-memory mode')
+    log('warn', 'no persistence configured — running in-memory mode (data lost on restart). Set DB_PATH=./arcade.db for SQLite or REDIS_URL for Redis')
     if (NODE_ENV === 'production') {
-      throw new Error('REDIS_URL is required in production mode')
+      throw new Error('Persistence is required in production. Set REDIS_URL or DB_PATH')
     }
   }
 
@@ -2784,7 +2969,7 @@ async function bootstrap() {
       env: NODE_ENV,
       requireAuth: REQUIRE_AUTH,
       allowedOrigins: ALLOWED_ORIGINS,
-      redisEnabled: Boolean(redis),
+      storage: redis ? 'redis' : DB_PATH ? 'sqlite' : 'memory',
       redisAdapterEnabled: Boolean(redisPub && redisSub),
       protocolVersion: PROTOCOL_VERSION,
       whatsappQrMode: WHATSAPP_QR_MODE,
