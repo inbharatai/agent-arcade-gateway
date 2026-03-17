@@ -402,11 +402,23 @@ Self-chat supports conversation history (up to 20 messages per session, 50 concu
 
 While most frameworks get basic start/end tracking, OpenClaw gets **full ReAct loop visibility**: you can see exactly when the agent thinks, plans, acts, observes, and responds. Each skill execution spawns a child agent on the dashboard. Memory reads and writes appear as tool events. Heartbeat tasks show as persistent child agents. And channel messages (WhatsApp, Slack, Discord) flow through the dashboard in real-time.
 
-<table>
-<tr>
-<td width="50%">
+### Installation
 
-### One-Line Integration
+```bash
+npm install @agent-arcade/adapter-openclaw
+```
+
+---
+
+### Integration Approaches
+
+There are **three ways** to connect OpenClaw to Agent Arcade — choose the one that fits your architecture.
+
+---
+
+#### Approach 1 — `wrapOpenClaw()` · Auto-instrument (recommended)
+
+The simplest approach. Pass your OpenClaw instance and the adapter instruments every subsystem automatically.
 
 ```typescript
 import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
@@ -414,28 +426,184 @@ import { wrapOpenClaw } from '@agent-arcade/adapter-openclaw'
 const claw = wrapOpenClaw(openClawInstance, {
   gatewayUrl: 'http://localhost:47890',
   sessionId: 'openclaw-app',
+  agentName: 'My Brain',        // optional — display name in dashboard
+  apiKey: 'your-arcade-key',    // optional — if gateway auth is enabled
+  trackMemory: true,            // optional — default true
+  trackHeartbeat: true,         // optional — default true
+  trackSkills: true,            // optional — default true
 })
-// Everything is tracked automatically
+
+// OpenClaw runs completely normally — all events flow to Agent Arcade
+claw.brain.think('What is the capital of France?')
+
+// When done, cleanly end the session:
+claw.arcadeDisconnect()
 ```
 
-No configuration, no event wiring, no callback registration. The adapter instruments OpenClaw's internal emitters and forwards every event to the gateway.
+`wrapOpenClaw()` returns the **same instance** you passed in, extended with two properties:
 
-</td>
-<td width="50%">
+| Property | Type | Description |
+|:---------|:-----|:------------|
+| `arcadeDisconnect()` | `() => void` | Ends the brain agent and closes the gateway connection |
+| `arcadeHooks` | `OpenClawHooks` | Direct access to the hook functions (see Approach 2) |
 
-### What Gets Tracked
+**How auto-instrumentation works:**
+1. Attaches to the top-level event emitter (`claw.on()`) if available
+2. Falls back to subsystem emitters (`claw.brain.on()`, `claw.skills.on()`, etc.)
+3. Falls back to **monkey-patching** if no event emitter is found — wraps `brain.think`, `skills.execute`, and `memory.read/write/search` directly
+
+The adapter is **duck-typed** — it does not require a specific OpenClaw package version. Any object implementing the `OpenClawLike` interface (event emitter methods and/or subsystem properties) is compatible.
+
+---
+
+#### Approach 2 — `createOpenClawHooks()` · Manual event binding
+
+For full control over which events are tracked, or when using OpenClaw's event emitter directly.
+
+```typescript
+import { createOpenClawHooks } from '@agent-arcade/adapter-openclaw'
+
+const hooks = createOpenClawHooks({
+  gatewayUrl: 'http://localhost:47890',
+  sessionId: 'my-session',
+  agentName: 'Production Brain',
+})
+
+// Wire up exactly the events you want
+openClaw.on('brain:think',     hooks.onThink)
+openClaw.on('brain:plan',      hooks.onPlan)
+openClaw.on('brain:act',       hooks.onAct)
+openClaw.on('brain:observe',   hooks.onObserve)
+openClaw.on('brain:respond',   hooks.onRespond)
+openClaw.on('brain:error',     hooks.onBrainError)
+
+openClaw.on('skill:start',     hooks.onSkillStart)
+openClaw.on('skill:end',       hooks.onSkillEnd)
+openClaw.on('skill:error',     hooks.onSkillError)
+
+openClaw.on('memory:read',     hooks.onMemoryRead)
+openClaw.on('memory:write',    hooks.onMemoryWrite)
+openClaw.on('memory:search',   hooks.onMemorySearch)
+
+openClaw.on('heartbeat:start', hooks.onHeartbeatStart)
+openClaw.on('heartbeat:end',   hooks.onHeartbeatEnd)
+
+openClaw.on('channel:receive', hooks.onChannelReceive)
+openClaw.on('channel:send',    hooks.onChannelSend)
+
+// End session when done
+hooks.onEnd('Session complete')
+hooks.disconnect()
+```
+
+`createOpenClawHooks()` is the most flexible approach — works with any OpenClaw version that exposes an event emitter.
+
+---
+
+#### Approach 3 — `openClawMiddleware()` · Gateway middleware
+
+For projects using OpenClaw's built-in HTTP gateway (`claw.gateway.use()`). Instruments all incoming requests and outgoing responses as channel events.
+
+```typescript
+import { openClawMiddleware } from '@agent-arcade/adapter-openclaw'
+
+claw.gateway.use(openClawMiddleware({
+  gatewayUrl: 'http://localhost:47890',
+  sessionId: 'production',
+  agentName: 'Gateway Agent',
+}))
+
+// Every request/response through the gateway is now visible in Agent Arcade
+// Reads ctx.channel / ctx.platform / ctx.from for inbound event labels
+// Reads ctx.to / ctx.recipient for outbound event labels
+// Brain errors propagate and re-throw to preserve normal error handling
+```
+
+---
+
+### All Configuration Options
+
+```typescript
+interface ArcadeOpenClawOptions {
+  gatewayUrl: string        // Required — e.g. 'http://localhost:47890'
+  sessionId: string         // Required — groups agents on the same dashboard
+  apiKey?: string           // Optional — gateway Bearer token if auth is enabled
+  agentName?: string        // Optional — label shown in the Arcade (default: 'OpenClaw')
+  trackMemory?: boolean     // Optional — track read/write/search operations (default: true)
+  trackHeartbeat?: boolean  // Optional — track scheduled tasks (default: true)
+  trackSkills?: boolean     // Optional — track skill executions (default: true)
+}
+```
+
+Set `trackMemory: false`, `trackHeartbeat: false`, or `trackSkills: false` to reduce dashboard noise for high-frequency subsystems.
+
+---
+
+### All 16 Tracked Events
+
+| Event | Data Shape | Dashboard Effect |
+|:------|:-----------|:-----------------|
+| `brain:think` | `{ query: string; context?: string }` | Agent → **thinking** state, label = query (truncated to 120 chars) |
+| `brain:plan` | `{ steps: string[] }` | Agent → **thinking** state, label = `"Planning N steps"`, sends plan message |
+| `brain:act` | `{ action: string; input?: unknown }` | Agent → **tool** state, tool event with action name |
+| `brain:observe` | `{ result: unknown }` | Agent → **reading** state |
+| `brain:respond` | `{ response: string }` | Agent → **writing** state, label = response (truncated to 100 chars) |
+| `brain:error` | `{ error: string }` | Agent → **error** state, label = error message |
+| `skill:start` | `{ name: string; input?: unknown }` | Spawns **child agent** `"Skill: name"`, linked to brain |
+| `skill:end` | `{ name: string; output?: unknown; success: boolean }` | Ends skill child agent (success or failure) |
+| `skill:error` | `{ name: string; error: string }` | Skill child agent → error state, then ends |
+| `memory:read` | `{ key: string }` | Tool event `"memory:read"`, label = `"Reading: key"` |
+| `memory:write` | `{ key: string; size?: number }` | Tool event `"memory:write"`, label = `"Writing: key (N bytes)"` |
+| `memory:search` | `{ query: string; results: number }` | Tool event `"memory:search"`, label = query + result count |
+| `heartbeat:start` | `{ task: string; schedule?: string }` | Spawns **child agent** `"Heartbeat: task"`, linked to brain |
+| `heartbeat:end` | `{ task: string; success: boolean }` | Ends heartbeat child agent |
+| `channel:receive` | `{ channel: string; from?: string }` | Agent → **reading** state, label = `"Message from channel (sender)"` |
+| `channel:send` | `{ channel: string; to?: string }` | Agent → **writing** state, label = `"Sending to channel (recipient)"` |
+
+---
+
+### What Gets Tracked — Dashboard View
 
 | OpenClaw Component | Tracked Events | Dashboard View |
 |:-------------------|:--------------|:--------------|
-| **Brain** | think, plan, act, observe, respond, error | Agent states: thinking -> tool -> writing |
+| **Brain** | think, plan, act, observe, respond, error | Agent states: thinking → tool → writing |
 | **Skills** | start, end, error | Child agent per skill execution |
 | **Memory** | read, write, search | Tool events with payload |
 | **Heartbeat** | start, end | Persistent child agent per scheduled task |
-| **Channels** | receive, send (WhatsApp/Slack) | Message flow in real-time |
+| **Channels** | receive, send (WhatsApp / Slack / Discord) | Message flow in real-time |
 
-</td>
-</tr>
-</table>
+---
+
+### Duck-Typing — Works With Any OpenClaw-Like Instance
+
+The adapter does **not** import from `@openclaw/sdk`. It uses a minimal duck-typed interface — any object with matching property shapes is supported:
+
+```typescript
+// These are all compatible:
+const claw1 = new OpenClaw()             // official SDK
+const claw2 = require('openclaw')()      // CommonJS
+const claw3 = { brain: myBrain, ... }    // custom compatible object
+
+const wrapped = wrapOpenClaw(claw3, { gatewayUrl: '...', sessionId: '...' })
+```
+
+The adapter checks for `.on()`, `.addListener()`, and `.emit()` at both the top level and on each subsystem (`brain`, `skills`, `memory`, `heartbeat`), and gracefully degrades if any subsystem is unavailable.
+
+---
+
+### Monkey-Patching Fallback
+
+If an OpenClaw instance does not expose event emitters (`claw.on` is undefined), the adapter automatically falls back to wrapping the method functions directly:
+
+| Method wrapped | Trigger | Hook fired |
+|:---------------|:--------|:-----------|
+| `brain.think(query)` | On call → on return / on throw | `onThink` → `onRespond` or `onBrainError` |
+| `skills.execute(name, ...args)` | On call → on return / on throw | `onSkillStart` → `onSkillEnd` or `onSkillError` |
+| `memory.read(key)` | On call | `onMemoryRead` |
+| `memory.write(key, value)` | On call (computes byte size) | `onMemoryWrite` |
+| `memory.search(query)` | On return (counts results) | `onMemorySearch` |
+
+Monkey-patching is **transparent** — the original functions are called with unmodified arguments and return values are passed through unchanged.
 
 ---
 
