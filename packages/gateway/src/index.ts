@@ -1900,6 +1900,97 @@ const httpServer = createServer(async (req, res) => {
     return jsonRes(res, 400, { error: `Provider '${provider}' not supported for chat.` })
   }
 
+  // POST /v1/chat/sync — non-streaming AI chat (for WhatsApp relay, bots, scripts)
+  // Returns { reply: string } with the complete response text.
+  if (req.method === 'POST' && url.pathname === '/v1/chat/sync') {
+    let body: { messages: Array<{ role: string; content: string }>; model?: string; provider?: string }
+    try {
+      body = JSON.parse(await readBody(req))
+    } catch {
+      return jsonRes(res, 400, { error: 'Invalid JSON' })
+    }
+
+    const { messages, model, provider } = body
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return jsonRes(res, 400, { error: 'messages array is required' })
+    }
+
+    // Auto-detect provider: prefer claude, fallback to openai, then gemini
+    const prov = provider || (CHAT_ANTHROPIC_KEY ? 'claude' : CHAT_OPENAI_KEY ? 'openai' : CHAT_GEMINI_KEY ? 'gemini' : '')
+    if (!prov) return jsonRes(res, 401, { error: 'No AI provider configured' })
+
+    try {
+      if (prov === 'claude') {
+        if (!CHAT_ANTHROPIC_KEY) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured' })
+        const upstream = await fetch(`${CHAT_ANTHROPIC_URL}/v1/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': CHAT_ANTHROPIC_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: model || 'claude-sonnet-4-6',
+            max_tokens: 2048,
+            system: CHAT_SYSTEM_PROMPT,
+            messages: messages.map(m => ({ role: m.role, content: m.content })),
+          }),
+        })
+        if (!upstream.ok) {
+          const errBody = await upstream.json().catch(() => ({})) as Record<string, unknown>
+          const errMsg = (errBody as any)?.error?.message || `HTTP ${upstream.status}`
+          return jsonRes(res, upstream.status, { error: String(errMsg).slice(0, 200) })
+        }
+        const data = await upstream.json() as { content: Array<{ type: string; text: string }> }
+        const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('\n') || ''
+        return jsonRes(res, 200, { reply, provider: 'claude', model: model || 'claude-sonnet-4-6' })
+      }
+
+      if (prov === 'openai' || prov === 'mistral') {
+        const key = prov === 'openai' ? CHAT_OPENAI_KEY : CHAT_MISTRAL_KEY
+        const baseUrl = prov === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
+        if (!key) return jsonRes(res, 401, { error: `${prov} key not configured` })
+        const upstream = await fetch(`${baseUrl}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({
+            model: model || (prov === 'openai' ? 'gpt-4o' : 'mistral-large-latest'),
+            messages: [{ role: 'system', content: CHAT_SYSTEM_PROMPT }, ...messages],
+          }),
+        })
+        if (!upstream.ok) {
+          return jsonRes(res, upstream.status, { error: `Upstream ${prov} error (HTTP ${upstream.status})` })
+        }
+        const data = await upstream.json() as { choices: Array<{ message: { content: string } }> }
+        const reply = data.choices?.[0]?.message?.content || ''
+        return jsonRes(res, 200, { reply, provider: prov, model })
+      }
+
+      // Gemini via OpenAI-compat endpoint
+      if (prov === 'gemini') {
+        if (!CHAT_GEMINI_KEY) return jsonRes(res, 401, { error: 'GEMINI_API_KEY not configured' })
+        const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${CHAT_GEMINI_KEY}` },
+          body: JSON.stringify({
+            model: model || 'gemini-2.0-flash',
+            messages: [{ role: 'system', content: CHAT_SYSTEM_PROMPT }, ...messages],
+          }),
+        })
+        if (!upstream.ok) {
+          return jsonRes(res, upstream.status, { error: `Upstream gemini error (HTTP ${upstream.status})` })
+        }
+        const data = await upstream.json() as { choices: Array<{ message: { content: string } }> }
+        const reply = data.choices?.[0]?.message?.content || ''
+        return jsonRes(res, 200, { reply, provider: 'gemini', model: model || 'gemini-2.0-flash' })
+      }
+
+      return jsonRes(res, 400, { error: `Provider '${prov}' not supported` })
+    } catch (e) {
+      return jsonRes(res, 500, { error: `Chat sync error: ${String(e).slice(0, 200)}` })
+    }
+  }
+
   return jsonRes(res, 404, { error: 'Not found' })
 })
 

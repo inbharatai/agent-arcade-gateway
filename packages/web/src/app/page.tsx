@@ -196,7 +196,8 @@ export default function Home() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${consoleOpen ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'}`}
                 title="Toggle Console (Ctrl+`)"
               >
-                {consoleOpen ? '💬 Console ✓' : '💬 Console'}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block w-3.5 h-3.5 mr-1 -mt-px"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                {consoleOpen ? 'Console ✓' : 'Console'}
               </button>
             )}
           </div>

@@ -89,7 +89,8 @@ export function SplitPanel({
             onClick={() => onTabChange?.('console')}
             className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'console' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-white/50 hover:text-white/70'}`}
           >
-            💬 Console
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block w-4 h-4 mr-1 -mt-0.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Console
           </button>
         </div>
         <div className="flex-1 overflow-hidden">

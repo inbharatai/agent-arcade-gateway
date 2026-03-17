@@ -53,6 +53,12 @@ const GATEWAY_TOKEN  = process.env.WHATSAPP_GATEWAY_TOKEN || ''  // optional aut
 const ALLOWED_NUMBERS = (process.env.WHATSAPP_ALLOWED_NUMBERS || '')
   .split(',').map(s => s.trim()).filter(Boolean)
 
+/** Enable self-chat AI relay: message yourself → AI response → reply back */
+const SELF_CHAT_ENABLED = process.env.WHATSAPP_SELF_CHAT !== '0'  // enabled by default
+
+/** Max conversation history kept per self-chat session */
+const SELF_CHAT_MAX_HISTORY = 20
+
 const logger = pino({ level: 'warn' })
 
 // ---------------------------------------------------------------------------
@@ -65,6 +71,9 @@ let currentStatus: WAStatus = 'starting'
 let currentQrDataUrl = ''   // base64 PNG data URL (for dashboard rendering)
 let currentQrSvg     = ''   // SVG string (for terminal display)
 let sock: WASocket | null = null
+
+/** Per-JID conversation history for self-chat AI relay */
+const selfChatHistory = new Map<string, Array<{ role: string; content: string }>>()
 
 // ---------------------------------------------------------------------------
 // Command parser — same commands as the Twilio webhook handler
@@ -87,7 +96,10 @@ async function handleCommand(from: string, text: string): Promise<string> {
   if (cmd === 'help' || trimmed === '') {
     return (
       '🎮 Agent Arcade — WhatsApp Control\n\n' +
-      'Commands:\n' +
+      '💬 *Self-Chat AI*: Message yourself to chat with AI!\n' +
+      '  Just type anything — it goes straight to your AI.\n' +
+      '  /clear — reset conversation\n\n' +
+      'Agent Commands (from any chat):\n' +
       '  pause SESSION AGENT\n' +
       '  resume SESSION AGENT\n' +
       '  stop SESSION AGENT\n' +
@@ -166,6 +178,73 @@ async function handleCommand(from: string, text: string): Promise<string> {
   }
 
   return `❓ Unknown command: "${cmd}"\n\nSend *help* for a list of commands.`
+}
+
+// ---------------------------------------------------------------------------
+// Self-chat AI relay — message yourself to chat with AI
+// ---------------------------------------------------------------------------
+
+async function handleSelfChat(jid: string, text: string): Promise<string> {
+  // Special commands still work in self-chat
+  const lower = text.trim().toLowerCase()
+  if (lower === 'help' || lower === '/help') {
+    return handleCommand(jid, 'help')
+  }
+  if (lower === '/clear' || lower === '/reset') {
+    selfChatHistory.delete(jid)
+    return '🗑️ Conversation cleared. Send any message to start fresh.'
+  }
+  if (lower.startsWith('pause ') || lower.startsWith('resume ') || lower.startsWith('stop ') ||
+      lower.startsWith('redirect ') || lower.startsWith('list ') || lower.startsWith('status ')) {
+    return handleCommand(jid, text)
+  }
+
+  // Build conversation history
+  let history = selfChatHistory.get(jid) || []
+  history.push({ role: 'user', content: text })
+
+  // Trim to max history
+  if (history.length > SELF_CHAT_MAX_HISTORY) {
+    history = history.slice(history.length - SELF_CHAT_MAX_HISTORY)
+  }
+  selfChatHistory.set(jid, history)
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+
+  try {
+    const res = await fetch(`${GATEWAY_URL}/v1/chat/sync`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ messages: history }),
+      signal: AbortSignal.timeout(30_000),
+    })
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` })) as { error?: string }
+      return `⚠️ AI error: ${errBody.error || `HTTP ${res.status}`}`
+    }
+
+    const data = await res.json() as { reply: string; provider?: string; model?: string }
+    const reply = data.reply?.trim()
+
+    if (!reply) return '⚠️ Empty response from AI'
+
+    // Save assistant response to history
+    history.push({ role: 'assistant', content: reply })
+    if (history.length > SELF_CHAT_MAX_HISTORY) {
+      history = history.slice(history.length - SELF_CHAT_MAX_HISTORY)
+    }
+    selfChatHistory.set(jid, history)
+
+    return reply
+  } catch (e) {
+    const msg = String(e)
+    if (msg.includes('timeout') || msg.includes('Timeout')) {
+      return '⏱️ AI response timed out. Try a shorter question.'
+    }
+    return `⚠️ Error reaching AI: ${msg.slice(0, 150)}`
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -269,7 +348,7 @@ async function startWhatsApp() {
       currentStatus    = 'connected'
       currentQrDataUrl = ''
       currentQrSvg     = ''
-      console.log('[whatsapp-client] ✅ WhatsApp connected! Send "help" to start.')
+      console.log('[whatsapp-client] ✅ WhatsApp connected! Message yourself to chat with AI, or send "help" for commands.')
     }
 
     if (connection === 'close') {
@@ -295,8 +374,11 @@ async function startWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
 
+    // Get own JID for self-chat detection
+    const myJid = sock?.user?.id?.replace(/:.*@/, '@') || ''
+
     for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue  // ignore own messages
+      if (!msg.message) continue
 
       const from = msg.key.remoteJid || ''
       const text = (
@@ -307,9 +389,31 @@ async function startWhatsApp() {
 
       if (!text) continue
 
+      // ── Self-chat detection ──────────────────────────────────────────────
+      // In WhatsApp, messaging yourself shows remoteJid === your own JID
+      // and fromMe is true for messages you send to yourself.
+      const isSelfChat = msg.key.fromMe && (from === myJid || from === sock?.user?.id)
+
+      if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
+
+      if (isSelfChat && SELF_CHAT_ENABLED) {
+        console.log(`[whatsapp-client] Self-chat: ${text.slice(0, 100)}`)
+
+        const reply = await handleSelfChat(from, text)
+
+        try {
+          await sock!.sendMessage(from, { text: reply })
+        } catch (e) {
+          console.warn(`[whatsapp-client] Failed to send self-chat reply: ${e}`)
+        }
+        continue
+      }
+
+      // ── Regular incoming messages (from others) ──────────────────────────
+      if (msg.key.fromMe) continue
+
       console.log(`[whatsapp-client] Message from ${from}: ${text.slice(0, 100)}`)
 
-      // Compose reply
       const reply = await handleCommand(from, text)
 
       try {
