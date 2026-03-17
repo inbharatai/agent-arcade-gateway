@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 
 interface OutputPanelProps {
   lastResponse: string
+  userCommand?: string
   isVisible: boolean
   onClose: () => void
 }
@@ -35,7 +36,7 @@ function extractFiles(text: string): string[] {
   return Array.from(paths)
 }
 
-export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelProps) {
+export function OutputPanel({ lastResponse, userCommand, isVisible, onClose }: OutputPanelProps) {
   const [tab, setTab] = useState<Tab>('code')
   const [selectedBlock, setSelectedBlock] = useState(0)
   const codeBlocks = useMemo(() => extractCodeBlocks(lastResponse || ''), [lastResponse])
@@ -73,6 +74,13 @@ export function OutputPanel({ lastResponse, isVisible, onClose }: OutputPanelPro
         </div>
         <button onClick={onClose} className="text-white/30 hover:text-white/70 text-xs px-2 transition-colors">✕</button>
       </div>
+
+      {userCommand && (
+        <div className="shrink-0 px-3 py-2 border-b border-white/10 bg-blue-500/5">
+          <div className="text-xs text-white/40 mb-0.5">Command</div>
+          <div className="text-sm text-blue-300 font-mono truncate">{userCommand}</div>
+        </div>
+      )}
 
       <div className="overflow-y-auto flex-1">
         {tab === 'code' && (

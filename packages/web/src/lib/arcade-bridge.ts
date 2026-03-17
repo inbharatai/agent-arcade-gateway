@@ -52,17 +52,18 @@ export function consoleAgentSpawn(): void {
 }
 
 export function consoleAgentThinking(prompt: string): void {
-  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'thinking' })
+  const taskText = prompt.slice(0, 80)
+  void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'thinking', task: taskText })
   // Emit the raw prompt so the agent "says" what it received —
   // the onMessage voice callback will speak this directly
   void ingest('agent.message', CONSOLE_AGENT_ID, {
-    text: prompt.slice(0, 100) + (prompt.length > 100 ? '…' : ''),
+    text: `Task: ${taskText}${prompt.length > 80 ? '…' : ''}`,
   })
 }
 
 export function consoleAgentWriting(model: string): void {
   void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'writing' })
-  void ingest('agent.tool', CONSOLE_AGENT_ID, { tool: `${model}-generation` })
+  void ingest('agent.tool', CONSOLE_AGENT_ID, { name: `${model}-generation` })
 }
 
 export function consoleAgentDone(summary: string): void {
@@ -76,5 +77,14 @@ export function consoleAgentError(error: string): void {
 }
 
 export function consoleAgentCodeDetected(): void {
-  void ingest('agent.tool', CONSOLE_AGENT_ID, { tool: 'code_generation' })
+  void ingest('agent.tool', CONSOLE_AGENT_ID, { name: 'code_generation' })
+}
+
+export function consoleAgentCost(inputTokens: number, outputTokens: number, cost: number): void {
+  void ingest('agent.state', CONSOLE_AGENT_ID, {
+    state: 'idle',
+    inputTokens,
+    outputTokens,
+    cost,
+  })
 }

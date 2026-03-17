@@ -49,8 +49,9 @@ function purgeStaleCacheOnNewSession(newSessionId: string) {
       // New session → clear stale console conversation caches
       for (const key of Object.keys(localStorage)) {
         if (
-          key.startsWith('arcade-session-') ||
-          key === 'arcade-console-active-session'
+          key === 'arcade-console-sessions' ||
+          key === 'arcade-console-active-session' ||
+          key.startsWith('arcade-session-')
         ) {
           localStorage.removeItem(key)
         }

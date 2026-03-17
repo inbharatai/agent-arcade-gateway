@@ -119,6 +119,23 @@ function getBubbleText(agent: Agent, fallbackLabel: string, now: number): string
   return agent.aiModel ? `${fallbackLabel} [${agent.aiModel}]` : fallbackLabel
 }
 
+// ── Tool chain timeline helpers ─────────────────────────────────────
+const TOOL_PALETTE = ['#4ade80', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa', '#2dd4bf', '#fb923c', '#f87171']
+
+function toolDotColor(toolName: string): string {
+  let h = 0
+  for (let i = 0; i < toolName.length; i++) h = (h * 31 + toolName.charCodeAt(i)) >>> 0
+  return TOOL_PALETTE[h % TOOL_PALETTE.length]
+}
+
+function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60)
+  const rem = s % 60
+  return `${m}m${rem.toString().padStart(2, '0')}s`
+}
+
 function getWanderTarget(state: AgentState, deskPos: { x: number; y: number }): { x: number; y: number } | null {
   switch (state) {
     case 'reading':  return { x: clamp(deskPos.x - 1.5, 1.5, GRID_W - 2), y: deskPos.y }
@@ -713,6 +730,59 @@ export function PixelCanvas({
               ctx.font = `bold ${Math.max(7, tileSize * 0.12)}px monospace`
               ctx.textAlign = 'center'
               ctx.fillText(`${Math.round(newSmooth * 100)}%`, drawX, by + bh + tileSize * 0.13)
+            }
+
+            // ── Tool chain timeline dots ──────────────────────────────
+            const toolCount = c.agent.tools.length
+            if (toolCount > 0) {
+              const maxDots = 10
+              const dotR = 2.5
+              const dotGap = 7
+              const displayTools = toolCount > maxDots ? c.agent.tools.slice(-maxDots) : c.agent.tools
+              const totalW = (displayTools.length - 1) * dotGap
+              const startToolX = drawX - totalW / 2
+              const dotY = drawY - tileSize * 0.95
+
+              for (let i = 0; i < displayTools.length; i++) {
+                ctx.fillStyle = toolDotColor(displayTools[i])
+                ctx.globalAlpha = i === displayTools.length - 1 ? 1.0 : 0.7
+                ctx.beginPath()
+                ctx.arc(startToolX + i * dotGap, dotY, dotR, 0, Math.PI * 2)
+                ctx.fill()
+              }
+              ctx.globalAlpha = 1
+
+              if (toolCount > maxDots) {
+                ctx.fillStyle = theme.colors.text + '80'
+                ctx.font = `${Math.max(7, tileSize * 0.11)}px monospace`
+                ctx.textAlign = 'left'
+                ctx.fillText(`+${toolCount - maxDots}`, startToolX + displayTools.length * dotGap + 2, dotY + 3)
+                ctx.textAlign = 'center'
+              }
+            }
+
+            // ── Elapsed time for active agents ────────────────────────
+            if (c.agent.state !== 'idle' && c.agent.state !== 'done') {
+              const elapsed = c.agent.activeTime + (now - c.agent.lastUpdate)
+              if (elapsed > 1000) {
+                const timeStr = formatElapsed(elapsed)
+                ctx.fillStyle = theme.colors.text + '80'
+                ctx.font = `${Math.max(7, tileSize * 0.12)}px monospace`
+                ctx.textAlign = 'center'
+                ctx.fillText(`\u23F1${timeStr}`, drawX, drawY + tileSize * 1.08)
+              }
+            }
+
+            // ── Per-agent cost display ────────────────────────────────
+            const agentCost = c.agent.cost ?? 0
+            if (agentCost > 0) {
+              const costStr = agentCost < 0.01
+                ? `$${agentCost.toFixed(4)}`
+                : `$${agentCost.toFixed(2)}`
+              ctx.fillStyle = '#fbbf24c0'
+              ctx.font = `bold ${Math.max(7, tileSize * 0.12)}px monospace`
+              ctx.textAlign = 'center'
+              ctx.fillText(costStr, drawX, drawY + tileSize * 1.2)
             }
 
             // Done/error periodic particles
@@ -2572,8 +2642,8 @@ function drawBubble(
   // Text with slight shadow
   ctx.fillStyle = readableText + '26'
   ctx.textAlign = 'center'
-  ctx.fillText(text.slice(0, 26), x + 0.5, by + bh * 0.67 + 0.5)
+  ctx.fillText(text.slice(0, 32), x + 0.5, by + bh * 0.67 + 0.5)
   ctx.fillStyle = readableText
-  ctx.fillText(text.slice(0, 26), x, by + bh * 0.67)
+  ctx.fillText(text.slice(0, 32), x, by + bh * 0.67)
   ctx.globalAlpha = 1
 }

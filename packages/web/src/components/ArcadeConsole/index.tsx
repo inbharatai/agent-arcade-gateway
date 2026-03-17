@@ -17,7 +17,7 @@ import {
 import type { ChatMessage, ConsoleSession } from '@/lib/session-store'
 import {
   initArcadeBridge, consoleAgentSpawn, consoleAgentThinking, consoleAgentWriting,
-  consoleAgentDone, consoleAgentError, consoleAgentCodeDetected,
+  consoleAgentDone, consoleAgentError, consoleAgentCodeDetected, consoleAgentCost,
 } from '@/lib/arcade-bridge'
 import dynamic from 'next/dynamic'
 
@@ -86,10 +86,12 @@ export function ArcadeConsole({
   }, [])
 
   // Auto-detect AI model from active agents + server providers
-  // Runs once when agents first appear (doesn't override manual selections)
+  // Runs whenever agents or server providers change, but only if user hasn't manually selected a model
   useEffect(() => {
-    if (autoDetectedRef.current) return
     if (activeAgentModels.length === 0 && Object.keys(serverProviders).length === 0) return
+
+    // Already auto-detected this exact set of providers → skip to avoid thrashing
+    if (autoDetectedRef.current) return
 
     // Already has a user-saved model preference → don't override
     if (typeof window !== 'undefined' && localStorage.getItem(MODEL_STORAGE_KEY)) return
@@ -259,6 +261,9 @@ export function ArcadeConsole({
       if (finalSession) setSession({ ...finalSession })
 
       consoleAgentDone(fullText.slice(0, 80))
+      if (lastInputTokens > 0 || lastOutputTokens > 0) {
+        consoleAgentCost(lastInputTokens, lastOutputTokens, cost)
+      }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
         if (fullText) {
@@ -470,6 +475,7 @@ export function ArcadeConsole({
 
           <OutputPanel
             lastResponse={messages.findLast(m => m.role === 'assistant')?.content || ''}
+            userCommand={messages.findLast(m => m.role === 'user')?.content}
             isVisible={showOutput}
             onClose={() => setShowOutput(false)}
           />

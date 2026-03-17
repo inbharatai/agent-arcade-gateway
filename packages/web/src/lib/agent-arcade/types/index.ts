@@ -76,6 +76,14 @@ export interface Agent {
   lastError?: string
   /** Number of recoveries from error state */
   recoveryCount: number
+
+  // ── Cost Tracking ────────────────────────────────────────────────
+  /** Cumulative input tokens used */
+  inputTokens?: number
+  /** Cumulative output tokens used */
+  outputTokens?: number
+  /** Cumulative cost in USD */
+  cost?: number
 }
 
 export interface AgentStateEntry {

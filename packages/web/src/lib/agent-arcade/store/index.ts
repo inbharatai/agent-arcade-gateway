@@ -233,6 +233,9 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
             errorCount: newState === 'error' ? a.errorCount + 1 : a.errorCount,
             lastError: newState === 'error' && typeof p.label === 'string' ? p.label : a.lastError,
             recoveryCount: isRecovery ? a.recoveryCount + 1 : a.recoveryCount,
+            inputTokens: typeof p.inputTokens === 'number' ? (a.inputTokens ?? 0) + p.inputTokens : a.inputTokens,
+            outputTokens: typeof p.outputTokens === 'number' ? (a.outputTokens ?? 0) + p.outputTokens : a.outputTokens,
+            cost: typeof p.cost === 'number' ? (a.cost ?? 0) + p.cost : a.cost,
             lastUpdate: event.ts,
           })
           if (newState === 'error') {
@@ -248,8 +251,9 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
           const p = event.payload as Record<string, unknown>
           const source = getSource(p) || a.signalSource
           const confidence = getConfidence(p) ?? a.signalConfidence
-          const toolName = typeof p.name === 'string' ? p.name : 'tool'
-          const label = typeof p.label === 'string' ? p.label : `Using ${toolName}`
+          const toolName = typeof p.name === 'string' ? p.name : (typeof p.tool === 'string' ? p.tool as string : 'tool')
+          const stepNum = a.tools.length + 1
+          const label = typeof p.label === 'string' ? p.label : `Step ${stepNum}: ${toolName}`
           agents.set(event.agentId, {
             ...a, state: 'tool',
             label,
