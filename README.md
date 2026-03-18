@@ -1587,7 +1587,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.7.0
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.7.3
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1857,18 +1857,34 @@ This table is our honest, point-in-time statement of what the platform does toda
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
 | **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
 
-See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.7.0.
+See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.7.3.
 
 ---
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Run `npm run ci` to verify all tests pass
-4. Open a pull request
+### Clone & Use Freely
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
+Agent Arcade is **MIT licensed**. Fork it, clone it, and modify it however you need for your own projects or infrastructure. No permission required.
+
+```bash
+git clone https://github.com/inbharatai/agent-arcade-gateway.git
+cd agent-arcade-gateway
+npm install && npm run dev:gateway && npm run dev:web
+```
+
+### Contributing Changes Back
+
+Direct pushes to `main` are **not permitted** — for anyone, including maintainers. Every change comes through a pull request:
+
+1. Fork the repository
+2. Create a focused feature branch
+3. Run `npm run ci` — all checks must pass
+4. Open a pull request with the PR template filled in
+
+The maintainer (`@inbharatai`) reviews and merges all PRs. CODEOWNERS approval is required for the gateway, web UI, CI workflows, and Docker files.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, adapter guide, code standards, and PR process.
 
 ## Contributors
 
@@ -1886,7 +1902,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.7.0                                                  |
+ |   AGENT ARCADE v3.7.3                                                  |
  |                                                                        |
  |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |
@@ -1897,10 +1913,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 **Built with intensity by [InBharat AI](https://github.com/inbharatai)**
 
 [![Tests](https://img.shields.io/badge/Tests-237_passing-10B981?style=for-the-badge)](#)
-[![Packages](https://img.shields.io/badge/Packages-21-6366F1?style=for-the-badge)](#)
+[![Packages](https://img.shields.io/badge/Packages-23-6366F1?style=for-the-badge)](#)
 [![Adapters](https://img.shields.io/badge/Adapters-10-F97316?style=for-the-badge)](#)
 [![Models](https://img.shields.io/badge/Cost_Profiles-29-EF4444?style=for-the-badge)](#)
-[![Achievements](https://img.shields.io/badge/Achievements-32-FBBF24?style=for-the-badge)](#)
+[![Achievements](https://img.shields.io/badge/Achievements-30-FBBF24?style=for-the-badge)](#)
 
 *Claude Code, OpenAI, Anthropic, LangChain, CrewAI, AutoGen, LlamaIndex, OpenClaw, Mistral, Ollama, Cursor, Copilot, Aider, DeepSeek*
 

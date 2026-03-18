@@ -1,15 +1,14 @@
 # CODEOWNERS
-# Replace @OWNER_HANDLE with your real GitHub username or team, for example:
-# * @your-org/maintainers
-# * @your-username
+# Every pull request requires review from the maintainer before merge.
+# Direct pushes to main are disabled — all changes must go through a PR.
 
-# Default owner for all files
-* @OWNER_HANDLE
+# Default owner for everything
+* @inbharatai
 
-# Critical areas (explicitly owned)
-.github/workflows/* @OWNER_HANDLE
-packages/gateway/* @OWNER_HANDLE
-packages/web/* @OWNER_HANDLE
-docker-compose.yml @OWNER_HANDLE
-Dockerfile.gateway @OWNER_HANDLE
-Dockerfile.web @OWNER_HANDLE
+# Critical infrastructure — maintainer review required
+.github/workflows/* @inbharatai
+packages/gateway/*  @inbharatai
+packages/web/*      @inbharatai
+docker-compose.yml  @inbharatai
+Dockerfile.gateway  @inbharatai
+Dockerfile.web      @inbharatai
