@@ -1298,11 +1298,11 @@ Turn one high-level goal into a structured execution plan — with live visibili
 - Lets you stop, pause, retry, redirect, or skip any task at any time
 - Your connected agents (Claude Code, SDK, CLI, or any adapter) execute the tasks; Goal Mode tracks their progress
 
-**What it is:** A supervised planning and progress-tracking UI. Goal Mode decomposes your goal using AI, presents a structured task tree for your approval, then tracks execution state as your connected agents work through the tasks. You stay in control throughout.
+**What it is:** A supervised planning and progress-tracking UI. Goal Mode decomposes your goal using AI, presents a structured task tree for your approval, then dispatches each task as a directive to any connected tool (Claude Code, directive-bridge, or custom agent). You stay in control throughout.
 
 **What it is not:**
-- Not a standalone AI execution engine — it does not spawn or run agents automatically
-- Not autonomous long-running execution
+- Not a standalone AI execution engine — tasks are dispatched to connected tools, not run in-browser
+- Not autonomous long-running execution without a connected tool running
 - Not production-ready without your review
 - Not self-healing or self-deploying
 - Not a replacement for human judgment
@@ -1313,11 +1313,33 @@ Turn one high-level goal into a structured execution plan — with live visibili
  +======================================================================+
  |  1. DESCRIBE   ->  "Build a complete auth system with OAuth"         |
  |  2. REVIEW     ->  See the execution plan before anything runs       |
- |  3. APPROVE    ->  Start supervised multi-agent execution            |
- |  4. MONITOR    ->  Live progress, pause/stop/redirect anytime        |
- |  5. VERIFY     ->  Review results between each phase                 |
+ |  3. APPROVE    ->  Goal Mode dispatches Phase 0 tasks as directives  |
+ |  4. EXECUTE    ->  Claude Code (directive-bridge) picks up & runs    |
+ |  5. MONITOR    ->  Live progress, pause/stop/redirect anytime        |
+ |  6. VERIFY     ->  Review results — approve to unlock next phase     |
  +======================================================================+
 ```
+
+#### Connecting Claude Code to Goal Mode
+
+For Goal Mode tasks to actually execute, run the **directive-bridge** alongside your dev server:
+
+```bash
+# Terminal 1 — dev servers
+npm run dev:arcade
+
+# Terminal 2 — directive bridge (picks up Goal Mode tasks + Console commands)
+GATEWAY_URL=http://localhost:47890 bun run packages/gateway/src/directive-bridge.ts
+```
+
+When you click **Approve & Start** in Goal Mode:
+1. Phase 0 tasks are dispatched to `POST /v1/directives` automatically
+2. The directive-bridge polls `GET /v1/directives` every 2 seconds
+3. Each task is executed via `claude -p` (Claude Code CLI)
+4. Results post back via `POST /v1/directives/:id/done` → appear in Console
+5. When you approve Phase 1, the same flow repeats for the next phase's tasks
+
+Without the directive-bridge running, Goal Mode still creates the plan, tracks state, and shows the execution graph — but tasks will stay in `queued` status until a tool picks them up.
 
 Toggle between **Chat Mode** and **Goal Mode** in the Console header. In Goal Mode:
 

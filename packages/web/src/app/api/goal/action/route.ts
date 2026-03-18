@@ -80,12 +80,51 @@ export async function POST(req: NextRequest) {
       gwRes = await gw(`/v1/goals/${goalId}/stop-all`, 'POST')
       break
 
-    case 'approve-phase':
+    case 'approve-phase': {
       if (phaseIndex === undefined || phaseIndex === null) {
         return Response.json({ error: 'phaseIndex required for approve-phase' }, { status: 400 })
       }
       gwRes = await gw(`/v1/goals/${goalId}/approve-phase`, 'POST', { phaseIndex })
+
+      // On successful approval, dispatch directives for the NEXT phase's tasks so
+      // connected tools (Claude Code / directive-bridge) pick up and execute them.
+      if (gwRes.ok) {
+        try {
+          const statusRes = await gw(`/v1/goals/${goalId}/status`, 'GET')
+          if (statusRes.ok) {
+            const currentGoal = await statusRes.json()
+            const nextPhaseIndex = phaseIndex + 1
+            const nextPhase = currentGoal.phases?.[nextPhaseIndex]
+            if (nextPhase && nextPhase.taskIds?.length > 0) {
+              for (const tid of nextPhase.taskIds as string[]) {
+                const task = currentGoal.tasks?.[tid]
+                if (!task) continue
+                const instruction = [
+                  `[Goal Mode — Phase ${nextPhaseIndex} of ${currentGoal.phases.length}] Goal: ${currentGoal.originalGoal}`,
+                  `Task: ${task.title}`,
+                  task.description ? `Details: ${task.description}` : '',
+                  task.successCriteria ? `Success criteria: ${task.successCriteria}` : '',
+                  `Goal ID: ${goalId}  Task ID: ${tid}  Session: ${sessionId}`,
+                ].filter(Boolean).join('\n')
+
+                fetch(`${GATEWAY_URL}/v1/directives`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    agentId: task.agentId || 'goal-mode',
+                    instruction: instruction.slice(0, 8000),
+                    source: 'goal-mode',
+                  }),
+                }).catch(() => {})
+              }
+            }
+          }
+        } catch {
+          // Non-fatal — UI still shows refreshed state
+        }
+      }
       break
+    }
 
     case 'undo-phase':
       // undo-phase resets the current phase's tasks back to pending

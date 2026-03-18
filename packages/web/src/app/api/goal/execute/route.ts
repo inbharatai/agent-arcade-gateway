@@ -104,5 +104,34 @@ export async function POST(req: NextRequest) {
     console.warn('[goal/execute] gateway unreachable:', err)
   }
 
+  // Dispatch directives for phase 0 tasks so connected tools (Claude Code, directive-bridge)
+  // pick them up and actually execute the work.
+  if (phases.length > 0) {
+    const phase0Tasks = phases[0].taskIds
+    for (const taskId of phase0Tasks) {
+      const task = tasks[taskId]
+      if (!task) continue
+      const instruction = [
+        `[Goal Mode — Phase 0 of ${phases.length}] Goal: ${taskTree.goal}`,
+        `Task: ${task.title}`,
+        task.description ? `Details: ${task.description}` : '',
+        task.successCriteria ? `Success criteria: ${task.successCriteria}` : '',
+        `Goal ID: ${goalId}  Task ID: ${taskId}  Session: ${sessionId}`,
+      ].filter(Boolean).join('\n')
+
+      fetch(`${GATEWAY_URL}/v1/directives`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: task.agentId || 'goal-mode',
+          instruction: instruction.slice(0, 8000),
+          source: 'goal-mode',
+        }),
+      }).catch((err) => {
+        console.warn('[goal/execute] directive dispatch failed for task', taskId, err)
+      })
+    }
+  }
+
   return Response.json({ goal })
 }
