@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/sdk-node",
-  "version": "3.7.0",
+  "version": "3.7.3",
   "description": "Node.js / TypeScript SDK for Agent Arcade telemetry",
   "scripts": {
     "test": "bun test test/"

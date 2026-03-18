@@ -1,8 +1,13 @@
 {
   "name": "@agent-arcade/cli",
-  "version": "3.7.0",
+  "version": "3.7.3",
   "description": "Agent Arcade CLI -- init, start, demo, and manage your AI observability",
-  "bin": { "agent-arcade": "./src/index.ts", "arcade": "./src/index.ts" },
-  "scripts": { "start": "bun run src/index.ts" },
+  "bin": {
+    "agent-arcade": "./src/index.ts",
+    "arcade": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts"
+  },
   "license": "MIT"
 }

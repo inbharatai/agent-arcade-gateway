@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-langchain",
-  "version": "3.7.0",
+  "version": "3.7.3",
   "description": "LangChain adapter for Agent Arcade -- auto-instruments chains, tools, and retrievers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,6 +19,12 @@
     "typescript": "^5.4.0",
     "@langchain/core": "^0.1.0"
   },
-  "keywords": ["agent-arcade", "langchain", "telemetry", "ai-agents", "gamification"],
+  "keywords": [
+    "agent-arcade",
+    "langchain",
+    "telemetry",
+    "ai-agents",
+    "gamification"
+  ],
   "license": "MIT"
 }

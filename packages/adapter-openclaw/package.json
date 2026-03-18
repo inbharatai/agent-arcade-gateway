@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-openclaw",
-  "version": "3.7.0",
+  "version": "3.7.3",
   "description": "OpenClaw adapter for Agent Arcade -- auto-instruments OpenClaw agents, skills, and heartbeat tasks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,6 +17,13 @@
   "devDependencies": {
     "typescript": "^5.4.0"
   },
-  "keywords": ["agent-arcade", "openclaw", "ai-agents", "telemetry", "observability", "gamification"],
+  "keywords": [
+    "agent-arcade",
+    "openclaw",
+    "ai-agents",
+    "telemetry",
+    "observability",
+    "gamification"
+  ],
   "license": "MIT"
 }

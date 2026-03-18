@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.3] - 2026-03-18
+
+### Fixed
+
+- **Version consistency** — All 23 packages, 3 Python pyproject.toml files, and the CLI `VERSION` source constant now match `3.7.3`. Previously 16 packages were at `3.7.0`, 2 Python adapters at `3.5.0`, sdk-python at `1.0.0`, and CLI source at `3.2.4`.
+
+---
+
 ## [3.7.2] - 2026-03-18
 
 ### Fixed — Goal Mode (Critical)
