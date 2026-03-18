@@ -24,8 +24,11 @@ services:
       ALLOWED_ORIGINS: "http://localhost:47380"
       REDIS_URL: "redis://redis:6379"
       REQUIRE_AUTH: 1
-      JWT_SECRET: "change-me-in-production"
-      SESSION_SIGNING_SECRET: "change-me-in-production"
+      # ⚠ These MUST be set in your shell or a .env file before running.
+      # Generate both with: openssl rand -hex 32
+      # The gateway will refuse to start in production with weak or missing values.
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set — run: export JWT_SECRET=$(openssl rand -hex 32)}"
+      SESSION_SIGNING_SECRET: "${SESSION_SIGNING_SECRET:?SESSION_SIGNING_SECRET must be set — run: export SESSION_SIGNING_SECRET=$(openssl rand -hex 32)}"
       RATE_MAX_IP: 120
       RATE_MAX_TOKEN: 240
       RATE_WINDOW_MS: 1000
@@ -34,7 +37,7 @@ services:
       RETENTION_SECONDS: 86400
       ENABLE_REDIS_ADAPTER: 1
       NODE_ENV: production
-      ENABLE_INTERNAL_ROUTES: 1
+      ENABLE_INTERNAL_ROUTES: 0
       API_KEYS: ""
     restart: always
     healthcheck:
@@ -61,8 +64,8 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_GATEWAY_URL: "http://localhost:47890"
-      GATEWAY_JWT_SECRET: "change-me-in-production"
-      SESSION_SIGNING_SECRET: "change-me-in-production"
+      GATEWAY_JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
+      SESSION_SIGNING_SECRET: "${SESSION_SIGNING_SECRET:?SESSION_SIGNING_SECRET must be set}"
       NEXT_PUBLIC_DEFAULT_SESSION_ID: "copilot-live"
       NEXT_PUBLIC_LOCK_SESSION_ID: 1
     depends_on:

@@ -8,18 +8,18 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.7.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.7.1-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
 [![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Universal_Remote-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
 [![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deepest-ai-brain-observability)
-[![Zero Config](https://img.shields.io/badge/Zero_Config-Auto--Detect_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
+[![Auto Config](https://img.shields.io/badge/Auto_Config-Inherits_API_Keys_%26_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
 
 [![Directive Bridge](https://img.shields.io/badge/Directive_Bridge-Console_%E2%86%94_AI_Tools-10B981?style=for-the-badge)](#directive-bridge--console--ai-tool-loop)
-[![LangSmith Traces](https://img.shields.io/badge/LangSmith--grade-Span_Traces-2DD4BF?style=for-the-badge)](#-execution-traces--langsmith-grade)
-[![AgentOps Replay](https://img.shields.io/badge/AgentOps--grade-Session_Replay-F472B6?style=for-the-badge)](#-session-replay--agentops-grade)
-[![Helicone Analytics](https://img.shields.io/badge/Helicone--grade-Cost_Analytics-FFD700?style=for-the-badge)](#-cost-analytics--helicone-grade)
+[![Span Traces](https://img.shields.io/badge/Execution_Traces-Hierarchical_Span_Tree-2DD4BF?style=for-the-badge)](#-execution-traces)
+[![Session Replay](https://img.shields.io/badge/Session_Replay-DVR_Timeline_%2B_Swimlanes-F472B6?style=for-the-badge)](#-session-replay)
+[![Cost Analytics](https://img.shields.io/badge/Cost_Analytics-Budget_Alerts_%2B_CSV_Export-FFD700?style=for-the-badge)](#-cost-analytics)
 
 [![SQLite Persistence](https://img.shields.io/badge/SQLite-Zero--Ops_Persistence-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](#-quick-start)
 [![CrewAI](https://img.shields.io/badge/CrewAI-Python_Adapter-FF6B6B?style=for-the-badge)](#crewai-python)
@@ -50,9 +50,9 @@
 - [AI Chat Console](#-ai-chat-console)
 - [Agent Intervention System](#%EF%B8%8F-agent-intervention-system)
 - [Goal Mode](#-goal-mode)
-- [Execution Traces — LangSmith-grade](#-execution-traces--langsmith-grade)
-- [Session Replay — AgentOps-grade](#-session-replay--agentops-grade)
-- [Cost Analytics — Helicone-grade](#-cost-analytics--helicone-grade)
+- [Execution Traces](#-execution-traces)
+- [Session Replay](#-session-replay)
+- [Cost Analytics](#-cost-analytics)
 - [Settings Panel](#%EF%B8%8F-settings-panel)
 - [Quick Start](#-quick-start)
 - [Framework Integrations](#-framework-integrations)
@@ -77,7 +77,9 @@
 
 Agent Arcade is a **universal AI agent cockpit** — a live command center that lets you watch, debug, and control any AI agent, from any framework, in real-time. Think of it as the game dashboard your AI agents didn't know they needed.
 
-> **One platform. Every AI framework. Zero code changes required.**
+> **One platform. Every AI framework. Minimal integration — one-line adapter or a base-URL change.**
+
+> **How much code?** Using the HTTP proxy (change your AI tool's base URL) = zero code changes. Using an SDK adapter (LangChain, CrewAI, AutoGen, etc.) = one line. Using the gateway directly = a few lines of HTTP POST. All three paths are supported.
 
 <table align="center">
 <tr>
@@ -143,7 +145,7 @@ AI Chat Console
 </tr>
 </table>
 
-**Truly zero configuration.** No API keys to configure — not even for the Chat Console. Start the gateway in the same shell as your AI tool and everything works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use. It also **auto-detects Claude Code OAuth credentials** from `~/.claude/.credentials.json`, so if you have a Claude Max/Pro subscription, the Console works instantly — no key needed. The Console **auto-detects which AI model your agents are using** and selects it automatically — no manual model switching needed. If no key is found in the environment, an **inline API key entry** appears directly in the Console banner — paste your key and start chatting without navigating to Settings.
+**Minimal configuration.** No API keys to configure for the Chat Console — start the gateway in the same shell as your AI tool and the Console works automatically. The gateway inherits `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc. from your environment — the same keys your AI tools already use. It also **auto-detects Claude Code OAuth credentials** from `~/.claude/.credentials.json`, so if you have a Claude Max/Pro subscription, the Console works instantly — no key needed. The Console **auto-detects which AI model your agents are using** and selects it automatically — no manual model switching needed. If no key is found in the environment, an **inline API key entry** appears directly in the Console banner — paste your key and start chatting without navigating to Settings.
 
 ### Why Agent Arcade?
 
@@ -159,9 +161,9 @@ AI Chat Console
 | "Setting up observability is complex" | `npm run dev:arcade` — one command, zero API keys to configure |
 | "I need to manually enter my API key" | Auto-detects Claude Code OAuth subscription tokens + inline key entry in the Console banner |
 | "My console shows stale messages from the last session" | Fresh session on every mount — no stale history on new connections |
-| "LangSmith has better tracing" | Span tree with search, error highlighting, and side-by-side span comparison — no 3rd party account |
-| "AgentOps has better session replay" | Timeline scrubber, agent swimlanes, event inspector, failure detection — works fully offline |
-| "Helicone has better cost analytics" | Per-model breakdown, budget alerts (80% warning + exceeded banner), model × call table, CSV export |
+| "I want span-level tracing without a third-party account" | Hierarchical span tree with search, error highlighting, and side-by-side comparison — self-hosted, no account needed |
+| "I need session replay to debug what my agent did" | DVR timeline scrubber, per-agent swimlanes, event inspector, failure detection — fully offline, stored in localStorage |
+| "I need cost analytics with budget controls" | Per-model breakdown, budget alerts (80% warning + exceeded banner), model × calls table, one-click CSV export |
 | "Data is lost when the server restarts" | SQLite persistence — `DB_PATH=./arcade.db` and everything survives restarts, zero extra services |
 
 ### How It Works
@@ -766,7 +768,7 @@ Control any agent from any framework via your personal WhatsApp — [see the ful
 
 ---
 
-## 🔍 Execution Traces — LangSmith-grade
+## 🔍 Execution Traces
 
 Agent Arcade ships a built-in **span tree viewer** inside the **Traces** tab of the Game Panel. No LangSmith account, no API key, no 3rd-party service.
 
@@ -825,7 +827,7 @@ GET /v1/session/:sessionId/traces?agentId=my-agent
 
 ---
 
-## ⏪ Session Replay — AgentOps-grade
+## ⏪ Session Replay
 
 The **Replay** tab provides a full **DVR-style session replay** system. Record any live session and replay it later with full fidelity — no 3rd-party service, works completely offline.
 
@@ -852,7 +854,7 @@ Recordings are exported as JSON and can be shared between team members for debug
 
 ---
 
-## 💰 Cost Analytics — Helicone-grade
+## 💰 Cost Analytics
 
 The **Costs** tab gives real-time and historical cost visibility — powered by real token data from `agent.span` events when available, falling back to smart estimates.
 
@@ -1276,9 +1278,9 @@ Theme-based background loops that match the selected visual theme. Volume contro
 | | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
 | | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
 | | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
-| | **Execution Traces** | LangSmith-grade span tree viewer. Hierarchical parent→child spans, I/O expansion, token stream log, cost per span. `agent.span` event type + `GET /v1/session/:id/traces` endpoint. No 3rd-party account needed. |
-| | **Session Replay** | AgentOps-grade DVR replay. Timeline scrubber, per-agent swimlanes (Gantt-style), event inspector, state snapshot at any seek point. Speed control 0.25×–8×, up to 50 recordings in localStorage. |
-| | **Cost Analytics** | Helicone-grade cost dashboard. Real token data from spans, per-model breakdowns, budget progress bar, 80% warning + over-budget alert. |
+| | **Execution Traces** | Hierarchical span tree viewer. Parent→child spans with collapsible I/O, token stream log, cost per span, full-text search, error highlighting, side-by-side span comparison. `agent.span` event type + `GET /v1/session/:id/traces`. No third-party account needed. |
+| | **Session Replay** | DVR-style replay. Timeline scrubber, per-agent swimlanes (Gantt-style), event inspector, state snapshot at any seek point, failure detection (⚠ badge). Speed control 0.25×–8×, up to 50 recordings in localStorage. Works fully offline. |
+| | **Cost Analytics** | Real-time cost dashboard. Token data from spans, per-model breakdowns, budget progress bar, 80% warning + over-budget alert, model × calls table, one-click CSV export. |
 | | **Arcade Bridge** | Console interactions emit telemetry events so the Console agent appears on the canvas alongside your other agents — complete with cost tracking and state transitions. |
 
 ---
@@ -1592,7 +1594,7 @@ agent-arcade-gateway/
 └── ecosystem.config.js      # PM2 configuration
 ```
 
-**21 packages** — 7 adapters, 3 SDKs, 3 core services, 8 utilities.
+**23 packages** — 7 adapters, 3 SDKs, 3 core services, 7 utilities, 1 demo bot.
 
 ---
 
@@ -1747,7 +1749,7 @@ npm run prod:start
 | **Session signing** | HMAC-SHA256 session signatures in production. Prevents cross-session access. |
 | **Proxy safety** | `TRUST_PROXY=1` required to honour `X-Forwarded-For` — prevents IP spoofing by default |
 | **Error sanitization** | Upstream AI API errors are stripped of API keys before returning to clients |
-| **55-issue security audit** | Comprehensive security, stability & performance audit covering XSS, injection, memory leaks, race conditions, and input validation across the entire codebase (v3.2.2) |
+| **Internal security review** | 55-issue internal review covering XSS, injection, memory leaks, race conditions, and input validation (v3.2.2). Independent third-party audit is planned — see Capability Matrix. |
 | **HSTS** | Strict-Transport-Security header in production mode |
 | **Security headers** | X-Content-Type-Options: nosniff on all responses |
 | **OAuth token validation** | Claude Code OAuth tokens are checked for expiry (5 min buffer) before use |
@@ -1755,10 +1757,53 @@ npm run prod:start
 
 ---
 
-## Recent Changes (v3.2.1 → v3.7.0)
+## Capability Matrix — What's Real vs What's Planned
+
+This table is our honest, point-in-time statement of what the platform does today versus what is on the roadmap. We update it with every release.
+
+| Capability | Status | Notes |
+|---|---|---|
+| **Real-time telemetry ingestion** (HTTP, Socket.IO, SSE) | ✅ Production | Gateway fully implemented, CI-tested |
+| **Live pixel-art agent canvas** | ✅ Production | Canvas renders state transitions in real time |
+| **Hierarchical span tree (Execution Traces)** | ✅ Production | TracePanel: search, error highlighting, side-by-side compare |
+| **DVR session replay** | ✅ Production | Timeline scrubber, swimlanes, event inspector, failure detection |
+| **Real-time cost analytics** | ✅ Production | Per-model, budget alerts, CSV export |
+| **Agent Intervention** (pause / stop / redirect / handoff) | ✅ Production | REST endpoints + dashboard UI + WhatsApp commands |
+| **AI Chat Console** (Claude, GPT-4o, Gemini, Mistral, Ollama) | ✅ Production | Proxied through gateway — no browser-side key exposure |
+| **Directive Bridge** (Console → Claude Code → Console) | ✅ Production | Polls `/v1/directives`, executes via `claude -p`, streams response back |
+| **WhatsApp agent control** | ✅ Production | Baileys-based QR client, self-chat relay, multi-framework control |
+| **SQLite persistence** | ✅ Production | WAL mode, survives restarts, zero extra services |
+| **Redis persistence + clustering** | ✅ Production | Socket.IO Redis adapter for horizontal scaling |
+| **CrewAI Python adapter** | ✅ Production | Duck-typed, thread-safe, fire-and-forget |
+| **AutoGen Python adapter** | ✅ Production | Wraps 0.3/0.4 agents, patches generate\_reply/a\_send/a\_receive |
+| **OpenAI, Anthropic, LangChain, LlamaIndex adapters** | ✅ Production | CI-tested |
+| **Gamification** (XP, achievements, leaderboard) | ✅ Production | 30+ achievements, 12 levels, 5 leaderboard categories |
+| **20-language i18n detection** | ✅ Production | 100-case test suite |
+| **JWT auth + session signing + rate limiting** | ✅ Production | Fail-fast on weak secrets in production mode |
+| **Fly.io one-click hosted demo** | ✅ Production | `fly deploy --dockerfile Dockerfile.demo` |
+| **Hosted live demo URL** | 🟡 Not yet deployed | fly.toml and Dockerfile.demo are ready — deploy not live yet |
+| **Demo bot telemetry** | ℹ️ Simulated | `packages/demo-bot/` emits realistic fake data — not real AI agents |
+| **Load test results / benchmarks** | 🔲 Planned | K6 scripts exist in `scripts/` — results not yet published |
+| **Independent security audit** | 🔲 Planned | Internal 55-issue review done (v3.2.2). Third-party audit pending. |
+| **Multi-tenant isolation tests** | 🔲 Planned | Session signing exists; isolation tests not yet written |
+| **Replay correctness under dropped events** | 🔲 Planned | Happy-path replay tested; adversarial event ordering not tested |
+| **Production load evidence** | 🔲 None yet | No public production deployments confirmed |
+
+> **Demo bot transparency:** The hosted demo (when deployed) runs `packages/demo-bot/index.ts` — a script that continuously emits realistic *simulated* telemetry. It is not connected to real AI models. It exists so you can evaluate the UI without deploying your own agents. All production features (tracing, replay, cost, intervention) work identically on real telemetry.
+
+---
+
+## Recent Changes (v3.2.1 → v3.7.1)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.7.1** | **Gateway: hard-fail on weak secrets** — throws at startup if `JWT_SECRET` or `SESSION_SIGNING_SECRET` is a known-weak value or shorter than 32 chars in production | Security |
+| **v3.7.1** | **docker-compose: force explicit secrets** — `${VAR:?error}` syntax; `docker compose up` fails immediately if secrets are not set. `ENABLE_INTERNAL_ROUTES` corrected to `0`. | Security |
+| **v3.7.1** | **README: Capability Matrix** — honest table of what is production-ready, simulated, planned, or unproven. Replaces marketing claims with verifiable facts. | Docs |
+| **v3.7.1** | **README: removed "grade" comparisons** — "LangSmith-grade / AgentOps-grade / Helicone-grade" replaced with specific feature descriptions | Docs |
+| **v3.7.1** | **README: clarified zero-config and zero-code claims** — explains the three integration paths precisely; softened "Truly zero configuration" to "Minimal configuration" | Docs |
+| **v3.7.1** | **README: security review correctly labelled as internal** — was "55-issue security audit" (implies independent); now "Internal security review" | Docs |
+| **v3.7.1** | **README: package count corrected** — 21 → 23 packages | Docs |
 | **v3.7.0** | **Hosted demo bot** — `packages/demo-bot/` runs as a sidecar inside the container and emits continuous realistic telemetry from 3 simulated agents (Researcher, Coder, Reviewer) so visitors see live agents without configuring anything | Feature |
 | **v3.7.0** | **Fly.io one-click deploy** — `fly.toml` + `Dockerfile.demo` + `docker-entrypoint.sh` — `fly deploy` goes from zero to a live public URL in under 5 minutes | Feature |
 | **v3.7.0** | **Try Live Demo badge** in README — direct link to hosted frontend; removes the #1 adoption barrier (nobody wants to clone to evaluate) | Docs |
@@ -1772,9 +1817,9 @@ npm run prod:start
 | **v3.6.0** | **SessionReplay: failure detection** — recordings that contain error states get a red ⚠ badge. "Has errors" filter shows only failed sessions. | Feature |
 | **v3.6.0** | **Python adapter: CrewAI** — `agent_arcade_crewai.wrap_crew()` hooks into CrewAI's callback system. Thread-safe, duck-typed, non-blocking HTTP. | Feature |
 | **v3.6.0** | **Python adapter: AutoGen** — `agent_arcade_autogen.wrap_agents()` wraps AutoGen 0.3/0.4 agents. Patches `generate_reply`, `a_send`, `a_receive` with graceful fallback. | Feature |
-| **v3.5.0** | **LangSmith-grade Execution Traces** — `TracePanel` component: hierarchical span tree, collapsible I/O, token stream log, cost per span, agent filter | Feature |
-| **v3.5.0** | **AgentOps-grade Session Replay** — `SessionReplay` component: timeline scrubber, agent swimlanes, event inspector, state snapshot at any point in time | Feature |
-| **v3.5.0** | **Helicone-grade Cost Analytics** — per-model breakdowns, real token data from spans, budget progress bar, 80% warning threshold | Feature |
+| **v3.5.0** | **Execution Traces** — `TracePanel` component: hierarchical span tree, collapsible I/O, token stream log, cost per span, agent filter | Feature |
+| **v3.5.0** | **Session Replay** — `SessionReplay` component: timeline scrubber, agent swimlanes, event inspector, state snapshot at any point in time | Feature |
+| **v3.5.0** | **Cost Analytics** — per-model breakdowns, real token data from spans, budget progress bar, 80% warning threshold | Feature |
 | **v3.5.0** | **`agent.span` event type** — gateway accepts span records, stores them with upsert (started→ok updates in place), exposes `GET /v1/session/:id/traces` endpoint | Feature |
 | **v3.5.0** | **Traces + Replay tabs** — GamePanel now has 6 tabs: XP / Achievements / Leaderboard / Costs / **Traces** / **Replay** | Feature |
 | **v3.5.0** | **Recording sync fix** — event capture now uses `engine.isRecording()` directly, so both tab-bar and in-panel record buttons work correctly | Fix |
@@ -1794,7 +1839,7 @@ npm run prod:start
 | **v3.2.3** | Always fresh session on mount — no stale history on new connections | Fix |
 | **v3.2.3** | Stale chat history, cost reporting, and agent task announcement fixes | Fix |
 | **v3.2.3** | World-class pixel art — unique character silhouettes, props, and environment upgrades | Feature |
-| **v3.2.2** | Comprehensive security, stability & performance audit — 55 issues fixed | Fix |
+| **v3.2.2** | Internal security review — 55 issues fixed (XSS, injection, memory leaks, race conditions, input validation) | Fix |
 | **v3.2.2** | WhatsApp self-chat AI relay + non-streaming `/v1/chat/sync` endpoint | Feature |
 | **v3.2.2** | Directives Queue — Console/WhatsApp commands bridged to connected tools via `/v1/directives` | Feature |
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |

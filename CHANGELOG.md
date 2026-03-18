@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2026-03-18
+
+### Security
+
+- **Gateway: hard-fail on weak secrets in production** — Gateway now throws at startup if `JWT_SECRET` or `SESSION_SIGNING_SECRET` are set to known-weak placeholder values (e.g. `change-me-in-production`) or are shorter than 32 characters. An operator can no longer accidentally deploy with example credentials.
+- **docker-compose.yml: force explicit secrets** — Both secrets now use Docker Compose `${VAR:?error}` syntax. `docker compose up` fails immediately with a clear message if the secrets are not exported in the environment, preventing silent deployment with placeholder values.
+- **docker-compose.yml: `ENABLE_INTERNAL_ROUTES` corrected to `0`** — Internal diagnostic routes are now disabled by default in the production compose file.
+
+### Fixed (Accuracy & Honesty)
+
+- **README: removed "LangSmith-grade", "AgentOps-grade", "Helicone-grade" claims** — Replaced with specific factual feature descriptions (span tree with search + comparison, DVR replay with swimlanes, budget alerts + CSV export). These were marketing comparisons without independent benchmarks.
+- **README: "Zero code changes required" clarified** — Now explains the three integration paths: HTTP proxy (0 lines), SDK adapter (1 line), direct HTTP (a few lines). The blanket claim was misleading for SDK-based integrations.
+- **README: "Truly zero configuration" softened to "Minimal configuration"** — The API-key inheritance is real and accurate; "zero config" for the overall setup was an overstatement.
+- **README: "55-issue security audit" renamed to "Internal security review"** — The review was done internally, not by an independent third party. Honest distinction matters here.
+- **README: package count corrected** — "21 packages" → "23 packages".
+- **README: added Capability Matrix** — New table explicitly states what is production-ready, what is simulated (demo bot), what is planned, and what has no evidence yet (load test results, production deployments). This is the single most important trust-building addition.
+
+---
+
 ## [3.7.0] - 2026-03-18
 
 ### Added

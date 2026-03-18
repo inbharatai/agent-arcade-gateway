@@ -2924,17 +2924,67 @@ function spawnWhatsAppClient() {
   }
 }
 
+// Known-weak values that must never be used in production.
+// Intentionally lowercase so the comparison is case-insensitive.
+const KNOWN_WEAK_SECRETS = new Set([
+  'change-me-in-production',
+  'changeme',
+  'change_me',
+  'secret',
+  'password',
+  'default',
+  'test',
+  'dev',
+  '12345678',
+  'abcdefgh',
+])
+
 async function bootstrap() {
   if (REQUIRE_AUTH && !JWT_SECRET && apiKeyIndex.size === 0) {
     throw new Error('Auth is required but neither JWT_SECRET nor API_KEYS are configured')
   }
 
   if (NODE_ENV === 'production') {
+    // ── Hard stops for insecure secrets ─────────────────────────────────────
+    // These throw, not warn, so an operator can never accidentally deploy with
+    // placeholder values copied from docker-compose.yml or .env.example.
+    if (JWT_SECRET) {
+      if (KNOWN_WEAK_SECRETS.has(JWT_SECRET.toLowerCase())) {
+        throw new Error(
+          `[SECURITY] JWT_SECRET is set to a known-weak placeholder value ("${JWT_SECRET}"). ` +
+          'Generate a strong secret: openssl rand -hex 32'
+        )
+      }
+      if (JWT_SECRET.length < 32) {
+        throw new Error(
+          `[SECURITY] JWT_SECRET is too short (${JWT_SECRET.length} chars). ` +
+          'Minimum 32 characters required in production.'
+        )
+      }
+    }
+    if (SESSION_SIGNING_SECRET) {
+      if (KNOWN_WEAK_SECRETS.has(SESSION_SIGNING_SECRET.toLowerCase())) {
+        throw new Error(
+          `[SECURITY] SESSION_SIGNING_SECRET is set to a known-weak placeholder value ("${SESSION_SIGNING_SECRET}"). ` +
+          'Generate a strong secret: openssl rand -hex 32'
+        )
+      }
+      if (SESSION_SIGNING_SECRET.length < 32) {
+        throw new Error(
+          `[SECURITY] SESSION_SIGNING_SECRET is too short (${SESSION_SIGNING_SECRET.length} chars). ` +
+          'Minimum 32 characters required in production.'
+        )
+      }
+    }
+    // ── Soft warnings ────────────────────────────────────────────────────────
     if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes('*')) {
       log('warn', 'ALLOWED_ORIGINS is empty or wildcard in production — restrict to specific domains')
     }
     if (!SESSION_SIGNING_SECRET) {
       log('warn', 'SESSION_SIGNING_SECRET not set — session signatures will not be validated')
+    }
+    if (!JWT_SECRET && apiKeyIndex.size === 0) {
+      log('warn', 'No authentication configured in production — all endpoints are public')
     }
   }
 
