@@ -49,16 +49,6 @@ jobs:
       - name: Install sdk-browser deps
         run: cd packages/sdk-browser && npm ci
 
-      - name: Install adapter deps
-        run: |
-          cd packages/adapter-langchain && bun install
-          cd ../adapter-llamaindex && bun install
-          cd ../adapter-anthropic && bun install
-          cd ../adapter-openclaw && bun install
-          cd ../watcher && bun install
-          cd ../log-tailer && bun install
-          cd ../git-watcher && bun install
-
       - name: Lint web
         run: cd packages/web && npx eslint src --max-warnings 0
 
