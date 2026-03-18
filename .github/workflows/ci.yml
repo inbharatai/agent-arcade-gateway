@@ -49,6 +49,9 @@ jobs:
       - name: Install sdk-browser deps
         run: cd packages/sdk-browser && npm ci
 
+      - name: Install Python test deps
+        run: pip install pytest
+
       - name: Lint web
         run: cd packages/web && npx eslint src --max-warnings 0
 
@@ -123,6 +126,15 @@ jobs:
         run: |
           cd packages/sdk-node && bun test test/
           cd ../sdk-browser && bun test test/
+
+      - name: Python SDK tests
+        run: python -m pytest packages/sdk-python/tests/ -v
+
+      - name: CrewAI adapter tests
+        run: python -m pytest packages/adapter-crewai/tests/ -v
+
+      - name: AutoGen adapter tests
+        run: python -m pytest packages/adapter-autogen/tests/ -v
 
       - name: Validate Docker build
         run: |
