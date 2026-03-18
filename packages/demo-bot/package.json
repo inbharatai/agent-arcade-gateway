@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/demo-bot",
-  "version": "3.7.1",
+  "version": "3.7.2",
   "description": "Continuous demo telemetry emitter for Agent Arcade hosted demo",
   "private": true,
   "scripts": {

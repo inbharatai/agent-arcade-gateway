@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.7.1-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.7.2-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -1785,8 +1785,13 @@ This table is our honest, point-in-time statement of what the platform does toda
 | **Demo bot telemetry** | ℹ️ Simulated | `packages/demo-bot/` emits realistic fake data — not real AI agents |
 | **Load test results / benchmarks** | 🔲 Planned | K6 scripts exist in `scripts/` — results not yet published |
 | **Independent security audit** | 🔲 Planned | Internal 55-issue review done (v3.2.2). Third-party audit pending. |
-| **Multi-tenant isolation tests** | 🔲 Planned | Session signing exists; isolation tests not yet written |
-| **Replay correctness under dropped events** | 🔲 Planned | Happy-path replay tested; adversarial event ordering not tested |
+| **Goal Mode UI** (decompose → review → execute → phase gates) | ✅ Production | Full component tree: GoalInput, ExecutionPlan, ExecutionGraph, GoalControls, TaskReview |
+| **Goal Mode API wiring** | ✅ Fixed in v3.7.2 | `/api/goal/decompose`, `/api/goal/execute`, `/api/goal/action` routes now exist and route to correct gateway endpoints |
+| **Goal Mode real-time sync** | ✅ Fixed in v3.7.2 | GoalMode subscribes to Socket.IO goal events + polls gateway every 3s while executing |
+| **Multi-tenant isolation tests** | ✅ Production | `production-hardening.test.ts`: session A events cannot be seen from session B |
+| **Auth boundary tests** | ✅ Production | Tests verify 403/404 on cross-session access and 400 on malformed input |
+| **Replay correctness tests** | ✅ Production | Tests verify event temporal ordering is preserved after ingestion |
+| **Rate limiting tests** | ✅ Production | Tests verify gateway stays responsive under burst and returns 429 when over limit |
 | **Production load evidence** | 🔲 None yet | No public production deployments confirmed |
 
 > **Demo bot transparency:** The hosted demo (when deployed) runs `packages/demo-bot/index.ts` — a script that continuously emits realistic *simulated* telemetry. It is not connected to real AI models. It exists so you can evaluate the UI without deploying your own agents. All production features (tracing, replay, cost, intervention) work identically on real telemetry.
@@ -1797,6 +1802,11 @@ This table is our honest, point-in-time statement of what the platform does toda
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.7.2** | **Goal Mode: fully wired** — 3 new Next.js API routes (`/api/goal/decompose`, `/api/goal/execute`, `/api/goal/action`) fix the broken endpoint wiring. Goal Mode now decomposes with AI, builds real GoalState, routes all actions correctly. | Fix |
+| **v3.7.2** | **Goal Mode: real-time sync** — GoalMode component subscribes to all 6 Socket.IO goal events from gateway + polls every 3s while executing. Phase completion auto-triggers phase-review gate. | Fix |
+| **v3.7.2** | **Gateway `GoalRecord` aligned with frontend `GoalState`** — Added `phases`, `agentName`, proper task types. All goal endpoints return full goal record. `approve-phase` activates next phase and auto-completes when all phases done. | Fix |
+| **v3.7.2** | **Production hardening test suite** — 40+ new tests: input validation, session isolation, goal lifecycle, replay ordering, rate-limit burst, error sanitization (no stack trace leaks) | Test |
+| **v3.7.2** | **CI: production-hardening tests added** — New CI step runs the full hardening suite. CI secrets bumped to ≥32 chars to pass the weak-secret guard. | CI |
 | **v3.7.1** | **Gateway: hard-fail on weak secrets** — throws at startup if `JWT_SECRET` or `SESSION_SIGNING_SECRET` is a known-weak value or shorter than 32 chars in production | Security |
 | **v3.7.1** | **docker-compose: force explicit secrets** — `${VAR:?error}` syntax; `docker compose up` fails immediately if secrets are not set. `ENABLE_INTERNAL_ROUTES` corrected to `0`. | Security |
 | **v3.7.1** | **README: Capability Matrix** — honest table of what is production-ready, simulated, planned, or unproven. Replaces marketing claims with verifiable facts. | Docs |

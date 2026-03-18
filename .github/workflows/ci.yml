@@ -86,6 +86,9 @@ jobs:
       - name: Gateway WhatsApp tests
         run: bun test packages/gateway/test/whatsapp.test.ts
 
+      - name: Production hardening tests
+        run: bun test packages/gateway/test/production-hardening.test.ts
+
       - name: Store unit tests
         run: cd packages/web && bun test test/store.test.ts
 
@@ -111,8 +114,8 @@ jobs:
           NODE_ENV: production
           REDIS_URL: redis://localhost:6379
           REQUIRE_AUTH: 1
-          JWT_SECRET: ci-prod-jwt-secret
-          SESSION_SIGNING_SECRET: ci-prod-sign-secret
+          JWT_SECRET: ci-production-jwt-secret-32chars-ok
+          SESSION_SIGNING_SECRET: ci-production-sign-secret-32chars!
           ALLOWED_ORIGINS: http://localhost:47380
           ENABLE_REDIS_ADAPTER: 0
         run: |

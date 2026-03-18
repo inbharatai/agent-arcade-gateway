@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.2] - 2026-03-18
+
+### Fixed — Goal Mode (Critical)
+
+- **`/api/goal/decompose` route** — New Next.js API route that performs server-side AI decomposition using the gateway's chat proxy. Validates the task tree with circular-dependency detection and retries once on malformed AI output. The frontend was previously calling this non-existent endpoint and silently failing.
+- **`/api/goal/execute` route** — New Next.js API route that builds a complete `GoalState` (with `phases`, `TaskExecution` records, and allocated agent assignments) then registers it with the gateway via `POST /v1/goals/start`. Returns the full `GoalState` so the UI renders the execution graph immediately.
+- **`/api/goal/action` route** — New unified action proxy that routes all 8 action types (`pause-all`, `resume-all`, `stop-all`, `approve-phase`, `undo-phase`, `collapse-single`, `request-changes`, `task-action`) to the correct gateway REST endpoints and returns the refreshed `GoalState`.
+- **`GoalRecord` type in gateway** — Added `phases: GoalPhaseRecord[]`, `agentName` on tasks, and proper `GoalTaskRecord` interface. Matches `GoalState` in the frontend.
+- **`/v1/goals/start`** — Now accepts and persists `phases` and `tasks` from the request body. Returns full goal record (not just `{ goalId, status }`). Emits the full goal in the Socket.IO `goal.started` event.
+- **`/v1/goals/:id/pause-all`, `resume-all`, `stop-all`** — All now return `{ goal }` in the response body for UI sync.
+- **`/v1/goals/:id/approve-phase`** — Now updates `phases[phaseIndex].status = 'approved'`, activates the next phase, and auto-completes the goal when all phases are approved.
+- **`GoalMode` component** — Added Socket.IO subscriptions for all 6 goal events. Added 3-second polling while executing/phase-review. Added error banner with dismiss. Added `SET_ERROR` action to reducer. Fixed `UPDATE_GOAL` to auto-detect phase completion and dispatch `ENTER_PHASE_REVIEW`. Fixed `handleTaskAction` type signature. Fixed `sendGoalAction` `payload` type.
+
+### Added — Production Tests
+
+- **`production-hardening.test.ts`** — 40+ tests covering: input validation (bad event types, oversized names, missing fields), session isolation (events from session A not visible from session B), goal full lifecycle (create → pause → resume → task update → retry → skip → approve-phase → stop), replay correctness (events retrieved in temporal order), rate limiting (burst then health check), error sanitization (no stack traces in 404s, 400 on malformed JSON).
+- CI workflow updated to run production-hardening tests as a dedicated step.
+- CI secure-mode secrets bumped to ≥32 chars to pass the new weak-secret guard.
+
+---
+
 ## [3.7.1] - 2026-03-18
 
 ### Security

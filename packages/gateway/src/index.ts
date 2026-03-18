@@ -212,13 +212,35 @@ interface AgentRecord {
   task?: string
 }
 
+interface GoalPhaseRecord {
+  index: number
+  taskIds: string[]
+  status: 'pending' | 'running' | 'review' | 'approved' | 'complete' | 'failed'
+  startedAt?: number
+  completedAt?: number
+}
+
+interface GoalTaskRecord {
+  status: string
+  agentId?: string
+  agentName?: string
+  progress: number
+  cost: number
+  tokens: number
+  output?: string
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 interface GoalRecord {
   id: string
   sessionId: string
   originalGoal: string
   status: 'planning' | 'review' | 'executing' | 'phase-review' | 'paused' | 'complete' | 'stopped' | 'failed'
   taskTree: Record<string, unknown>
-  tasks: Record<string, { status: string; agentId?: string; progress: number; cost: number; tokens: number; output?: string; error?: string }>
+  tasks: Record<string, GoalTaskRecord>
+  phases: GoalPhaseRecord[]
   currentPhase: number
   approvedPhases: number[]
   totalCost: number
@@ -2000,7 +2022,8 @@ const httpServer = createServer(async (req, res) => {
       originalGoal: body.originalGoal || '',
       status: 'executing',
       taskTree: body.taskTree || {},
-      tasks: {},
+      tasks: body.tasks || {},
+      phases: Array.isArray(body.phases) ? body.phases : [],
       currentPhase: 0,
       approvedPhases: [],
       totalCost: 0,
@@ -2008,8 +2031,8 @@ const httpServer = createServer(async (req, res) => {
       startedAt: Date.now(),
     }
     storage.setGoal(goal)
-    io.to(`session:${sessionId}`).emit('goal.started', { goalId, sessionId })
-    return jsonRes(res, 200, { goalId, status: 'executing' })
+    io.to(`session:${sessionId}`).emit('goal.started', { goalId, sessionId, goal })
+    return jsonRes(res, 200, { goalId, status: 'executing', goal })
   }
 
   // GET /v1/goals/:id/status
@@ -2032,8 +2055,8 @@ const httpServer = createServer(async (req, res) => {
     if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     goal.status = 'paused'
     storage.setGoal(goal)
-    io.to(`session:${goal.sessionId}`).emit('goal.paused', { goalId: goal.id })
-    return jsonRes(res, 200, { ok: true, status: 'paused' })
+    io.to(`session:${goal.sessionId}`).emit('goal.paused', { goalId: goal.id, goal })
+    return jsonRes(res, 200, { ok: true, status: 'paused', goal })
   }
 
   // POST /v1/goals/:id/resume-all
@@ -2046,8 +2069,8 @@ const httpServer = createServer(async (req, res) => {
     if (!canAccessSession(principal, goal.sessionId)) { metrics.authFailures++; return jsonRes(res, 403, { error: 'Forbidden for session' }) }
     goal.status = 'executing'
     storage.setGoal(goal)
-    io.to(`session:${goal.sessionId}`).emit('goal.resumed', { goalId: goal.id })
-    return jsonRes(res, 200, { ok: true, status: 'executing' })
+    io.to(`session:${goal.sessionId}`).emit('goal.resumed', { goalId: goal.id, goal })
+    return jsonRes(res, 200, { ok: true, status: 'executing', goal })
   }
 
   // POST /v1/goals/:id/stop-all
@@ -2061,8 +2084,8 @@ const httpServer = createServer(async (req, res) => {
     goal.status = 'stopped'
     goal.completedAt = Date.now()
     storage.setGoal(goal)
-    io.to(`session:${goal.sessionId}`).emit('goal.stopped', { goalId: goal.id })
-    return jsonRes(res, 200, { ok: true, status: 'stopped' })
+    io.to(`session:${goal.sessionId}`).emit('goal.stopped', { goalId: goal.id, goal })
+    return jsonRes(res, 200, { ok: true, status: 'stopped', goal })
   }
 
   // POST /v1/goals/:id/approve-phase
@@ -2078,11 +2101,23 @@ const httpServer = createServer(async (req, res) => {
     if (Number.isNaN(phaseIndex)) return jsonRes(res, 400, { error: 'phaseIndex required' })
     if (phaseIndex < 0 || phaseIndex > goal.currentPhase) return jsonRes(res, 400, { error: 'phaseIndex out of bounds' })
     if (!goal.approvedPhases.includes(phaseIndex)) goal.approvedPhases.push(phaseIndex)
-    goal.currentPhase = phaseIndex + 1
-    goal.status = 'executing'
+    // Update phase status in phases array
+    if (goal.phases[phaseIndex]) {
+      goal.phases[phaseIndex].status = 'approved'
+      goal.phases[phaseIndex].completedAt = Date.now()
+    }
+    // Activate next phase if it exists
+    const nextPhase = phaseIndex + 1
+    if (goal.phases[nextPhase]) {
+      goal.phases[nextPhase].status = 'running'
+      goal.phases[nextPhase].startedAt = Date.now()
+    }
+    goal.currentPhase = nextPhase
+    goal.status = nextPhase >= goal.phases.length ? 'complete' : 'executing'
+    if (goal.status === 'complete') goal.completedAt = Date.now()
     storage.setGoal(goal)
-    io.to(`session:${goal.sessionId}`).emit('goal.phase.approved', { goalId: goal.id, phaseIndex })
-    return jsonRes(res, 200, { ok: true, currentPhase: goal.currentPhase, approvedPhases: goal.approvedPhases })
+    io.to(`session:${goal.sessionId}`).emit('goal.phase.approved', { goalId: goal.id, phaseIndex, goal })
+    return jsonRes(res, 200, { ok: true, currentPhase: goal.currentPhase, approvedPhases: goal.approvedPhases, goal })
   }
 
   // POST /v1/goals/:id/tasks/:taskId/update

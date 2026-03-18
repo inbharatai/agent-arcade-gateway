@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/gateway",
-  "version": "3.7.1",
+  "version": "3.7.2",
   "description": "Agent Arcade telemetry relay gateway — WebSocket + SSE + HTTP ingest",
   "private": true,
   "scripts": {
