@@ -1588,6 +1588,21 @@ const httpServer = createServer(async (req, res) => {
         metrics.publishRejected++
         return jsonRes(res, 400, { error: `Invalid event type: ${body.type}` })
       }
+      // Payload field length guards — reject before processing so callers get a clear error
+      // instead of silent truncation. Limits match the values documented in the README.
+      const p = (body.payload || {}) as Record<string, unknown>
+      if (body.type === 'agent.spawn' && typeof p.name === 'string' && p.name.length > 200) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: `agent name must be ≤ 200 characters (got ${p.name.length})` })
+      }
+      if ((body.type === 'agent.state' || body.type === 'agent.tool') && typeof p.label === 'string' && p.label.length > 500) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: `agent label must be ≤ 500 characters (got ${p.label.length})` })
+      }
+      if (body.type === 'agent.message' && typeof p.text === 'string' && p.text.length > 4000) {
+        metrics.publishRejected++
+        return jsonRes(res, 400, { error: `agent message text must be ≤ 4000 characters (got ${p.text.length})` })
+      }
       if (!canAccessSession(principal, body.sessionId)) {
         metrics.publishRejected++
         metrics.authFailures++
@@ -2262,6 +2277,28 @@ const httpServer = createServer(async (req, res) => {
       spans: filtered,
       count: filtered.length,
     })
+  }
+
+  // GET /v1/session/:sessionId — session snapshot by path param
+  // Returns { agents, events } — the same shape as /v1/state but addressable by path.
+  // Returns 404 when the session has no data (no agents, no events).
+  const sessionSnapshotMatch = url.pathname.match(/^\/v1\/session\/([^/]+)$/)
+  if (req.method === 'GET' && sessionSnapshotMatch) {
+    const sessionId = decodeURIComponent(sessionSnapshotMatch[1])
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) {
+      metrics.authFailures++
+      return jsonRes(res, 401, { error: 'Unauthorized' })
+    }
+    if (!canAccessSession(principal, sessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    const snap = await sessionSnapshot(sessionId)
+    if (snap.agents.length === 0 && snap.events.length === 0) {
+      return jsonRes(res, 404, { error: 'Session not found or empty' })
+    }
+    return jsonRes(res, 200, snap)
   }
 
   // GET /v1/state — session snapshot (used by SSE fallback for periodic refresh)
