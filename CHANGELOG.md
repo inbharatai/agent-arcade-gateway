@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-03-18
+
+### Added
+
+- **Hosted demo bot** (`packages/demo-bot/`) — Runs as a sidecar inside the container and continuously emits realistic fake telemetry from 3 simulated agents (Researcher, Coder, Reviewer) so visitors see live agents without configuring anything.
+- **Fly.io one-click deploy** — `fly.toml` + `Dockerfile.demo` + `docker-entrypoint.sh`. `fly deploy` goes from zero to a live public URL in under 5 minutes.
+- **Deploy Live Demo badge** in README — Links to the Fly.io deployment guide; removes the #1 adoption barrier (no self-hosting required to evaluate).
+
+### Changed
+
+- Version bumped to v3.7.0 across all packages.
+
+---
+
+## [3.6.0] - 2026-03-17
+
+### Added
+
+- **SQLite persistent storage** — Set `DB_PATH=./arcade.db` and all sessions, agents, spans, events survive gateway restarts. WAL mode + `PRAGMA synchronous=NORMAL` for concurrent reads. Auto-selected when `REDIS_URL` is absent.
+- **TracePanel: span search** — Full-text search across span name, input, output, and error text. Parent spans shown when any descendant matches.
+- **TracePanel: error highlighting** — Spans with `status=error` get a red left border, red name, red background, and inline error message.
+- **TracePanel: span comparison** — "Compare" mode lets you select any two spans and see their input/output side-by-side.
+- **CostDashboard: budget alerts** — Set a dollar threshold; orange warning banner at 80%, red banner when exceeded.
+- **CostDashboard: model comparison table** — Per-model breakdown: calls, input/output tokens, total cost, avg cost/call.
+- **CostDashboard: CSV export** — One-click download of full cost history for the current session.
+- **SessionReplay: failure detection** — Recordings that contain error states get a red ⚠ badge. "Has errors" filter shows only failed sessions. "Show all" toggle reveals the full recording list.
+- **Python adapter: CrewAI** (`packages/adapter-crewai/`) — `agent_arcade_crewai.wrap_crew()` hooks into CrewAI's callback system. Thread-safe, duck-typed, fire-and-forget HTTP.
+- **Python adapter: AutoGen** (`packages/adapter-autogen/`) — `agent_arcade_autogen.wrap_agents()` wraps AutoGen 0.3/0.4 agents. Patches `generate_reply`, `a_send`, `a_receive` with graceful fallback.
+
+### Fixed
+
+- **`budgetUsed` always wrong** — GamePanel was computing `totalCost / 10`; CostDashboard now handles budget percentage internally.
+- **`processEvent` no-op** — SessionReplay `processEvent` prop was `() => {}`, so replayed events never drove XP/achievement/leaderboard state. Replaced with `processReplayEvent` callback.
+- **Dead `setTimeout` wrappers** — `handleCategoryChange`, `dismissToast`, `dismissLevelUp` in GamePanel wrapped state calls in `setTimeout(fn, 0)`, unnecessary since React 19 auto-batches. Removed.
+- **`react-hooks/purity` on `Date.now()`** — SessionReplay called `Date.now()` during render. Fixed with lazy `useState(() => Date.now())` and moving inline calls to effect callbacks.
+- **`react/no-unescaped-entities`** — Raw `"Record"` in SessionReplay JSX replaced with `&quot;Record&quot;`.
+- **Array index as React key** — Timeline markers, swimlane segments, EventInspector rows now use compound keys (`type-ts-index`) instead of array index.
+- **Duplicate section header** — CostDashboard had two sections both labelled "Cost by Model"; second renamed to "Model × Calls".
+- **`formatCost` mixed prefix/suffix** — Was rendering `$5.00c`; standardised to `¢0.50` / `$1.00`.
+
+### Changed
+
+- Storage startup log now shows `storage: 'redis' | 'sqlite' | 'memory'` instead of `redisEnabled: true/false`.
+- Version bumped to v3.6.0 across all packages.
+
+---
+
+## [3.5.0] - 2026-03-17
+
+### Added
+
+- **Execution Traces** (`components/TracePanel.tsx`) — Hierarchical parent→child span tree with collapsible I/O, token stream log, cost per span, and agent filter. New `agent.span` event type accepted by gateway. `GET /v1/session/:id/traces` endpoint.
+- **Session Replay** (`components/SessionReplay.tsx`) — DVR-style playback: timeline scrubber, per-agent swimlanes (Gantt-style), event inspector, state snapshot at any seek point. Speed control 0.25×–8×. Up to 50 recordings persisted in localStorage.
+- **Cost Analytics** (`components/CostDashboard.tsx`) — Real token data from spans, per-model cost breakdowns, budget progress bar, 80% warning threshold.
+- **GamePanel: 6 tabs** — XP / Achievements / Leaderboard / Costs / Traces / Replay.
+
+### Fixed
+
+- **Recording sync** — Event capture now uses `engine.isRecording()` directly; both tab-bar and in-panel record buttons now work correctly.
+- **Milestone off-by-one** — Tool milestone fired at 1st, 6th, 11th… tool; now correctly fires at 5th, 10th, 15th…
+- **State mutation** — `milestones` array is now cloned before pushing, preventing Zustand state mutation.
+
+### Changed
+
+- Version bumped to v3.5.0 across all packages.
+
+---
+
 ## [3.2.0] - 2026-03-16
 
 ### Added — Phase A: Arcade Console (Natural Language Command Panel)
@@ -160,8 +228,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-tenant support
 - Historical event replay
 
+[3.7.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.6.0...v3.7.0
+[3.6.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.5.0...v3.6.0
+[3.5.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.2.0...v3.5.0
 [3.2.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.0.0...v3.2.0
 [3.0.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/inbharatai/agent-arcade-gateway/compare/v1.0.0...v2.1.0
 [1.0.0]: https://github.com/inbharatai/agent-arcade-gateway/releases/tag/v1.0.0
-[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/inbharatai/agent-arcade-gateway/compare/v3.7.0...HEAD

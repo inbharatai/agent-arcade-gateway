@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-llamaindex",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "LlamaIndex adapter for Agent Arcade -- auto-instruments queries, retrievers, and synthesis",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

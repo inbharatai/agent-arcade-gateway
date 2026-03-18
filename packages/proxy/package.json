@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/proxy",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "AI API proxy -- intercepts OpenAI, Anthropic, Gemini, Ollama, Mistral calls and emits Agent Arcade telemetry",
   "main": "src/index.ts",
   "scripts": { "start": "bun run src/index.ts", "dev": "bun --watch src/index.ts" },

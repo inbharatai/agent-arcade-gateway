@@ -25,7 +25,7 @@
 [![CrewAI](https://img.shields.io/badge/CrewAI-Python_Adapter-FF6B6B?style=for-the-badge)](#crewai-python)
 [![AutoGen](https://img.shields.io/badge/AutoGen-Python_Adapter-0078D4?style=for-the-badge&logo=microsoft&logoColor=white)](#autogen-python)
 
-[![Try Live Demo](https://img.shields.io/badge/%F0%9F%8E%AE_Try_Live_Demo-brightgreen?style=for-the-badge)](https://agent-arcade.vercel.app)
+[![Deploy Live Demo](https://img.shields.io/badge/%F0%9F%8E%AE_Deploy_Live_Demo-brightgreen?style=for-the-badge)](#-hosted-demo--one-click-deploy)
 [![Deploy to Fly.io](https://img.shields.io/badge/Deploy_to-Fly.io-8b5cf6?style=for-the-badge&logo=fly-dot-io&logoColor=white)](#-hosted-demo--one-click-deploy)
 
 **Watch any AI agent work in real-time. Plug & play with every framework.**
@@ -34,7 +34,7 @@
 
 ![Agent Arcade Live Demo](docs/screenshots/agent-arcade-demo.gif)
 
-*Live session: 20+ agents — Claude Code, OpenAI, Gemini, Mistral — collaborating with real-time XP leveling, cost tracking, and intervention controls*
+*Multiple agents — Claude Code, OpenAI, Gemini, Mistral — visualized with real-time XP leveling, cost tracking, and intervention controls*
 
 </div>
 

@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/sdk-browser",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "Browser SDK for Agent Arcade — drop-in script or ES module",
   "scripts": {
     "test": "bun test test/"

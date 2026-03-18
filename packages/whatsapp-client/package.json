@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/whatsapp-client",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "QR-code WhatsApp client for Agent Arcade — scan once, control agents from your phone. No Twilio account needed.",
   "main": "src/index.ts",
   "scripts": {

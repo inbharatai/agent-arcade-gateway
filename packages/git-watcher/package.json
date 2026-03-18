@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/git-watcher",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "Git index watcher for Agent Arcade -- tracks file changes per agent",
   "main": "src/index.ts",
   "scripts": {

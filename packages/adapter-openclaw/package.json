@@ -1,6 +1,6 @@
 {
   "name": "@agent-arcade/adapter-openclaw",
-  "version": "3.2.0",
+  "version": "3.7.0",
   "description": "OpenClaw adapter for Agent Arcade -- auto-instruments OpenClaw agents, skills, and heartbeat tasks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
