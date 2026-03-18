@@ -11,7 +11,7 @@
 [![Version](https://img.shields.io/badge/Version-3.7.3-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
-[![Goal Mode](https://img.shields.io/badge/Goal_Mode-Multi--Agent_Orchestration-8B5CF6?style=for-the-badge)](#-goal-mode)
+[![Goal Mode](https://img.shields.io/badge/Goal_Mode-AI_Planning_%26_Tracking-8B5CF6?style=for-the-badge)](#-goal-mode)
 [![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Universal_Remote-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
 [![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deepest-ai-brain-observability)
 [![Auto Config](https://img.shields.io/badge/Auto_Config-Inherits_API_Keys_%26_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
@@ -891,7 +891,7 @@ The Settings panel (7 tabs) is accessible from the toolbar:
 | Tab | What It Controls |
 |-----|-----------------|
 | **Console** | Default AI model (auto-detected from running agents), token count display, cost estimates, history retention |
-| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto" when keys are inherited from environment. One-click "Add Key" for manual entry with AES-256 encrypted storage. |
+| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto" when keys are inherited from environment. One-click "Add Key" for manual entry — keys stored in browser localStorage (not encrypted client-side; use server-side env vars for production). |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
 | **WhatsApp** | Auto-generated QR code to pair your personal WhatsApp — scan once, control agents from your phone. Gateway auto-starts the client. |
@@ -1272,8 +1272,8 @@ Theme-based background loops that match the selected visual theme. Volume contro
 | | **Directives Queue** | Console and WhatsApp messages are bridged to connected tools (Claude Code, Cursor) via `/v1/directives`. Real-time Socket.IO broadcast + HTTP polling. The UI and the agent share one command pipeline. |
 | | **Universal Adapter System** | 10 framework adapters + zero-code proxy + process watcher. From a one-line SDK wrapper to intercepting raw HTTP — every integration method is covered. |
 | | **Cost Intelligence Engine** | 29 models priced across 6 providers with fuzzy model matching. Tracks per-agent, per-session, per-model costs in real-time. Budget alerts via Slack/Discord/Email/WhatsApp. |
-| | **RPG Gamification** | 32 achievements, 12 XP levels (Novice -> Godlike), streak multiplier up to 3.0x. Achievement toasts with confetti animation. |
-| | **Goal Mode** | Turn one goal into a supervised multi-agent execution plan. AI decomposes, you approve, agents execute in parallel — with phase review gates, live progress, and full stop/pause/redirect control. |
+| | **RPG Gamification** | 30 achievements, 12 XP levels (Novice -> Godlike), streak multiplier up to 3.0x. Achievement toasts with confetti animation. |
+| | **Goal Mode** | Turn one goal into a structured execution plan. AI decomposes it into up to 6 sub-tasks, you approve the plan, then track phase-by-phase progress — with review gates, live status, and full stop/pause/retry/skip control. Your connected agents execute the tasks; Goal Mode does the planning and coordination tracking. |
 | | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
 | | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
 | | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
@@ -1287,19 +1287,21 @@ Theme-based background loops that match the selected visual theme. Volume contro
 
 ## Goal Mode
 
-Turn one high-level goal into a structured execution plan, delegated across multiple agents — with live visibility and full control.
+Turn one high-level goal into a structured execution plan — with live visibility and full control over every task and phase.
 
 **What it does:**
-- Parses your goal into a structured task tree (max 6 sub-tasks)
-- Assigns specialized agents to each sub-task (backend, frontend, database, testing, devops)
-- Shows the full execution plan before anything starts
-- Runs tasks in parallel where possible, sequential where dependencies exist
-- Requires your approval between phases
-- Lets you stop, pause, retry, redirect, or skip any agent at any time
+- AI decomposes your goal into a structured task tree (max 6 sub-tasks)
+- Assigns agent roles to each sub-task (backend, frontend, database, testing, devops)
+- Shows the full execution plan before anything starts — you approve before work begins
+- Tracks tasks in parallel or sequential order based on their dependencies
+- Requires your approval between phases (review gates)
+- Lets you stop, pause, retry, redirect, or skip any task at any time
+- Your connected agents (Claude Code, SDK, CLI, or any adapter) execute the tasks; Goal Mode tracks their progress
 
-**What it is:** Supervised multi-agent orchestration. You stay in control throughout.
+**What it is:** A supervised planning and progress-tracking UI. Goal Mode decomposes your goal using AI, presents a structured task tree for your approval, then tracks execution state as your connected agents work through the tasks. You stay in control throughout.
 
 **What it is not:**
+- Not a standalone AI execution engine — it does not spawn or run agents automatically
 - Not autonomous long-running execution
 - Not production-ready without your review
 - Not self-healing or self-deploying
@@ -1742,7 +1744,7 @@ npm run prod:start
 |---------|---------|
 | **JWT auth** | Optional — `REQUIRE_AUTH=1`. HS256-signed tokens with revocation support. |
 | **API key isolation** | AI provider keys never leave the server. The Console proxies through the gateway — no browser-side key exposure. |
-| **AES-256 encryption** | Optional client-side API keys encrypted with AES-256-GCM in localStorage |
+| **localStorage key storage** | Optional manual API key entry persisted in browser localStorage. For production use, inject keys server-side via environment variables — the gateway proxies all AI calls so keys never need to be in the browser. |
 | **CORS** | Configurable allowlist with ReDoS-safe regex validation |
 | **Input validation** | Names <= 200, labels <= 500, messages <= 4000 chars. Body size limit: 1MB. |
 | **Rate limiting** | Per-IP (120 req/s), per-token (240 req/s), and session flood protection (600/s) |
