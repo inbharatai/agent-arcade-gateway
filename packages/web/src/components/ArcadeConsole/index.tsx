@@ -193,6 +193,10 @@ export function ArcadeConsole({
           if (!text || typeof text !== 'string') return
           // Skip chat-proxy broadcasts (Console already has these from its own stream)
           if (ev.payload?.source === 'chat-proxy') return
+          // Skip WhatsApp relay messages (these are for WhatsApp self-chat, not Console)
+          if (ev.payload?.source === 'whatsapp-ai-response') return
+          if (/^WhatsApp command:/i.test(text)) return
+          if (/^🎮 Console:/i.test(text)) return
           // Skip "Directive from X" announcements
           if (/^Directive from /i.test(text)) return
           // Skip empty messages
@@ -212,16 +216,9 @@ export function ArcadeConsole({
           if (/^⏱️ AI response timed out/i.test(text)) return
           if (/^⚠️ Error reaching AI:/i.test(text)) return
 
-          // ── WhatsApp Integration ────────────────────────────────────────────
-          // Clean up WhatsApp message formatting for display in chat
+          // ── External Agent Messages ──────────────────────────────────────────
           let displayText = text
           let messageRole: 'user' | 'assistant' = 'assistant'
-
-          // User message from WhatsApp: strip "WhatsApp command:" prefix and show as user
-          if (/^WhatsApp command:/i.test(text)) {
-            displayText = text.replace(/^WhatsApp command:\s*/i, '').trim()
-            messageRole = 'user'
-          }
 
           // AI response from directive-response: show as assistant
           const isDirectiveResponse = ev.payload?.source === 'directive-response'
@@ -421,7 +418,7 @@ export function ArcadeConsole({
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl, gatewayUrl, authToken, sessionSignature, speakText])
+  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl, speakText])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()

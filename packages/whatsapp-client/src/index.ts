@@ -95,6 +95,9 @@ let sock: WASocket | null = null
 /** Per-JID conversation history for self-chat AI relay */
 const selfChatHistory = new Map<string, Array<{ role: string; content: string }>>()
 
+/** Message IDs sent by the bot — used to suppress echo in messages.upsert */
+const outgoingMessageIds = new Set<string>()
+
 // ---------------------------------------------------------------------------
 // Command parser — same commands as the Twilio webhook handler
 // ---------------------------------------------------------------------------
@@ -426,6 +429,24 @@ async function startWhatsApp() {
 
       if (!text) continue
 
+      // ── Early echo guard ─────────────────────────────────────────────────
+      // Catches bot-sent messages before isSelfChat detection runs, so Baileys
+      // fromMe=false edge cases (some WA versions) cannot cause echo loops.
+      // outgoingMessageIds is checked here (not just inside the isSelfChat block)
+      // to avoid a race: Baileys fires messages.upsert before the sendMessage
+      // Promise resolves, so the ID might not be in the set yet at line 474.
+      if (
+        outgoingMessageIds.has(msg.key.id || '') ||
+        text.startsWith('🎮 Console:') ||
+        text.startsWith('⏱️ AI response timed out') ||
+        text.startsWith('⚠️ AI error:') ||
+        text.startsWith('⚠️ Error reaching AI:') ||
+        text.startsWith('⚠️ Empty response from AI')
+      ) {
+        console.log(`[whatsapp-client] Skipping bot-generated message (early echo guard): ${text.slice(0, 60)}`)
+        continue
+      }
+
       // ── Self-chat detection ──────────────────────────────────────────────
       // In WhatsApp, messaging yourself shows remoteJid === your own JID
       // and fromMe is true for messages you send to yourself.
@@ -450,10 +471,11 @@ async function startWhatsApp() {
       if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
 
       if (isSelfChat && SELF_CHAT_ENABLED) {
-        // Skip messages forwarded by the bot itself (from forwardToWhatsApp) to prevent echo loops.
-        // These are prefixed with "🎮 Console:" by forwardToWhatsApp().
-        if (text.startsWith('🎮 Console:')) {
-          console.log(`[whatsapp-client] Skipping bot-forwarded message to prevent echo loop`)
+        // Skip messages sent by the bot itself to prevent echo loops.
+        // fromMe===true is the primary guard (no race condition), with text prefix
+        // and outgoingMessageIds as fallbacks for Baileys edge cases.
+        if (msg.key.fromMe === true || text.startsWith('🎮 Console:') || outgoingMessageIds.has(msg.key.id || '')) {
+          console.log(`[whatsapp-client] Skipping bot-sent message to prevent echo loop`)
           continue
         }
 
@@ -495,7 +517,12 @@ async function startWhatsApp() {
         }).catch(() => {})
 
         try {
-          await sock!.sendMessage(from, { text: reply })
+          const sentMsg = await sock!.sendMessage(from, { text: reply })
+          if (sentMsg?.key?.id) {
+            outgoingMessageIds.add(sentMsg.key.id)
+            // Clean up after 60s to avoid unbounded growth
+            setTimeout(() => outgoingMessageIds.delete(sentMsg!.key.id!), 60_000)
+          }
           console.log(`[whatsapp-client] Reply sent to ${from.slice(0,6)}...`)
         } catch (e: any) {
           const errMsg = e?.message || String(e)
@@ -611,7 +638,11 @@ function forwardToWhatsApp(text: string) {
   const truncated = text.length > 2000 ? text.slice(0, 2000) + '…' : text
   const formatted = `🎮 Console:\n${truncated}`
 
-  sock.sendMessage(myJid, { text: formatted }).then(() => {
+  sock.sendMessage(myJid, { text: formatted }).then((sentMsg) => {
+    if (sentMsg?.key?.id) {
+      outgoingMessageIds.add(sentMsg.key.id)
+      setTimeout(() => outgoingMessageIds.delete(sentMsg!.key.id!), 60_000)
+    }
     console.log(`[whatsapp-client] Forwarded Console message to WhatsApp self-chat (${text.slice(0, 60)}...)`)
   }).catch((e: Error) => {
     console.warn(`[whatsapp-client] Failed to forward to WhatsApp: ${e.message}`)

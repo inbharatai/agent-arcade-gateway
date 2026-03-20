@@ -69,6 +69,14 @@ async function pollAndExecute() {
 
     for (const d of pending) {
       if (processing.has(d.id)) continue
+
+      // Skip directives sent by the Console itself — it already handles its own AI response.
+      // The directive bridge is for external sources (WhatsApp, CLI, multi-agent tasks).
+      if (d.source === 'console-chat') {
+        fetch(`${GATEWAY_URL}/v1/directives/${d.id}/ack`, { method: 'POST', headers }).catch(() => {})
+        continue
+      }
+
       processing.add(d.id)
 
       const agentId = d.agentId || 'claude-code-main'

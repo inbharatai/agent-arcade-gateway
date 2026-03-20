@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 
 /**
  * Server-side chat proxy route — zero configuration required.
@@ -111,10 +111,11 @@ export async function POST(req: NextRequest) {
         const lastMsg = messages[messages.length - 1]?.content || ''
         const cliModel = model || 'claude-sonnet-4-6'
         const prompt = `${SYSTEM_PROMPT}\n\n${lastMsg}`
-        const reply = execSync(
-          `echo ${JSON.stringify(prompt)} | claude -p --model ${cliModel}`,
-          { timeout: 60_000, encoding: 'utf-8', shell: 'cmd.exe' }
-        ).trim()
+        const reply = execFileSync('claude', ['-p', '--model', cliModel], {
+          input: prompt,
+          timeout: 60_000,
+          encoding: 'utf-8',
+        }).trim()
 
         // Wrap as a single SSE event for client compatibility
         const encoder = new TextEncoder()

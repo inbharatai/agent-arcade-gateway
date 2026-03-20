@@ -2414,10 +2414,13 @@ const httpServer = createServer(async (req, res) => {
         })
 
         // Plain text mode — stdout streams the response as it's generated
-        const child = spawn('claude', ['-p', '--model', cliModel], {
+        // IMPORTANT: --dangerously-skip-permissions prevents this subprocess from
+        // connecting to the running Claude Code daemon session, which would cause
+        // the prompt/response to appear in the active chat (echo loop bug).
+        const child = spawn('claude', ['-p', '--model', cliModel, '--dangerously-skip-permissions'], {
           stdio: ['pipe', 'pipe', 'pipe'],
           env: { ...process.env },
-          shell: true,
+          shell: false,
         })
 
         child.stdin.write(fullPrompt)
