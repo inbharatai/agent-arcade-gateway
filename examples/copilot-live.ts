@@ -13,9 +13,18 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
+import { createHmac } from 'node:crypto'
 
 const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:47890'
 const SESSION = process.env.GATEWAY_SESSION_ID || 'copilot-live'
+const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || ''
+
+/** Compute HMAC-SHA256 session signature matching gateway checkSessionSignature() */
+function signSession(sessionId: string): string {
+  if (!SESSION_SIGNING_SECRET) return ''
+  return createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
+}
+const SESSION_SIG = signSession(SESSION)
 const V = 1
 const MAX_RETRY_DELAY = 30_000
 const INITIAL_RETRY_DELAY = 2_000
@@ -56,7 +65,10 @@ async function send(agentId: string, type: string, payload: Record<string, unkno
     try {
       const res = await fetch(`${GATEWAY}/v1/ingest`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(SESSION_SIG ? { 'x-session-signature': SESSION_SIG } : {}),
+        },
         body: JSON.stringify(ev),
         signal: AbortSignal.timeout(5000),
       })

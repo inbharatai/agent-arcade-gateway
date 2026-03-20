@@ -16,6 +16,7 @@
  */
 
 import { spawn } from 'child_process'
+import { createHmac } from 'crypto'
 
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:47890'
 const POLL_INTERVAL = Number(process.env.DIRECTIVE_POLL_MS || '2000') // 2s default
@@ -25,9 +26,21 @@ const MAX_RESPONSE_LEN = 4000
 const DIRECTIVE_MODEL = process.env.DIRECTIVE_MODEL || 'claude-sonnet-4-5'
 // Session ID that the bridge reports telemetry under. Must match the web UI session.
 const BRIDGE_SESSION_ID = process.env.BRIDGE_SESSION_ID || 'copilot-live'
+// Session signing secret — must match SESSION_SIGNING_SECRET on the gateway.
+// When set, adds x-session-signature header to all ingest requests so the
+// gateway accepts them even in strict signing mode.
+const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || ''
+
+/** Compute HMAC-SHA256 session signature matching gateway checkSessionSignature() */
+function signSession(sessionId: string): string {
+  if (!SESSION_SIGNING_SECRET) return ''
+  return createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
+}
 
 const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+const sessionSig = signSession(BRIDGE_SESSION_ID)
+if (sessionSig) headers['x-session-signature'] = sessionSig
 
 console.log(`[directive-bridge] Starting directive bridge`)
 console.log(`[directive-bridge] Gateway: ${GATEWAY_URL}`)
