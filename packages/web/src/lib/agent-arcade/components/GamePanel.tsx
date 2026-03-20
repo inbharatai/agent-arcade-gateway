@@ -25,19 +25,27 @@ import type { SessionCost } from './CostDashboard'
 import type { Agent, TelemetryEvent } from '../types'
 
 // ---------------------------------------------------------------------------
+// Feature flag: set NEXT_PUBLIC_ENABLE_GAMIFICATION=0 to hide XP/achievements/leaderboard
+// Default is ON (1). Audio, costs, traces, and replay are always shown.
+// ---------------------------------------------------------------------------
+const GAMIFICATION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GAMIFICATION !== '0'
+
+// ---------------------------------------------------------------------------
 // Tab type
 // ---------------------------------------------------------------------------
 
 type GameTab = 'xp' | 'achievements' | 'leaderboard' | 'costs' | 'traces' | 'replay'
 
-const TABS: { key: GameTab; label: string; icon: string }[] = [
-  { key: 'xp', label: 'XP', icon: '\u2B50' },
-  { key: 'achievements', label: 'Achievements', icon: '\uD83C\uDFC6' },
-  { key: 'leaderboard', label: 'Leaderboard', icon: '\uD83D\uDCC8' },
+const ALL_TABS: { key: GameTab; label: string; icon: string; gamification?: boolean }[] = [
+  { key: 'xp', label: 'XP', icon: '\u2B50', gamification: true },
+  { key: 'achievements', label: 'Achievements', icon: '\uD83C\uDFC6', gamification: true },
+  { key: 'leaderboard', label: 'Leaderboard', icon: '\uD83D\uDCC8', gamification: true },
   { key: 'costs', label: 'Costs', icon: '\uD83D\uDCB0' },
   { key: 'traces', label: 'Traces', icon: '\uD83D\uDD0D' },
   { key: 'replay', label: 'Replay', icon: '\u23EA' },
 ]
+
+const TABS = ALL_TABS.filter(t => !t.gamification || GAMIFICATION_ENABLED)
 
 // ---------------------------------------------------------------------------
 // Props

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-03-20
+
+### Security
+
+- **Directives endpoint rate-limited** — `POST /v1/directives` now applies the same IP-based rate limiting used by the telemetry ingest endpoint. Previously the directives queue was unprotected and could be flooded.
+- **Directive instruction sanitization** — Incoming directive `instruction` fields now have control characters (null bytes, backspace, etc.) stripped before storage and execution to prevent unexpected behavior in downstream tools.
+
+### Fixed
+
+- **Directive bridge model hardcoded** — `claude-sonnet-4-6` was hardcoded in `directive-bridge.ts`. Now reads `DIRECTIVE_MODEL` env var with `claude-sonnet-4-5` as the default. Override freely without editing source.
+- **Directive bridge session hardcoded** — Session ID `copilot-live` was hardcoded in multiple places. Now reads `BRIDGE_SESSION_ID` env var so the bridge can report telemetry to any session.
+- **Goal Mode task completion loop** — When the directive bridge executes a Goal Mode task and succeeds, it now calls `POST /v1/goals/:goalId/tasks/:taskId/update` to mark the task `complete` with the Claude output. On failure it marks the task `failed`. The Goal Mode UI now updates automatically when Claude Code finishes a task — no manual refresh needed.
+- **Session signing secret mismatch** — Web dev server was generating session signatures with `agent-arcade-dev-signing` while the gateway expected a different secret. Added `.env.local` entries to align both sides out of the box.
+
+### Added
+
+- **`NEXT_PUBLIC_ENABLE_GAMIFICATION` feature flag** — Set to `0` to disable XP tracking, achievements, leaderboard tabs, and background music. Default is `1` (all on). Gamification tabs are filtered from `GamePanel` at render time. Audio initialisation is skipped entirely when disabled.
+- **Canvas agent tree arrowheads** — Parent → child relationship lines now include arrowheads at the child end to show spawn direction. A `spawned by` label appears at the midpoint when either related agent is selected.
+
+### Removed
+
+- **`tw-animate-css` dependency** — Package was listed in devDependencies and imported in `globals.css` but none of its animation classes were used anywhere in the codebase. Removed from both `package.json` and `globals.css`.
+
+---
+
 ## [3.7.3] - 2026-03-18
 
 ### Fixed

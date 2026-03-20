@@ -1907,7 +1907,12 @@ const httpServer = createServer(async (req, res) => {
   // POST /v1/directives/:id/ack  — acknowledge completion
 
   if (url.pathname === '/v1/directives' && req.method === 'POST') {
-    let body: { agentId?: string; instruction: string; source?: string }
+    // Rate-limit directive submissions the same way as ingest events
+    const dirIp = getClientIp(req)
+    const dirIpAllowed = await allowRate('ip', dirIp, RATE_MAX_IP, RATE_WINDOW_MS)
+    if (!dirIpAllowed) return jsonRes(res, 429, { error: 'Rate limited' })
+
+    let body: { agentId?: string; instruction: string; source?: string; sessionId?: string }
     try {
       body = JSON.parse(await readBody(req))
     } catch {
@@ -1916,6 +1921,8 @@ const httpServer = createServer(async (req, res) => {
     if (!body.instruction || typeof body.instruction !== 'string') {
       return jsonRes(res, 400, { error: 'instruction is required' })
     }
+    // Sanitize: strip null bytes and control characters that could confuse downstream tools
+    body.instruction = body.instruction.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
     const directive = {
       id: randomUUID(),
       agentId: body.agentId || 'claude-code-main',

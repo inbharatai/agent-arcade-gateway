@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.7.3-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.8.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-AI_Planning_%26_Tracking-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -1609,7 +1609,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.7.3
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.8.0
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1751,11 +1751,14 @@ npm run prod:start
 | `WHATSAPP_SELF_CHAT` | `1` | Enable self-chat AI relay (set `0` to disable) |
 | **Directive Bridge** | | |
 | `DIRECTIVE_POLL_MS` | `2000` | Polling interval for directive bridge (ms) |
+| `DIRECTIVE_MODEL` | `claude-sonnet-4-5` | Claude model used to execute directives via `claude -p` |
+| `BRIDGE_SESSION_ID` | `copilot-live` | Session the bridge reports telemetry under (must match UI session) |
 | `GATEWAY_TOKEN` | — | Auth token for directive bridge → gateway communication |
 | **Web Dashboard** | | |
 | `NEXT_PUBLIC_GATEWAY_URL` | — | Gateway URL (baked at build time) |
 | `NEXT_PUBLIC_DEFAULT_SESSION_ID` | `copilot-live` | Default session ID |
 | `NEXT_PUBLIC_LOCK_SESSION_ID` | — | Lock to a single session |
+| `NEXT_PUBLIC_ENABLE_GAMIFICATION` | `1` | Set to `0` to disable XP, achievements, leaderboard, and background music |
 | `GATEWAY_JWT_SECRET` | — | Server-side JWT secret (same as gateway JWT_SECRET) |
 
 ---
@@ -1822,10 +1825,17 @@ This table is our honest, point-in-time statement of what the platform does toda
 
 ---
 
-## Recent Changes (v3.2.1 → v3.7.3)
+## Recent Changes (v3.2.1 → v3.8.0)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.8.0** | **Goal Mode task completion loop** — directive-bridge now parses `Goal ID` / `Task ID` from directives and auto-reports task `complete` (with Claude's output) or `failed` back to the Goal planner. UI updates without manual refresh. | Fix |
+| **v3.8.0** | **Directives endpoint rate-limited** — `POST /v1/directives` now applies IP-based rate limiting matching the ingest endpoint. Previously the directive queue had no rate protection. | Security |
+| **v3.8.0** | **Directive instruction sanitization** — control characters stripped from incoming directives before storage and execution. | Security |
+| **v3.8.0** | **Directive bridge env vars** — `DIRECTIVE_MODEL` (default `claude-sonnet-4-5`) and `BRIDGE_SESSION_ID` (default `copilot-live`) are now configurable. Model was previously hardcoded to `claude-sonnet-4-6`. | Fix |
+| **v3.8.0** | **`NEXT_PUBLIC_ENABLE_GAMIFICATION` feature flag** — Set to `0` to disable XP, achievements, leaderboard, and background music. Gamification tabs are filtered at render time; audio init is skipped entirely. Default is `1` (all on). | Feature |
+| **v3.8.0** | **Canvas agent tree arrowheads** — Parent→child lines now include directional arrowheads and a `spawned by` label (visible on hover/select) to make agent spawn hierarchy visually clear. | Feature |
+| **v3.8.0** | **Removed `tw-animate-css`** — Listed in devDependencies and imported in `globals.css` but never used. Removed from both. | Cleanup |
 | **v3.7.2** | **Goal Mode: fully wired** — 3 new Next.js API routes (`/api/goal/decompose`, `/api/goal/execute`, `/api/goal/action`) fix the broken endpoint wiring. Goal Mode now decomposes with AI, builds real GoalState, routes all actions correctly. | Fix |
 | **v3.7.2** | **Goal Mode: real-time sync** — GoalMode component subscribes to all 6 Socket.IO goal events from gateway + polls every 3s while executing. Phase completion auto-triggers phase-review gate. | Fix |
 | **v3.7.2** | **Gateway `GoalRecord` aligned with frontend `GoalState`** — Added `phases`, `agentName`, proper task types. All goal endpoints return full goal record. `approve-phase` activates next phase and auto-completes when all phases done. | Fix |
@@ -1879,7 +1889,7 @@ This table is our honest, point-in-time statement of what the platform does toda
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
 | **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
 
-See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.7.3.
+See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.8.0.
 
 ---
 
@@ -1924,7 +1934,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, adapter g
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.7.3                                                  |
+ |   AGENT ARCADE v3.8.0                                                  |
  |                                                                        |
  |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |

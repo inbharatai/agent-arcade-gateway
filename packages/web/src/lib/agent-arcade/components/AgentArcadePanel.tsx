@@ -20,6 +20,10 @@ import { useTelemetryProvider } from './useTelemetryProvider'
 import { ConnectionStatus, STATE_VISUALS, Agent, AgentState, AgentStateEntry, TelemetryEvent, SessionNarrative, NarrativeMilestone } from '../types'
 import { THEMES, THEME_LIST } from '../themes'
 import { PIXEL_CONFIGS } from '../sprites'
+// Feature flag: NEXT_PUBLIC_ENABLE_GAMIFICATION=0 disables audio + gamification UI.
+// Default is ON. Audio is also individually controllable via in-app settings.
+const GAMIFICATION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GAMIFICATION !== '0'
+
 import { getAudioEngine } from '../audio/engine'
 import {
   playSpawnSfx, playStateChangeSfx, playToolUseSfx,
@@ -91,6 +95,7 @@ export function AgentArcadePanel({
 
   // ── Audio initialization on first user gesture ──────────────────────
   const initAudio = useCallback(() => {
+    if (!GAMIFICATION_ENABLED) return
     if (audioInitRef.current) return
     const engine = getAudioEngine()
     engine.init()
@@ -102,6 +107,8 @@ export function AgentArcadePanel({
   }, [settings.soundEnabled, settings.musicEnabled, settings.theme])
 
   useEffect(() => {
+    if (!GAMIFICATION_ENABLED) return
+
     // Pre-load voices on mount (doesn't unlock — Chrome still requires gesture)
     preloadVoices()
 

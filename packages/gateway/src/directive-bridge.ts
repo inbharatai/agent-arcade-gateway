@@ -21,6 +21,10 @@ const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:47890'
 const POLL_INTERVAL = Number(process.env.DIRECTIVE_POLL_MS || '2000') // 2s default
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || ''
 const MAX_RESPONSE_LEN = 4000
+// Model used when executing directives via `claude -p`. Override with DIRECTIVE_MODEL env var.
+const DIRECTIVE_MODEL = process.env.DIRECTIVE_MODEL || 'claude-sonnet-4-5'
+// Session ID that the bridge reports telemetry under. Must match the web UI session.
+const BRIDGE_SESSION_ID = process.env.BRIDGE_SESSION_ID || 'copilot-live'
 
 const headers: Record<string, string> = { 'Content-Type': 'application/json' }
 if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
@@ -55,7 +59,7 @@ async function pollAndExecute() {
       fetch(`${GATEWAY_URL}/v1/ingest`, {
         method: 'POST', headers,
         body: JSON.stringify({
-          v: 1, ts: Date.now(), sessionId: 'copilot-live',
+          v: 1, ts: Date.now(), sessionId: BRIDGE_SESSION_ID,
           agentId: d.agentId || 'claude-code-main',
           type: 'agent.state',
           payload: { state: 'thinking', label: `Processing: ${d.instruction.slice(0, 80)}` },
@@ -73,11 +77,31 @@ async function pollAndExecute() {
           body: JSON.stringify({ response: response.slice(0, MAX_RESPONSE_LEN) }),
         })
 
+        // ── Goal Mode task completion ──────────────────────────────────────
+        // If this directive was dispatched by Goal Mode, report task completion
+        // back so the Goal planner UI updates automatically.
+        const goalIdMatch = d.instruction.match(/Goal ID:\s*([\w-]+)/)
+        const taskIdMatch = d.instruction.match(/Task ID:\s*([\w-]+)/)
+        if (goalIdMatch && taskIdMatch) {
+          const goalId = goalIdMatch[1]
+          const taskId = taskIdMatch[1]
+          fetch(`${GATEWAY_URL}/v1/goals/${goalId}/tasks/${taskId}/update`, {
+            method: 'POST', headers,
+            body: JSON.stringify({
+              status: 'complete',
+              progress: 1,
+              output: response.slice(0, 2000),
+            }),
+          }).then(r => {
+            if (r.ok) console.log(`[directive-bridge] Goal task ${taskId.slice(0, 8)} marked complete`)
+          }).catch(() => {})
+        }
+
         // Send done telemetry
         fetch(`${GATEWAY_URL}/v1/ingest`, {
           method: 'POST', headers,
           body: JSON.stringify({
-            v: 1, ts: Date.now(), sessionId: 'copilot-live',
+            v: 1, ts: Date.now(), sessionId: BRIDGE_SESSION_ID,
             agentId: d.agentId || 'claude-code-main',
             type: 'agent.state',
             payload: { state: 'idle', label: 'Done' },
@@ -90,12 +114,22 @@ async function pollAndExecute() {
         fetch(`${GATEWAY_URL}/v1/ingest`, {
           method: 'POST', headers,
           body: JSON.stringify({
-            v: 1, ts: Date.now(), sessionId: 'copilot-live',
+            v: 1, ts: Date.now(), sessionId: BRIDGE_SESSION_ID,
             agentId: d.agentId || 'claude-code-main',
             type: 'agent.state',
             payload: { state: 'error', label: `Error: ${(err as Error).message.slice(0, 80)}` },
           }),
         }).catch(() => {})
+
+        // Report Goal Mode task failure if applicable
+        const goalIdMatchErr = d.instruction.match(/Goal ID:\s*([\w-]+)/)
+        const taskIdMatchErr = d.instruction.match(/Task ID:\s*([\w-]+)/)
+        if (goalIdMatchErr && taskIdMatchErr) {
+          fetch(`${GATEWAY_URL}/v1/goals/${goalIdMatchErr[1]}/tasks/${taskIdMatchErr[1]}/update`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ status: 'failed', error: (err as Error).message.slice(0, 200) }),
+          }).catch(() => {})
+        }
 
         // Still mark as done with error response
         await fetch(`${GATEWAY_URL}/v1/directives/${d.id}/done`, {
@@ -114,7 +148,7 @@ async function pollAndExecute() {
 
 function executeWithClaude(instruction: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', ['-p', '--model', 'claude-sonnet-4-6'], {
+    const child = spawn('claude', ['-p', '--model', DIRECTIVE_MODEL], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env },
       shell: true,
@@ -156,7 +190,7 @@ function executeWithClaude(instruction: string): Promise<string> {
 fetch(`${GATEWAY_URL}/v1/ingest`, {
   method: 'POST', headers,
   body: JSON.stringify({
-    v: 1, ts: Date.now(), sessionId: 'copilot-live',
+    v: 1, ts: Date.now(), sessionId: BRIDGE_SESSION_ID,
     agentId: 'claude-code-main',
     type: 'agent.spawn',
     payload: {
@@ -164,7 +198,7 @@ fetch(`${GATEWAY_URL}/v1/ingest`, {
       role: 'executor',
       characterClass: 'warrior',
       task: 'Directive executor — Console & WhatsApp commands',
-      aiModel: 'Claude Sonnet 4.6 (via CLI)',
+      aiModel: `Claude (${DIRECTIVE_MODEL}) via CLI`,
     },
   }),
 }).catch(() => {})

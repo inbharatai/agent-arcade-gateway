@@ -918,10 +918,10 @@ export function PixelCanvas({
         const px1 = msParent ? msParent.pixelX + tileSize * 0.75 : parent.gridX * tileSize + tileSize * 0.75
         const py1 = msParent ? msParent.pixelY : parent.gridY * tileSize
 
-        // Gradient line
+        // Animated gradient line (parent accent → child accent faded)
         const grad = ctx.createLinearGradient(px1, py1, cx1, cy1)
-        grad.addColorStop(0, theme.colors.accent + '60')
-        grad.addColorStop(1, theme.colors.accent + '20')
+        grad.addColorStop(0, theme.colors.accent + '70')
+        grad.addColorStop(1, theme.colors.accent + '30')
         ctx.strokeStyle = grad
         ctx.lineWidth = 1.5
         ctx.setLineDash([4, 3])
@@ -932,6 +932,34 @@ export function PixelCanvas({
         ctx.stroke()
         ctx.setLineDash([])
         ctx.lineDashOffset = 0
+
+        // Arrowhead at child end — shows direction of spawning
+        const angle = Math.atan2(cy1 - py1, cx1 - px1)
+        const arrowLen = tileSize * 0.2
+        const arrowAngle = Math.PI / 6
+        ctx.globalAlpha = 0.7
+        ctx.strokeStyle = theme.colors.accent + 'a0'
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(cx1, cy1)
+        ctx.lineTo(cx1 - arrowLen * Math.cos(angle - arrowAngle), cy1 - arrowLen * Math.sin(angle - arrowAngle))
+        ctx.moveTo(cx1, cy1)
+        ctx.lineTo(cx1 - arrowLen * Math.cos(angle + arrowAngle), cy1 - arrowLen * Math.sin(angle + arrowAngle))
+        ctx.stroke()
+        ctx.globalAlpha = 1
+
+        // "spawned by" label at midpoint — only shown when a related agent is selected
+        const isRelevant = selectedAgentId === c.agent.id || selectedAgentId === parent.agent.id
+        if (isRelevant) {
+          const midX = (px1 + cx1) / 2
+          const midY = (py1 + cy1) / 2 - 8
+          ctx.globalAlpha = 0.85
+          ctx.font = `${Math.max(8, tileSize * 0.18)}px monospace`
+          ctx.fillStyle = theme.colors.accent
+          ctx.textAlign = 'center'
+          ctx.fillText('spawned by', midX, midY)
+          ctx.globalAlpha = 1
+        }
       }
 
       // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
