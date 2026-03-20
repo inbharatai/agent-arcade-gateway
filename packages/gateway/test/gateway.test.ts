@@ -6,12 +6,19 @@
  */
 
 import { describe, test, expect, beforeAll } from 'bun:test'
+import { createHmac } from 'crypto'
 
 let BASE = process.env.GATEWAY_URL || 'http://localhost:47890'
 const TEST_SESSION = `test-session-${Date.now()}`
 const AUTH_TOKEN = process.env.GATEWAY_AUTH_TOKEN || ''
 const API_KEY = process.env.GATEWAY_API_KEY || ''
-const SESSION_SIG = process.env.GATEWAY_SESSION_SIG || ''
+const SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || process.env.GATEWAY_SESSION_SIGNING_SECRET || ''
+
+/** Compute HMAC-SHA256 signature matching gateway checkSessionSignature() */
+function sign(sessionId: string): string {
+  if (!SIGNING_SECRET) return ''
+  return createHmac('sha256', SIGNING_SECRET).update(sessionId).digest('hex')
+}
 
 async function canReach(base: string): Promise<boolean> {
   try {
@@ -22,27 +29,31 @@ async function canReach(base: string): Promise<boolean> {
   }
 }
 
-function authHeaders(): Record<string, string> {
+function authHeaders(sessionId = TEST_SESSION): Record<string, string> {
+  const sig = sign(sessionId)
   return {
     ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
     ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
-    ...(SESSION_SIG ? { 'x-session-signature': SESSION_SIG } : {}),
+    ...(sig ? { 'x-session-signature': sig } : {}),
   }
 }
 
 function streamUrl(sessionId: string): string {
+  const sig = sign(sessionId)
   let out = `${BASE}/v1/stream?sessionId=${encodeURIComponent(sessionId)}`
   if (AUTH_TOKEN) out += `&token=${encodeURIComponent(AUTH_TOKEN)}`
   if (API_KEY) out += `&apiKey=${encodeURIComponent(API_KEY)}`
-  if (SESSION_SIG) out += `&sig=${encodeURIComponent(SESSION_SIG)}`
+  if (sig) out += `&sig=${encodeURIComponent(sig)}`
   return out
 }
 
 async function ingest(event: Record<string, unknown>) {
+  // Use the sessionId from the event if provided; fall back to TEST_SESSION
+  const sessionId = (typeof event.sessionId === 'string' ? event.sessionId : null) ?? TEST_SESSION
   const res = await fetch(`${BASE}/v1/ingest`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ sessionId: TEST_SESSION, ...event }),
+    headers: { 'Content-Type': 'application/json', ...authHeaders(sessionId) },
+    body: JSON.stringify({ sessionId, ...event }),
   })
   return { status: res.status, body: await res.json() as Record<string, unknown> }
 }
@@ -185,8 +196,8 @@ describe('SSE Stream', () => {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 2000)
     try {
-      const res = await fetch(`${BASE}/v1/stream?sessionId=${TEST_SESSION}`, {
-        headers: authHeaders(),
+      // Session signature must be in the ?sig= query param for SSE (not request header)
+      const res = await fetch(streamUrl(TEST_SESSION), {
         signal: controller.signal,
       })
       expect(res.status).toBe(200)
@@ -201,9 +212,8 @@ describe('SSE Stream', () => {
     const sseSession = `sse-test-${Date.now()}`
     const controller = new AbortController()
 
-    // Start SSE connection
+    // Start SSE connection — signature in ?sig= query param
     const res = await fetch(streamUrl(sseSession), {
-      headers: authHeaders(),
       signal: controller.signal,
     })
     expect(res.status).toBe(200)
@@ -211,10 +221,10 @@ describe('SSE Stream', () => {
     // Give SSE time to establish
     await new Promise(r => setTimeout(r, 200))
 
-    // Ingest an event
+    // Ingest an event — signature in x-session-signature header, signed for sseSession
     await fetch(`${BASE}/v1/ingest`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json', ...authHeaders(sseSession) },
       body: JSON.stringify({
         sessionId: sseSession,
         agentId: 'sse-agent',
@@ -309,7 +319,8 @@ describe('All valid event types accepted', () => {
     test(`accepts ${ev.type}`, async () => {
       const res = await fetch(`${BASE}/v1/ingest`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        // Signature must match allTypesSession — not TEST_SESSION
+        headers: { 'Content-Type': 'application/json', ...authHeaders(allTypesSession) },
         body: JSON.stringify({
           sessionId: allTypesSession,
           agentId: 'type-test-agent',

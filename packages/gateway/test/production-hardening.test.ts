@@ -14,10 +14,25 @@
  */
 
 import { describe, test, expect, beforeAll } from 'bun:test'
+import { createHmac } from 'crypto'
 
 let BASE = process.env.GATEWAY_URL || 'http://localhost:47890'
 const SESSION_A = `prod-test-a-${Date.now()}`
 const SESSION_B = `prod-test-b-${Date.now()}`
+
+const SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || ''
+
+/** Compute HMAC-SHA256 signature for a sessionId — matches gateway checkSessionSignature() */
+function sign(sessionId: string): string {
+  if (!SIGNING_SECRET) return ''
+  return createHmac('sha256', SIGNING_SECRET).update(sessionId).digest('hex')
+}
+
+/** Build auth headers for a given sessionId — adds x-session-signature when secret is set */
+function authHeaders(sessionId: string): Record<string, string> {
+  const sig = sign(sessionId)
+  return sig ? { 'x-session-signature': sig } : {}
+}
 
 async function canReach(base: string): Promise<boolean> {
   try { return (await fetch(`${base}/health`)).ok } catch { return false }
@@ -121,7 +136,7 @@ describe('Session isolation', () => {
       agentId: 'isolation-agent',
       type: 'agent.spawn',
       payload: { name: 'IsolationAgent', role: 'test', model: 'gpt' },
-    })
+    }, authHeaders(SESSION_A))
 
     // Session B should have no agents
     const { status, body } = await get(`/v1/session/${SESSION_B}`)
@@ -147,7 +162,7 @@ describe('Session isolation', () => {
       agentId: 'visible-agent',
       type: 'agent.spawn',
       payload: { name: 'VisibleAgent', role: 'tester', model: 'test-model' },
-    })
+    }, authHeaders(SESSION_A))
 
     const { status, body } = await get(`/v1/session/${SESSION_A}`)
     expect(status).toBe(200)
@@ -168,7 +183,7 @@ describe('Session isolation', () => {
       agentId: 'priv-agent',
       type: 'agent.spawn',
       payload: { name: 'PrivAgent', role: 'private', model: 'private' },
-    })
+    }, authHeaders(SESSION_A))
 
     // Try to access it via session B's agent list
     const { body } = await get(`/v1/session/${SESSION_B}`)
@@ -332,7 +347,7 @@ describe('Replay correctness', () => {
         sessionId: REPLAY_SESSION,
         agentId: AGENT_ID,
         ...types[i],
-      })
+      }, authHeaders(REPLAY_SESSION))
     }
 
     // Give gateway 50ms to process

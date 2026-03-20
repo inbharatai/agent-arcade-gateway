@@ -75,21 +75,30 @@ jobs:
           REQUIRE_AUTH: 0
           ALLOWED_ORIGINS: http://localhost:47380
           ENABLE_REDIS_ADAPTER: 0
+          SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!
         run: |
           cd packages/gateway
           bun run src/index.ts &
           sleep 5
 
       - name: Gateway integration tests
+        env:
+          SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!
         run: bun test packages/gateway/test/gateway.test.ts
 
       - name: Gateway agent-lifecycle tests
+        env:
+          SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!
         run: bun test packages/gateway/test/agent-lifecycle.test.ts
 
       - name: Gateway WhatsApp tests
+        env:
+          SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!
         run: bun test packages/gateway/test/whatsapp.test.ts
 
       - name: Production hardening tests
+        env:
+          SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!
         run: bun test packages/gateway/test/production-hardening.test.ts
 
       - name: Store unit tests

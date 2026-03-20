@@ -31,7 +31,7 @@
     "loadtest:gateway": "node scripts/load/run-k6-gateway.mjs",
     "loadtest:gateway:quick": "node scripts/load/run-k6-gateway.mjs --quick",
     "sim:human": "node scripts/load/human-like-sim.mjs",
-    "test:gateway": "cd packages/gateway && bun test test/",
+    "test:gateway": "SESSION_SIGNING_SECRET=agent-arcade-dev-signing bun test packages/gateway/test/",
     "test:store": "cd packages/web && bun test test/",
     "test:sdk": "cd packages/sdk-node && bun test test/ && cd ../sdk-browser && bun test test/",
     "test": "bun test packages/gateway/test/ && cd packages/web && bun test test/ && cd ../sdk-node && bun test test/ && cd ../sdk-browser && bun test test/",

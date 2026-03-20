@@ -40,6 +40,7 @@ export function WhatsAppSettings() {
 
   // ── polling ────────────────────────────────────────────────────────────────
   const poll = async () => {
+    let fetchedStatus: WAStatus | null = null
     try {
       const res = await fetch(`${GATEWAY_URL}/v1/whatsapp/status`, {
         signal: AbortSignal.timeout(3000),
@@ -53,6 +54,7 @@ export function WhatsAppSettings() {
         if (mountedRef.current) {
           setPayload(data)
           setError(null)
+          fetchedStatus = data.status
         }
       }
     } catch (e: any) {
@@ -63,7 +65,7 @@ export function WhatsAppSettings() {
     }
 
     if (mountedRef.current) {
-      const interval = payload?.status === 'qr' ? POLL_INTERVAL_QR_MS : POLL_INTERVAL_MS
+      const interval = fetchedStatus === 'qr' ? POLL_INTERVAL_QR_MS : POLL_INTERVAL_MS
       timerRef.current = setTimeout(poll, interval)
     }
   }

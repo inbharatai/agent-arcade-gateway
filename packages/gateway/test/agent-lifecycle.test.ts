@@ -13,8 +13,16 @@
  */
 
 import { describe, test, expect, beforeAll } from 'bun:test'
+import { createHmac } from 'crypto'
 
 let BASE = process.env.GATEWAY_URL || 'http://localhost:47890'
+const SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || ''
+
+/** Compute HMAC-SHA256 signature matching gateway checkSessionSignature() */
+function sign(sessionId: string): string {
+  if (!SIGNING_SECRET) return ''
+  return createHmac('sha256', SIGNING_SECRET).update(sessionId).digest('hex')
+}
 
 async function canReach(base: string): Promise<boolean> {
   try {
@@ -44,9 +52,13 @@ beforeAll(async () => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function ingest(sessionId: string, event: Record<string, unknown>) {
+  const sig = sign(sessionId)
   const res = await fetch(`${BASE}/v1/ingest`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sig ? { 'x-session-signature': sig } : {}),
+    },
     body: JSON.stringify({ sessionId, ...event }),
   })
   return { status: res.status, body: await res.json() as Record<string, unknown> }
@@ -237,10 +249,14 @@ describe('Ghost agent filter: done agents older than 30s excluded from /v1/state
     const staleTs = Date.now() - 61_000
 
     await ingest(sessionId, { agentId, type: 'agent.spawn', payload: { name: 'GhostBot' } })
-    // Send agent.end with ts = 61 seconds in the past
+    // Send agent.end with ts = 61 seconds in the past (include session signature)
+    const staleSig = sign(sessionId)
     await fetch(`${BASE}/v1/ingest`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(staleSig ? { 'x-session-signature': staleSig } : {}),
+      },
       body: JSON.stringify({
         sessionId,
         agentId,
@@ -428,8 +444,9 @@ describe('Auth behavior', () => {
       }),
     })
     // Dev (no auth required): 200. Prod (auth required): 401.
-    expect([200, 401]).toContain(res.status)
-    if (res.status === 401) {
+    // When SESSION_SIGNING_SECRET is set and no x-session-signature header is present: 403.
+    expect([200, 401, 403]).toContain(res.status)
+    if (res.status === 401 || res.status === 403) {
       const body = await res.json() as { error: string }
       expect(body.error).toBeTruthy()
       expect(typeof body.error).toBe('string')
