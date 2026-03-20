@@ -59,8 +59,9 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**[INSERT CONTACT EMAIL]**.
+reported by opening a **private security advisory** at
+https://github.com/inbharatai/agent-arcade-gateway/security/advisories/new
+or by contacting the maintainers via a GitHub issue marked `[CoC]`.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

@@ -27,6 +27,9 @@ const REQUIRE_AUTH = process.env.REQUIRE_AUTH
   : NODE_ENV === 'production'
 const JWT_SECRET = process.env.JWT_SECRET || ''
 const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || JWT_SECRET
+// Default session used by built-in console/chat proxy and directive telemetry.
+// Override with GATEWAY_SESSION_ID env var to route events to a different session.
+const GATEWAY_DEFAULT_SESSION = process.env.GATEWAY_SESSION_ID || 'copilot-live'
 
 // ── AI Chat Proxy ─────────────────────────────────────────────────────────────
 // Zero-config: the gateway inherits API keys from the shell environment.
@@ -1943,15 +1946,15 @@ const httpServer = createServer(async (req, res) => {
     const directiveEvent: TelemetryEvent = {
       v: PROTOCOL_VERSION,
       ts: Date.now(),
-      sessionId: 'copilot-live',
+      sessionId: GATEWAY_DEFAULT_SESSION,
       agentId: directive.agentId,
       type: 'agent.message',
       payload: { text: `Directive from ${directive.source}: ${directive.instruction.slice(0, 120)}` },
     }
     const devPrincipal: Principal = { sub: 'system', role: 'admin', tokenId: 'system', sessions: ['*'], tokenType: 'none' }
     await processEvent(directiveEvent, devPrincipal)
-    io.to('session:copilot-live').emit('event', directiveEvent)
-    broadcastSseEvent('copilot-live', directiveEvent)
+    io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', directiveEvent)
+    broadcastSseEvent(GATEWAY_DEFAULT_SESSION, directiveEvent)
 
     return jsonRes(res, 200, { ok: true, id: directive.id })
   }
@@ -1978,15 +1981,15 @@ const httpServer = createServer(async (req, res) => {
       // Broadcast the response text so Console and Arcade feed show it
       if (body.response && typeof body.response === 'string') {
         const respEv: TelemetryEvent = {
-          v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+          v: PROTOCOL_VERSION, ts: Date.now(), sessionId: GATEWAY_DEFAULT_SESSION,
           agentId: directive.agentId,
           type: 'agent.message',
           payload: { text: body.response.slice(0, 4000), source: 'directive-response' },
         }
         const sysPrincipal: Principal = { sub: 'system', role: 'admin', tokenId: 'system', sessions: ['*'], tokenType: 'none' }
         void processEvent(respEv, sysPrincipal)
-        io.to('session:copilot-live').emit('event', respEv)
-        broadcastSseEvent('copilot-live', respEv)
+        io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', respEv)
+        broadcastSseEvent(GATEWAY_DEFAULT_SESSION, respEv)
       }
     }
     return jsonRes(res, 200, { ok: true })
@@ -2440,13 +2443,13 @@ const httpServer = createServer(async (req, res) => {
           // (Arcade feed, other Console panels, etc.) see what was said
           if (chatFullText.trim()) {
             const chatEv: TelemetryEvent = {
-              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: GATEWAY_DEFAULT_SESSION,
               agentId: `chat-${provider}-proxy`, type: 'agent.message',
               payload: { text: chatFullText.slice(0, 2000), model: cliModel, source: 'chat-proxy' },
             }
             void processEvent(chatEv, devPrincipal)
-            io.to('session:copilot-live').emit('event', chatEv)
-            broadcastSseEvent('copilot-live', chatEv)
+            io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', chatEv)
+            broadcastSseEvent(GATEWAY_DEFAULT_SESSION, chatEv)
           }
         })
 
@@ -2511,13 +2514,13 @@ const httpServer = createServer(async (req, res) => {
           res.end()
           if (apiFullText.trim()) {
             const chatEv: TelemetryEvent = {
-              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: GATEWAY_DEFAULT_SESSION,
               agentId: `chat-${provider}-proxy`, type: 'agent.message',
               payload: { text: apiFullText.slice(0, 2000), model: model || 'claude-sonnet-4-6', source: 'chat-proxy' },
             }
             void processEvent(chatEv, devPrincipal)
-            io.to('session:copilot-live').emit('event', chatEv)
-            broadcastSseEvent('copilot-live', chatEv)
+            io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', chatEv)
+            broadcastSseEvent(GATEWAY_DEFAULT_SESSION, chatEv)
           }
         },
         abort() { res.end() },
@@ -2570,13 +2573,13 @@ const httpServer = createServer(async (req, res) => {
           res.end()
           if (oaiFullText.trim()) {
             const chatEv: TelemetryEvent = {
-              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: 'copilot-live',
+              v: PROTOCOL_VERSION, ts: Date.now(), sessionId: GATEWAY_DEFAULT_SESSION,
               agentId: `chat-${provider}-proxy`, type: 'agent.message',
               payload: { text: oaiFullText.slice(0, 2000), model, source: 'chat-proxy' },
             }
             void processEvent(chatEv, devPrincipal)
-            io.to('session:copilot-live').emit('event', chatEv)
-            broadcastSseEvent('copilot-live', chatEv)
+            io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', chatEv)
+            broadcastSseEvent(GATEWAY_DEFAULT_SESSION, chatEv)
           }
         },
         abort() { res.end() },

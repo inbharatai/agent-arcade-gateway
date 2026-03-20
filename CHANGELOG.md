@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-03-20
+
+### Fixed
+
+- **Gateway integration tests now respect `SESSION_SIGNING_SECRET`** — All three gateway test files (`gateway.test.ts`, `agent-lifecycle.test.ts`, `production-hardening.test.ts`) now dynamically compute HMAC-SHA256 session signatures using the `SESSION_SIGNING_SECRET` env var. Previously running the suite against a gateway with a signing secret set caused 403 failures across all ingest calls. Now 85/85 tests pass in both signed and unsigned modes.
+- **SSE stream test used wrong auth mechanism** — The `GET /v1/stream` endpoint reads the session signature from the `?sig=` query parameter, not the `x-session-signature` header. The test was putting the sig in the header (ignored). Fixed to use `streamUrl()` which generates the correct signed URL.
+- **`ingest()` test helper signed wrong session** — Tests using `stateSession` and `allTypesSession` (different from `TEST_SESSION`) were having their ingest calls signed with `TEST_SESSION`'s signature — causing 403s. Helper now extracts `sessionId` from the event payload and signs that.
+- **Ghost filter test: stale `agent.end` missing signature** — The direct `fetch` call sending a backdated `agent.end` event had no `x-session-signature` header, returning 403 silently. Agent stayed in `idle` state instead of `done`. Fixed.
+- **Auth behavior test accepted 403** — Test expected only `[200, 401]` from an invalid bearer token; with `SESSION_SIGNING_SECRET` set, the gateway correctly returns 403 (missing signature). Test now accepts all three.
+- **Hardcoded `'copilot-live'` in gateway source** — `packages/gateway/src/index.ts` had 12 hardcoded `'copilot-live'` session ID strings in the directive dispatch and chat proxy telemetry paths. All replaced with `GATEWAY_DEFAULT_SESSION` constant which reads `GATEWAY_SESSION_ID` env var (default: `copilot-live`).
+- **`examples/copilot-live.ts` session hardcoded** — `SESSION = 'copilot-live'` is now `SESSION = process.env.GATEWAY_SESSION_ID || 'copilot-live'` so the example works with any configured session.
+- **WhatsApp settings poll-interval race** — `WhatsAppSettings.tsx` was using `payload?.status` (potentially stale React state) to decide between QR and normal poll intervals. Now uses the locally-fetched `fetchedStatus` from the same response.
+- **Gateway `package.json` version lagging** — `packages/gateway/package.json` was at `3.7.3` while all other packages were at `3.8.0`. Bumped to `3.8.0`.
+- **`CODE_OF_CONDUCT.md` placeholder email** — Enforcement contact was `[INSERT CONTACT EMAIL]`. Replaced with the GitHub Security Advisories URL for the repository.
+
+### Changed
+
+- **CI: gateway tests now run with `SESSION_SIGNING_SECRET`** — All four gateway integration test steps in `.github/workflows/ci.yml` now set `SESSION_SIGNING_SECRET: ci-gateway-sign-secret-32chars!!`, matching the secret the gateway starts with. This validates real signature enforcement in CI rather than allowing unsigned requests.
+- **`npm run test:gateway` script** — Updated in root `package.json` to pass `SESSION_SIGNING_SECRET=agent-arcade-dev-signing` automatically so local developers don't need to remember to set the env var.
+
+---
+
 ## [3.8.0] - 2026-03-20
 
 ### Security

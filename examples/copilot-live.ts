@@ -15,7 +15,7 @@ import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 
 const GATEWAY = process.env.GATEWAY_URL || 'http://localhost:47890'
-const SESSION = 'copilot-live'
+const SESSION = process.env.GATEWAY_SESSION_ID || 'copilot-live'
 const V = 1
 const MAX_RETRY_DELAY = 30_000
 const INITIAL_RETRY_DELAY = 2_000

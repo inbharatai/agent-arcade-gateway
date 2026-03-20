@@ -8,7 +8,7 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.8.0-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
+[![Version](https://img.shields.io/badge/Version-3.8.1-blue?style=for-the-badge)](https://github.com/inbharatai/agent-arcade-gateway/releases)
 [![Made by InBharat AI](https://img.shields.io/badge/Made_by-InBharat_AI-ff6b35?style=for-the-badge)](https://github.com/inbharatai)
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-AI_Planning_%26_Tracking-8B5CF6?style=for-the-badge)](#-goal-mode)
@@ -1609,7 +1609,7 @@ agent-arcade-gateway/
 │   └── UNIVERSAL_CLIENT_INTEGRATION.md
 ├── examples/                # Node.js, Python, browser, iframe demo agents
 ├── scripts/                 # Load testing, simulation, dev tools
-├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.8.0
+├── CHANGELOG.md             # Detailed changelog from v1.0.0 to v3.8.1
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── Dockerfile.gateway
@@ -1754,6 +1754,8 @@ npm run prod:start
 | `DIRECTIVE_MODEL` | `claude-sonnet-4-5` | Claude model used to execute directives via `claude -p` |
 | `BRIDGE_SESSION_ID` | `copilot-live` | Session the bridge reports telemetry under (must match UI session) |
 | `GATEWAY_TOKEN` | — | Auth token for directive bridge → gateway communication |
+| **Gateway Built-in** | | |
+| `GATEWAY_SESSION_ID` | `copilot-live` | Session ID used by gateway's built-in chat proxy and directive telemetry. Override to route internal events to a different session. |
 | **Web Dashboard** | | |
 | `NEXT_PUBLIC_GATEWAY_URL` | — | Gateway URL (baked at build time) |
 | `NEXT_PUBLIC_DEFAULT_SESSION_ID` | `copilot-live` | Default session ID |
@@ -1825,10 +1827,15 @@ This table is our honest, point-in-time statement of what the platform does toda
 
 ---
 
-## Recent Changes (v3.2.1 → v3.8.0)
+## Recent Changes (v3.2.1 → v3.8.1)
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.8.1** | **Gateway tests sign sessions correctly** — All three gateway integration test suites now compute HMAC-SHA256 signatures matching the gateway's `checkSessionSignature()`. Previously any local gateway with `SESSION_SIGNING_SECRET` set caused 85 tests to fail with 403. | Fix |
+| **v3.8.1** | **Hardcoded `'copilot-live'` removed from gateway** — 12 hardcoded session ID strings in directive and chat proxy telemetry paths replaced with `GATEWAY_DEFAULT_SESSION` constant (reads `GATEWAY_SESSION_ID` env var). | Fix |
+| **v3.8.1** | **WhatsApp poll interval race fixed** — `WhatsAppSettings.tsx` used stale React state to decide QR vs normal poll interval. Now uses the freshly-fetched response status. | Fix |
+| **v3.8.1** | **CI gateway tests validated with signing secret** — Gateway start step and all four integration test steps now share a consistent `SESSION_SIGNING_SECRET`, making CI test real signature enforcement. | CI |
+| **v3.8.1** | **`CODE_OF_CONDUCT.md` enforcement contact** — Placeholder `[INSERT CONTACT EMAIL]` replaced with the GitHub Security Advisories link for the repository. | Docs |
 | **v3.8.0** | **Goal Mode task completion loop** — directive-bridge now parses `Goal ID` / `Task ID` from directives and auto-reports task `complete` (with Claude's output) or `failed` back to the Goal planner. UI updates without manual refresh. | Fix |
 | **v3.8.0** | **Directives endpoint rate-limited** — `POST /v1/directives` now applies IP-based rate limiting matching the ingest endpoint. Previously the directive queue had no rate protection. | Security |
 | **v3.8.0** | **Directive instruction sanitization** — control characters stripped from incoming directives before storage and execution. | Security |
@@ -1889,7 +1896,7 @@ This table is our honest, point-in-time statement of what the platform does toda
 | **v3.2.2** | Claude Code OAuth auto-detection from `~/.claude/.credentials.json` | Feature |
 | **v3.2.0** | Phase G — Goal Mode (supervised multi-agent orchestration) | Feature |
 
-See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.8.0.
+See [CHANGELOG.md](CHANGELOG.md) for the complete history from v1.0.0 to v3.8.1.
 
 ---
 
@@ -1934,7 +1941,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, adapter g
 ```
  +========================================================================+
  |                                                                        |
- |   AGENT ARCADE v3.8.0                                                  |
+ |   AGENT ARCADE v3.8.1                                                  |
  |                                                                        |
  |   See every AI agent. Trace every span. Replay any session.            |
  |   Everything is interlinked. Level up.                                 |
