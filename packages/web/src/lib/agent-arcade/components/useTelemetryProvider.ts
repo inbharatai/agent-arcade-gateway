@@ -70,6 +70,12 @@ export function useTelemetryProvider(opts: ProviderOpts) {
         return
       }
 
+      // Gateway restarted with empty state — clear stale canvas roster so ghost agents disappear
+      if ((data.agents?.length || 0) === 0 && local.agentsList.length > 0) {
+        store.reset()
+        return
+      }
+
       if (local.agentsList.length === 0 && (data.agents?.length || 0) > 0) {
         store.loadState(data.agents || [], data.events || [])
       }

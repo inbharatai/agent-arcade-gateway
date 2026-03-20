@@ -81,6 +81,27 @@ export function ArcadeConsole({
   const [inlineKeyExpanded, setInlineKeyExpanded] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const autoDetectedRef = useRef(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('arcade-voice-enabled') === 'true'
+  })
+
+  const speakText = useCallback((text: string) => {
+    if (!voiceEnabled || typeof window === 'undefined' || !window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text.replace(/```[\s\S]*?```/g, 'code block').slice(0, 500))
+    utterance.rate = 1.05
+    window.speechSynthesis.speak(utterance)
+  }, [voiceEnabled])
+
+  const toggleVoice = useCallback(() => {
+    setVoiceEnabled(prev => {
+      const next = !prev
+      if (typeof window !== 'undefined') localStorage.setItem('arcade-voice-enabled', String(next))
+      if (!next && window.speechSynthesis) window.speechSynthesis.cancel()
+      return next
+    })
+  }, [])
 
   // Check server-side providers on mount
   useEffect(() => {
@@ -149,6 +170,8 @@ export function ArcadeConsole({
   // This makes the Console a universal panel — responses from Claude Code,
   // Cursor, WhatsApp relay, or any connected tool appear in the chat.
   const sseSourceRef = useRef<EventSource | null>(null)
+  // Monotonic counter ensures unique message IDs even if two events arrive in the same ms
+  const extMsgCounterRef = useRef(0)
   useEffect(() => {
     if (!gatewayUrl || !sessionId) return
 
@@ -165,29 +188,53 @@ export function ArcadeConsole({
       try {
         const ev = JSON.parse(e.data)
         // Only insert chat messages from NON-console agents (to avoid duplicates)
-        if (ev.type === 'agent.message' && ev.agentId && !ev.agentId.includes('console')) {
+        if (ev.type === 'agent.message' && ev.agentId && ev.agentId !== 'arcade-console' && !ev.agentId.startsWith('console-')) {
           const text = ev.payload?.text
           if (!text || typeof text !== 'string') return
           // Skip chat-proxy broadcasts (Console already has these from its own stream)
           if (ev.payload?.source === 'chat-proxy') return
-          // Skip directive broadcast notifications (raw "Directive from X: ..." text)
-          // Only show directive-response (the actual AI response to a directive)
-          if (/^Directive from /i.test(text) && ev.payload?.source !== 'directive-response') return
-          // Skip short status messages (state changes, not real responses)
-          if (text.length < 20) return
+          // Skip "Directive from X" announcements
+          if (/^Directive from /i.test(text)) return
+          // Skip empty messages
+          if (text.length < 2) return
           // Skip messages that are just state announcements
           if (/^(thinking|writing|done|error|waiting)/i.test(text)) return
           if (/^I am thinking about:/i.test(text)) return
           if (/^Now writing/i.test(text)) return
           if (/^Done:/i.test(text)) return
           if (/^Error:/i.test(text)) return
-          // Skip WhatsApp command echoes
-          if (/^WhatsApp command:/i.test(text)) return
+          if (/^Generating response with/i.test(text)) return
+          if (/^Task complete\./i.test(text)) return
+          if (/^Encountered an error:/i.test(text)) return
+          if (/^Starting task:/i.test(text)) return
+          if (/^Task completed successfully/i.test(text)) return
+          if (/^Error occurred:/i.test(text)) return
+          if (/^⏱️ AI response timed out/i.test(text)) return
+          if (/^⚠️ Error reaching AI:/i.test(text)) return
+
+          // ── WhatsApp Integration ────────────────────────────────────────────
+          // Clean up WhatsApp message formatting for display in chat
+          let displayText = text
+          let messageRole: 'user' | 'assistant' = 'assistant'
+
+          // User message from WhatsApp: strip "WhatsApp command:" prefix and show as user
+          if (/^WhatsApp command:/i.test(text)) {
+            displayText = text.replace(/^WhatsApp command:\s*/i, '').trim()
+            messageRole = 'user'
+          }
+
+          // AI response from directive-response: show as assistant
+          const isDirectiveResponse = ev.payload?.source === 'directive-response'
+          if (isDirectiveResponse) {
+            messageRole = 'assistant'
+          }
+
+          if (!displayText || displayText.length < 2) return
 
           // Map known agent IDs to friendly names
           const AGENT_NAMES: Record<string, string> = {
             'claude-code-main': '🤖 Claude Code',
-            'whatsapp-relay': '📱 WhatsApp AI',
+            'whatsapp-relay': '📱 WhatsApp',
             'cursor-main': '📝 Cursor',
             'openai-main': '🧠 OpenAI',
             'gemini-main': '💎 Gemini',
@@ -197,18 +244,22 @@ export function ArcadeConsole({
             'openclaw-main': '🦞 OpenClaw',
           }
           const agentName = AGENT_NAMES[ev.agentId] || ev.agentId.replace(/[^a-zA-Z0-9 _-]/g, '').trim() || 'External AI'
-          const aiMsg: ChatMessage = {
-            id: `ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            role: 'assistant',
-            content: text,
+
+          const msg: ChatMessage = {
+            id: `ext-${Date.now()}-${++extMsgCounterRef.current}`,
+            role: messageRole,
+            content: displayText,
             timestamp: Date.now(),
             model: agentName,
           }
           setSession(prev => {
             if (!prev) return prev
-            const updated = addMessage(prev.id, aiMsg)
+            if (prev.messages.some(m => m.id === msg.id)) return prev
+            const updated = addMessage(prev.id, msg)
             return updated ? { ...updated } : prev
           })
+          // Speak external agent responses aloud (skip WhatsApp user echoes)
+          if (messageRole === 'assistant') speakText(displayText)
         }
       } catch { /* ignore parse errors */ }
     })
@@ -224,7 +275,7 @@ export function ArcadeConsole({
       es.close()
       sseSourceRef.current = null
     }
-  }, [gatewayUrl, sessionId, authToken, sessionSignature])
+  }, [gatewayUrl, sessionId, authToken, sessionSignature, speakText])
 
   // Initialize session — always start fresh on mount so connecting to a new
   // tool never shows old conversation history. Old sessions remain in storage
@@ -286,18 +337,7 @@ export function ArcadeConsole({
     if (updatedSession) setSession({ ...updatedSession })
 
     consoleAgentThinking(userInput)
-
-    // Also push as a directive so the connected tool (Claude Code, Cursor, etc.) can execute it
-    if (gatewayUrl) {
-      const dirHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (authToken) dirHeaders['Authorization'] = `Bearer ${authToken}`
-      if (sessionSignature) dirHeaders['X-Session-Signature'] = sessionSignature
-      fetch(`${gatewayUrl}/v1/directives`, {
-        method: 'POST',
-        headers: dirHeaders,
-        body: JSON.stringify({ instruction: userInput, source: 'console-chat' }),
-      }).catch((e) => console.warn('[console] Directive push failed:', e.message))
-    }
+    speakText(`Thinking about: ${userInput.slice(0, 80)}`)
 
     setIsStreaming(true)
     setStreamingContent('')
@@ -321,6 +361,7 @@ export function ArcadeConsole({
 
     try {
       consoleAgentWriting(selectedModel.name)
+      speakText(`Generating response with ${selectedModel.name}`)
 
       for await (const chunk of streamWithRouter(messages, routerConfig, abortRef.current.signal)) {
         if (chunk.done) {
@@ -352,6 +393,7 @@ export function ArcadeConsole({
       if (finalSession) setSession({ ...finalSession })
 
       consoleAgentDone(fullText.slice(0, 80))
+      speakText(fullText)
       if (lastInputTokens > 0 || lastOutputTokens > 0) {
         consoleAgentCost(lastInputTokens, lastOutputTokens, cost)
       }
@@ -372,13 +414,14 @@ export function ArcadeConsole({
         const errMsg = (err as Error).message || 'Unknown error'
         setError(errMsg)
         consoleAgentError(errMsg)
+        speakText(`Error: ${errMsg.slice(0, 80)}`)
       }
     } finally {
       setIsStreaming(false)
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl, gatewayUrl, authToken, sessionSignature])
+  }, [session, isStreaming, selectedModel, apiKeys, ollamaBaseUrl, gatewayUrl, authToken, sessionSignature, speakText])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
@@ -394,6 +437,44 @@ export function ArcadeConsole({
       return
     }
 
+    // Specialized multi-agent orchestrator: sends directive with "multi-agent" keyword so
+    // the orchestrator process picks it up and assigns Architect/Coder/Tester/Reviewer/Debugger agents
+    if (cmd === '/agents') {
+      const task = (args || '').trim()
+      if (!task) return
+      if (gatewayUrl) {
+        const dirHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (authToken) dirHeaders['Authorization'] = `Bearer ${authToken}`
+        if (sessionSignature) dirHeaders['X-Session-Signature'] = sessionSignature
+        fetch(`${gatewayUrl}/v1/directives`, {
+          method: 'POST', headers: dirHeaders,
+          body: JSON.stringify({ instruction: `multi-agent: ${task}`, source: 'console-agents' }),
+        }).catch(() => {})
+      }
+      speakText(`Dispatching multi-agent orchestration for: ${task.slice(0, 60)}`)
+      void handleSend(`[Multi-Agent Orchestration] Dispatching task to specialized agents (Architect, Coder, Tester, Reviewer, Debugger):\n\n${task}`)
+      return
+    }
+
+    // Multi-agent broadcast: push directive to ALL connected agents + run local AI in parallel
+    if (cmd === '/multi') {
+      const task = (args || '').trim()
+      if (!task) return
+      // Broadcast to connected agents via gateway directive queue
+      if (gatewayUrl) {
+        const dirHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (authToken) dirHeaders['Authorization'] = `Bearer ${authToken}`
+        if (sessionSignature) dirHeaders['X-Session-Signature'] = sessionSignature
+        fetch(`${gatewayUrl}/v1/directives`, {
+          method: 'POST', headers: dirHeaders,
+          body: JSON.stringify({ instruction: task, source: 'multi-agent-broadcast' }),
+        }).catch(() => {})
+      }
+      // Also run via local AI provider as one of the agents
+      void handleSend(`[Multi-Agent Task] ${task}`)
+      return
+    }
+
     const prompts: Record<string, string> = {
       '/fix': 'Fix this code:\n\n',
       '/explain': 'Explain this code:\n\n',
@@ -406,7 +487,7 @@ export function ArcadeConsole({
       '/cost': `Show session cost breakdown. Current session: $${(session?.totalCost || 0).toFixed(4)} total, ${session?.messages.length || 0} messages.`,
     }
     if (prompts[cmd]) void handleSend(prompts[cmd] + (args || ''))
-  }, [handleSend, onAgentCommand, session])
+  }, [handleSend, onAgentCommand, session, gatewayUrl, authToken, sessionSignature, speakText])
 
   const handleNewSession = useCallback(() => {
     const newSession = createSession(selectedModel.id)
@@ -482,6 +563,19 @@ export function ArcadeConsole({
         {consoleMode === 'goal' && (
           <span className="text-[10px] text-white/30 ml-2">Supervised multi-agent orchestration</span>
         )}
+        <div className="ml-auto">
+          <button
+            onClick={toggleVoice}
+            title={voiceEnabled ? 'Voice on — click to mute' : 'Voice off — click to enable'}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              voiceEnabled
+                ? 'bg-green-500/20 border-green-500/30 text-green-300'
+                : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'
+            }`}
+          >
+            {voiceEnabled ? '🔊 Voice' : '🔇 Voice'}
+          </button>
+        </div>
       </div>
 
       <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center gap-2">

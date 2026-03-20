@@ -427,9 +427,11 @@ export const useAgentArcadeStore = create<ArcadeStore>((set, get) => ({
       let removed = 0
       for (const [id, agent] of agents) {
         const age = now - agent.lastUpdate
-        if (agent.state === 'done'  && age > 20000) { agents.delete(id); removed++ }
-        else if (agent.state === 'error' && age > 30000) { agents.delete(id); removed++ }
-        else if (agent.state === 'idle'  && age > staleMs) { agents.delete(id); removed++ }
+        // Only prune terminal states (done/error). Idle agents should persist on
+        // the canvas until the session ends — removing idle agents caused flickering
+        // where agents would disappear and re-appear every 45s.
+        if (agent.state === 'done'  && age > 30000) { agents.delete(id); removed++ }
+        else if (agent.state === 'error' && age > 60000) { agents.delete(id); removed++ }
       }
       if (removed === 0) return state
       // Clear selectedAgentId if the selected agent was pruned

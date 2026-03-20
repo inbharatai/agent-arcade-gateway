@@ -17,6 +17,8 @@ const COMMANDS = [
   { cmd: '/docs', description: 'Generate documentation', icon: '📚' },
   { cmd: '/refactor', description: 'Refactor code', icon: '🔧' },
   { cmd: '/debug', description: 'Debug assistance', icon: '🔍' },
+  { cmd: '/agents', description: 'Run task with specialized multi-agent orchestrator (Architect, Coder, Tester, Reviewer, Debugger)', icon: '🤖', args: '[task]' },
+  { cmd: '/multi', description: 'Broadcast task to ALL connected agents in parallel', icon: '👥', args: '[task]' },
   { cmd: '/ask', description: 'Ask specific agent', icon: '🤖', args: '[agent_name]' },
   { cmd: '/stop', description: 'Stop specific agent', icon: '⏹', args: '[agent_name]' },
   { cmd: '/pause', description: 'Pause specific agent', icon: '⏸', args: '[agent_name]' },

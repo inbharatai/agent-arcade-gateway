@@ -38,6 +38,7 @@ import { Boom } from '@hapi/boom'
 import { toDataURL, toString as toSvg } from 'qrcode'
 import { createServer } from 'http'
 import { join } from 'path'
+import { createHmac } from 'crypto'
 import pino from 'pino'
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ const GATEWAY_URL    = process.env.GATEWAY_URL    || 'http://localhost:47890'
 const AUTH_DIR       = process.env.WHATSAPP_AUTH_DIR || join(process.cwd(), '.whatsapp-auth')
 const HTTP_PORT      = Number(process.env.WHATSAPP_CLIENT_PORT || '47891')
 const GATEWAY_TOKEN  = process.env.WHATSAPP_GATEWAY_TOKEN || ''  // optional auth token
+const SESSION_SIGNING_SECRET = process.env.SESSION_SIGNING_SECRET || '' // HMAC-SHA256 session signing
 
 /** Phone numbers allowed to send control commands. Empty = allow all. */
 const ALLOWED_NUMBERS = (process.env.WHATSAPP_ALLOWED_NUMBERS || '')
@@ -63,6 +65,21 @@ const SELF_CHAT_MAX_HISTORY = 20
 const SELF_CHAT_MAX_CONVERSATIONS = 50
 
 const logger = pino({ level: 'warn' })
+
+/** Compute HMAC-SHA256 session signature matching gateway checkSessionSignature() */
+function signSession(sessionId: string): string {
+  if (!SESSION_SIGNING_SECRET) return ''
+  return createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
+}
+
+/** Build gateway request headers with auth token + session signature */
+function gwHeaders(sessionId = 'copilot-live'): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (GATEWAY_TOKEN) h['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
+  const sig = signSession(sessionId)
+  if (sig) h['x-session-signature'] = sig
+  return h
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -113,15 +130,12 @@ async function handleCommand(from: string, text: string): Promise<string> {
     )
   }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
-
   // ── list / status ──────────────────────────────────────────────────────────
   if (cmd === 'list' || cmd === 'status') {
     const sessionId = rest.split(/\s+/)[0]
     if (!sessionId) return 'Usage: list SESSION or status SESSION'
     try {
-      const res = await fetch(`${GATEWAY_URL}/v1/session/${encodeURIComponent(sessionId)}/agents`, { headers })
+      const res = await fetch(`${GATEWAY_URL}/v1/session/${encodeURIComponent(sessionId)}/agents`, { headers: gwHeaders(sessionId) })
       if (!res.ok) return `Error: gateway returned ${res.status}`
       const data = await res.json() as { agents: Array<{ name: string; id: string; state: string; label?: string }>; count: number }
       if (data.count === 0) return `No agents found in session "${sessionId}"`
@@ -216,13 +230,10 @@ async function handleSelfChat(jid: string, text: string): Promise<string> {
     if (oldest && oldest !== jid) selfChatHistory.delete(oldest)
   }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (GATEWAY_TOKEN) headers['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
-
   try {
     const res = await fetch(`${GATEWAY_URL}/v1/chat/sync`, {
       method: 'POST',
-      headers,
+      headers: gwHeaders(),
       body: JSON.stringify({ messages: history }),
       signal: AbortSignal.timeout(30_000),
     })
@@ -367,10 +378,8 @@ async function startWhatsApp() {
       console.log('[whatsapp-client] ✅ WhatsApp connected! Message yourself to chat with AI, or send "help" for commands.')
 
       // Register WhatsApp relay agent in the Arcade
-      const spawnHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (GATEWAY_TOKEN) spawnHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
       fetch(`${GATEWAY_URL}/v1/ingest`, {
-        method: 'POST', headers: spawnHeaders,
+        method: 'POST', headers: gwHeaders(),
         body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
           type: 'agent.spawn', payload: { name: '📱 WhatsApp', role: 'relay', characterClass: 'healer',
             task: 'WhatsApp message relay — self-chat AI', aiModel: 'Claude (via gateway)' } }),
@@ -441,26 +450,31 @@ async function startWhatsApp() {
       if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
 
       if (isSelfChat && SELF_CHAT_ENABLED) {
+        // Skip messages forwarded by the bot itself (from forwardToWhatsApp) to prevent echo loops.
+        // These are prefixed with "🎮 Console:" by forwardToWhatsApp().
+        if (text.startsWith('🎮 Console:')) {
+          console.log(`[whatsapp-client] Skipping bot-forwarded message to prevent echo loop`)
+          continue
+        }
+
         console.log(`[whatsapp-client] Self-chat from ${fromNumber}: ${text.slice(0, 100)}`)
 
         // Fire telemetry so the Arcade shows WhatsApp activity
-        const telHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (GATEWAY_TOKEN) telHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`
         const ts = Date.now()
         fetch(`${GATEWAY_URL}/v1/ingest`, {
-          method: 'POST', headers: telHeaders,
+          method: 'POST', headers: gwHeaders(),
           body: JSON.stringify({ v: 1, ts, sessionId: 'copilot-live', agentId: 'whatsapp-relay',
             type: 'agent.state', payload: { state: 'thinking', label: `WhatsApp: ${text.slice(0, 80)}` } }),
         }).catch(() => {})
         fetch(`${GATEWAY_URL}/v1/ingest`, {
-          method: 'POST', headers: telHeaders,
+          method: 'POST', headers: gwHeaders(),
           body: JSON.stringify({ v: 1, ts: ts + 50, sessionId: 'copilot-live', agentId: 'whatsapp-relay',
             type: 'agent.message', payload: { text: `WhatsApp command: ${text.slice(0, 120)}` } }),
         }).catch(() => {})
 
         // Also push as a directive so connected tools can execute it
         fetch(`${GATEWAY_URL}/v1/directives`, {
-          method: 'POST', headers: telHeaders,
+          method: 'POST', headers: gwHeaders(),
           body: JSON.stringify({ instruction: text, source: 'whatsapp-self-chat' }),
         }).catch(() => {})
 
@@ -468,14 +482,14 @@ async function startWhatsApp() {
 
         // Fire done telemetry
         fetch(`${GATEWAY_URL}/v1/ingest`, {
-          method: 'POST', headers: telHeaders,
+          method: 'POST', headers: gwHeaders(),
           body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
             type: 'agent.state', payload: { state: 'idle', label: 'Response sent' } }),
         }).catch(() => {})
 
         // Broadcast the AI reply to the Console via SSE so it appears in chat
         fetch(`${GATEWAY_URL}/v1/ingest`, {
-          method: 'POST', headers: telHeaders,
+          method: 'POST', headers: gwHeaders(),
           body: JSON.stringify({ v: 1, ts: Date.now(), sessionId: 'copilot-live', agentId: 'whatsapp-relay',
             type: 'agent.message', payload: { text: reply.slice(0, 2000), source: 'whatsapp-ai-response' } }),
         }).catch(() => {})
@@ -530,8 +544,9 @@ function startSSEListener() {
   if (sseAbortController) sseAbortController.abort()
   sseAbortController = new AbortController()
 
-  const sseUrl = `${GATEWAY_URL}/v1/stream?sessionId=copilot-live`
-  console.log(`[whatsapp-client] Connecting SSE listener to ${sseUrl}`)
+  const sseSig = signSession('copilot-live')
+  const sseUrl = `${GATEWAY_URL}/v1/stream?sessionId=copilot-live${sseSig ? `&sig=${sseSig}` : ''}`
+  console.log(`[whatsapp-client] Connecting SSE listener to ${sseUrl.replace(/sig=[^&]+/, 'sig=***')}`)
 
   const sseHeaders: Record<string, string> = { Accept: 'text/event-stream' }
   if (GATEWAY_TOKEN) sseHeaders['Authorization'] = `Bearer ${GATEWAY_TOKEN}`

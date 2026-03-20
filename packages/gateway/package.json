@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
-    "test": "bun test test/"
+    "test": "bun test test/",
+    "directive-bridge": "bun src/directive-bridge.ts",
+    "multi-agent": "bun src/multi-agent-orchestrator.ts",
+    "all-agents": "concurrently \"bun run dev\" \"bun run directive-bridge\" \"bun run multi-agent\""
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",

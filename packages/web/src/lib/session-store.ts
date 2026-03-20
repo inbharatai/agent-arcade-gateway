@@ -86,6 +86,7 @@ export function addMessage(sessionId: string, msg: ChatMessage): ConsoleSession 
   const all = loadAll()
   const session = all.find(s => s.id === sessionId)
   if (!session) return null
+  if (session.messages.some(m => m.id === msg.id)) return session
   session.messages = [...session.messages.slice(-49), msg]  // Keep last 50
   session.updatedAt = Date.now()
   if (msg.cost) session.totalCost += msg.cost

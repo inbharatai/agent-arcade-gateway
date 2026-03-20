@@ -495,6 +495,15 @@ function makeSessionSignature(sessionId: string): string {
 }
 
 // ---- Auth -------------------------------------------------------------------
+// System principal for internal operations (chat proxy, directive events)
+const devPrincipal: Principal = {
+  sub: 'system',
+  role: 'admin',
+  tokenId: 'system',
+  sessions: ['*'],
+  tokenType: 'none'
+}
+
 const apiKeyIndex = new Map<string, { sub: string; role: PrincipalRole; sessionPattern: string }>()
 for (const row of API_KEYS) {
   const [sub, keyValue, roleRaw, sessionPattern = '.*'] = row.split(':')
@@ -1951,7 +1960,6 @@ const httpServer = createServer(async (req, res) => {
       type: 'agent.message',
       payload: { text: `Directive from ${directive.source}: ${directive.instruction.slice(0, 120)}` },
     }
-    const devPrincipal: Principal = { sub: 'system', role: 'admin', tokenId: 'system', sessions: ['*'], tokenType: 'none' }
     await processEvent(directiveEvent, devPrincipal)
     io.to(`session:${GATEWAY_DEFAULT_SESSION}`).emit('event', directiveEvent)
     broadcastSseEvent(GATEWAY_DEFAULT_SESSION, directiveEvent)

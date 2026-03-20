@@ -46,7 +46,9 @@ async function ingest(type: string, agentId: string, payload: Record<string, unk
   }
 }
 
-const CONSOLE_AGENT_ID = '🎮-console'
+// 'console-' prefix ensures the Console chat SSE listener's agentId filter blocks these
+// telemetry events from appearing as duplicate chat bubbles — canvas-only events.
+const CONSOLE_AGENT_ID = 'console-arcade'
 
 export function consoleAgentSpawn(): void {
   void ingest('agent.spawn', CONSOLE_AGENT_ID, {
@@ -67,7 +69,8 @@ export function consoleAgentThinking(prompt: string): void {
   })
   // Emit a message so voice narration announces what the agent is working on
   void ingest('agent.message', CONSOLE_AGENT_ID, {
-    text: `I am thinking about: ${taskText}${prompt.length > 120 ? '…' : ''}`,
+    text: `Thinking about your request: ${taskText}${prompt.length > 120 ? '…' : ''}`,
+    level: 'info',
   })
 }
 
@@ -78,18 +81,25 @@ export function consoleAgentWriting(model: string): void {
   })
   void ingest('agent.tool', CONSOLE_AGENT_ID, { name: `${model}-generation` })
   void ingest('agent.message', CONSOLE_AGENT_ID, {
-    text: `Now writing a response using ${model}`,
+    text: `Generating response with ${model}`,
+    level: 'info',
   })
 }
 
 export function consoleAgentDone(summary: string): void {
   void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'idle', label: 'Complete' })
-  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Done: ${summary.slice(0, 120)}` })
+  void ingest('agent.message', CONSOLE_AGENT_ID, {
+    text: `Task complete. ${summary.slice(0, 100)}`,
+    level: 'success',
+  })
 }
 
 export function consoleAgentError(error: string): void {
   void ingest('agent.state', CONSOLE_AGENT_ID, { state: 'error', label: error.slice(0, 200) })
-  void ingest('agent.message', CONSOLE_AGENT_ID, { text: `Error: ${error.slice(0, 120)}` })
+  void ingest('agent.message', CONSOLE_AGENT_ID, {
+    text: `Encountered an error: ${error.slice(0, 120)}`,
+    level: 'error',
+  })
 }
 
 export function consoleAgentCodeDetected(): void {

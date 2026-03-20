@@ -60,31 +60,31 @@ beforeEach(() => {
 // ── cleanupStaleAgents ────────────────────────────────────────────────────
 
 describe('cleanupStaleAgents', () => {
-  test('removes done agents after 20s', () => {
-    injectAgentWithAge('done-stale', 'done', 21_000) // 21s old > 20s threshold
+  test('removes done agents after 30s', () => {
+    injectAgentWithAge('done-stale', 'done', 31_000) // 31s old > 30s threshold
 
     expect(useAgentArcadeStore.getState().agents.has('done-stale')).toBe(true)
     useAgentArcadeStore.getState().cleanupStaleAgents()
     expect(useAgentArcadeStore.getState().agents.has('done-stale')).toBe(false)
   })
 
-  test('does NOT remove done agent that is only 10s old', () => {
-    injectAgentWithAge('done-fresh', 'done', 10_000) // 10s old < 20s threshold
+  test('does NOT remove done agent that is only 20s old', () => {
+    injectAgentWithAge('done-fresh', 'done', 20_000) // 20s old < 30s threshold
 
     useAgentArcadeStore.getState().cleanupStaleAgents()
     expect(useAgentArcadeStore.getState().agents.has('done-fresh')).toBe(true)
   })
 
-  test('removes error agents after 30s', () => {
-    injectAgentWithAge('error-stale', 'error', 31_000) // 31s old > 30s threshold
+  test('removes error agents after 60s', () => {
+    injectAgentWithAge('error-stale', 'error', 61_000) // 61s old > 60s threshold
 
     expect(useAgentArcadeStore.getState().agents.has('error-stale')).toBe(true)
     useAgentArcadeStore.getState().cleanupStaleAgents()
     expect(useAgentArcadeStore.getState().agents.has('error-stale')).toBe(false)
   })
 
-  test('does NOT remove error agent that is only 25s old', () => {
-    injectAgentWithAge('error-fresh', 'error', 25_000) // 25s old < 30s threshold
+  test('does NOT remove error agent that is only 50s old', () => {
+    injectAgentWithAge('error-fresh', 'error', 50_000) // 50s old < 60s threshold
 
     useAgentArcadeStore.getState().cleanupStaleAgents()
     expect(useAgentArcadeStore.getState().agents.has('error-fresh')).toBe(true)
@@ -111,22 +111,22 @@ describe('cleanupStaleAgents', () => {
     expect(useAgentArcadeStore.getState().agents.has('writing-old')).toBe(true)
   })
 
-  test('removes idle agent after default staleMs (45s)', () => {
-    injectAgentWithAge('idle-stale', 'idle', 46_000) // 46s old > 45s default
+  test('does NOT remove idle agents regardless of age (prevents flicker)', () => {
+    injectAgentWithAge('idle-stale', 'idle', 300_000) // 5 min old — idle agents persist
 
-    useAgentArcadeStore.getState().cleanupStaleAgents() // default 45s
-    expect(useAgentArcadeStore.getState().agents.has('idle-stale')).toBe(false)
+    useAgentArcadeStore.getState().cleanupStaleAgents()
+    expect(useAgentArcadeStore.getState().agents.has('idle-stale')).toBe(true)
   })
 
-  test('respects custom staleMs parameter for idle agents', () => {
-    injectAgentWithAge('idle-custom', 'idle', 6_000) // 6s old
+  test('does NOT remove idle agents even with custom staleMs', () => {
+    injectAgentWithAge('idle-custom', 'idle', 600_000) // 10 min old
 
-    useAgentArcadeStore.getState().cleanupStaleAgents(5_000) // custom 5s threshold
-    expect(useAgentArcadeStore.getState().agents.has('idle-custom')).toBe(false)
+    useAgentArcadeStore.getState().cleanupStaleAgents(5_000) // custom threshold — still shouldn't remove idle
+    expect(useAgentArcadeStore.getState().agents.has('idle-custom')).toBe(true)
   })
 
   test('selectively removes only stale agents, preserving active ones', () => {
-    injectAgentWithAge('will-be-removed', 'done', 25_000) // stale
+    injectAgentWithAge('will-be-removed', 'done', 35_000) // stale (> 30s threshold)
     injectAgentWithAge('must-stay', 'thinking', 60_000)   // active — never removed
 
     useAgentArcadeStore.getState().cleanupStaleAgents()
@@ -136,7 +136,7 @@ describe('cleanupStaleAgents', () => {
   })
 
   test('agentsList is updated after cleanup', () => {
-    injectAgentWithAge('list-gone', 'done', 25_000)
+    injectAgentWithAge('list-gone', 'done', 35_000) // > 30s threshold
     injectAgentWithAge('list-stays', 'thinking', 5_000)
 
     useAgentArcadeStore.getState().cleanupStaleAgents()
