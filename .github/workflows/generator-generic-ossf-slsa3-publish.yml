@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           files="agent-arcade-gateway.tar.gz agent-arcade-web.tar.gz"
-          echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
+          echo "digests=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
 
   provenance:
     needs: [build]
