@@ -36,10 +36,30 @@ function detectAnthropicKey(): string {
   return ''
 }
 
+// On Windows, .cmd files cannot be directly spawned — invoke via cmd.exe /c.
+// On POSIX, spawn claude directly.
+const IS_WIN = process.platform === 'win32'
+
+/** Run `claude [args]` cross-platform, piping input to stdin. */
+function spawnClaude(args: string[], input: string): string {
+  const [cmd, cmdArgs] = IS_WIN
+    ? ['cmd.exe', ['/c', 'claude', ...args]]
+    : ['claude', args]
+  return execFileSync(cmd, cmdArgs, {
+    input,
+    timeout: 60_000,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim()
+}
+
 /** Check if `claude` CLI is available (Claude Code subscription handles its own auth) */
 function isClaudeCliAvailable(): boolean {
   try {
-    execFileSync('claude', ['--version'], { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' })
+    const [cmd, args] = IS_WIN
+      ? ['cmd.exe', ['/c', 'claude', '--version']]
+      : ['claude', ['--version']]
+    execFileSync(cmd, args, { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' })
     return true
   } catch { return false }
 }
@@ -119,11 +139,7 @@ export async function POST(req: NextRequest) {
         const lastMsg = messages[messages.length - 1]?.content || ''
         const cliModel = model || 'claude-sonnet-4-6'
         const prompt = `${SYSTEM_PROMPT}\n\n${lastMsg}`
-        const reply = execFileSync('claude', ['-p', '--model', cliModel], {
-          input: prompt,
-          timeout: 60_000,
-          encoding: 'utf-8',
-        }).trim()
+        const reply = spawnClaude(['-p', '--model', cliModel], prompt)
 
         const encoder = new TextEncoder()
         const sseData = JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: reply } })
@@ -139,7 +155,7 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey) {
       return Response.json({
-        error: 'No Anthropic API key detected. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.',
+        error: 'No Anthropic API key detected. Set ANTHROPIC_API_KEY in your environment.',
       }, { status: 401 })
     }
 
@@ -150,11 +166,7 @@ export async function POST(req: NextRequest) {
         const lastMsg = messages[messages.length - 1]?.content || ''
         const cliModel = model || 'claude-sonnet-4-6'
         const prompt = `${SYSTEM_PROMPT}\n\n${lastMsg}`
-        const reply = execFileSync('claude', ['-p', '--model', cliModel], {
-          input: prompt,
-          timeout: 60_000,
-          encoding: 'utf-8',
-        }).trim()
+        const reply = spawnClaude(['-p', '--model', cliModel], prompt)
 
         // Wrap as a single SSE event for client compatibility
         const encoder = new TextEncoder()
@@ -204,7 +216,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = provider === 'openai' ? 'https://api.openai.com' : 'https://api.mistral.ai'
     if (!apiKey) {
       return Response.json({
-        error: `No ${provider} API key detected. Add your key in Settings → Providers, or set the key in your environment.`,
+        error: `No ${provider} API key detected. Set the key in your environment.`,
       }, { status: 401 })
     }
 
@@ -231,7 +243,7 @@ export async function POST(req: NextRequest) {
   if (provider === 'gemini') {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
-      return Response.json({ error: 'No Gemini API key detected. Add your key in Settings → Providers, or set GEMINI_API_KEY in your environment.' }, { status: 401 })
+      return Response.json({ error: 'No Gemini API key detected. Set GEMINI_API_KEY in your environment.' }, { status: 401 })
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`
     const upstream = await fetch(url, {

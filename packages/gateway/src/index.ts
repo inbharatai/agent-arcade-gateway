@@ -75,9 +75,23 @@ function detectAnthropicKey(): string {
 const CHAT_ANTHROPIC_KEY  = detectAnthropicKey()
 const CHAT_ANTHROPIC_URL  = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
 
+// On Windows, .cmd files cannot be directly spawned — invoke via cmd.exe /c.
+const IS_WIN = process.platform === 'win32'
+
+/** Resolve [executable, prefixArgs] for running `claude` cross-platform. */
+function claudeSpawnArgs(claudeArgs: string[]): [string, string[]] {
+  return IS_WIN
+    ? ['cmd.exe', ['/c', 'claude', ...claudeArgs]]
+    : ['claude', claudeArgs]
+}
+
 /** Check if `claude` CLI is available — subscription handles its own auth */
 const CLAUDE_CLI_AVAILABLE = (() => {
-  try { execFileSync('claude', ['--version'], { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' }); return true } catch { return false }
+  try {
+    const [cmd, args] = claudeSpawnArgs(['--version'])
+    execFileSync(cmd, args, { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' })
+    return true
+  } catch { return false }
 })()
 const CHAT_OPENAI_KEY     = process.env.OPENAI_API_KEY     || ''
 const CHAT_GEMINI_KEY     = process.env.GEMINI_API_KEY     || ''
@@ -2415,9 +2429,15 @@ const httpServer = createServer(async (req, res) => {
     if (provider === 'claude') {
       // Re-detect key on each request (OAuth tokens can refresh)
       const anthropicKey = detectAnthropicKey()
-      if (!anthropicKey) return jsonRes(res, 401, { error: 'ANTHROPIC_API_KEY not configured. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.' })
 
-      const isOAuth = anthropicKey.startsWith('sk-ant-oat01-')
+      // If no key at all but CLI is available, treat like an OAuth session (CLI handles auth)
+      const isOAuth = !anthropicKey
+        ? CLAUDE_CLI_AVAILABLE  // no key → use CLI if available
+        : anthropicKey.startsWith('sk-ant-oat01-')
+
+      if (!anthropicKey && !CLAUDE_CLI_AVAILABLE) {
+        return jsonRes(res, 401, { error: 'No AI provider detected. Connect Claude Code, Cursor, or another AI tool to use this feature automatically.' })
+      }
 
       // ── OAuth path: use `claude -p` CLI (uses subscription auth) ──────────
       if (isOAuth) {
@@ -2442,7 +2462,8 @@ const httpServer = createServer(async (req, res) => {
         // IMPORTANT: --dangerously-skip-permissions prevents this subprocess from
         // connecting to the running Claude Code daemon session, which would cause
         // the prompt/response to appear in the active chat (echo loop bug).
-        const child = spawn('claude', ['-p', '--model', cliModel, '--dangerously-skip-permissions'], {
+        const [chatCmd, chatArgs] = claudeSpawnArgs(['-p', '--model', cliModel, '--dangerously-skip-permissions'])
+        const child = spawn(chatCmd, chatArgs, {
           stdio: ['pipe', 'pipe', 'pipe'],
           env: { ...process.env },
           shell: false,
@@ -2666,10 +2687,11 @@ const httpServer = createServer(async (req, res) => {
           const fullPrompt = `${CHAT_SYSTEM_PROMPT}\n\n${contextStr}`
 
           return new Promise<void>((resolve) => {
-            const child = spawn('claude', ['-p', '--model', cliModel], {
+            const [syncCmd, syncArgs] = claudeSpawnArgs(['-p', '--model', cliModel])
+            const child = spawn(syncCmd, syncArgs, {
               stdio: ['pipe', 'pipe', 'pipe'],
               env: { ...process.env },
-              // shell: false — prevent shell metacharacter injection from user prompts
+              shell: false,
             })
             let stdout = ''
             let stderr = ''

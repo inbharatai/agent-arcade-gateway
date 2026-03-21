@@ -17,6 +17,9 @@
 import { spawn } from 'child_process'
 import { createHmac } from 'crypto'
 
+// On Windows, .cmd files cannot be directly spawned — invoke via cmd.exe /c.
+const IS_WIN = process.platform === 'win32'
+
 const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:47890'
 const POLL_INTERVAL = Number(process.env.DIRECTIVE_POLL_MS || '2000') // 2s default
 const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || ''
@@ -189,15 +192,14 @@ function executeWithClaude(
   onProgress: (label: string) => void,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', [
-      '-p',
-      '--verbose',
-      '--model', DIRECTIVE_MODEL,
-      '--output-format', 'stream-json',
-      '--dangerously-skip-permissions',
-    ], {
+    const claudeArgs = ['-p', '--verbose', '--model', DIRECTIVE_MODEL, '--output-format', 'stream-json', '--dangerously-skip-permissions']
+    const [bridgeCmd, bridgeArgs] = IS_WIN
+      ? ['cmd.exe', ['/c', 'claude', ...claudeArgs]]
+      : ['claude', claudeArgs]
+    const child = spawn(bridgeCmd, bridgeArgs, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env },
+      shell: false,
     })
 
     let fullText = ''
