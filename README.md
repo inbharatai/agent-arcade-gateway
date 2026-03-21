@@ -947,6 +947,18 @@ That's it. **No API keys to configure.** The gateway auto-detects connected agen
 
 Observatory, Console, WhatsApp, Directives, and Arcade are one unified system.
 
+### Dashboard Controls
+
+| Control | How | Description |
+|---------|-----|-------------|
+| **Console** | Click `Console` button (top-right) | Opens the AI Chat Console side panel |
+| **Expand Console** | Click ⛶ icon (top-right of Console) or `Ctrl+Shift+F` | Expands Console to full viewport width for a clear view |
+| **Restore** | Click restore icon or `Ctrl+Shift+F` again | Returns to split arcade + console view |
+| **Clear Session** | Click `Clear` button (header) | Resets all agents, events, and spans — fresh start via `POST /v1/session/:id/reset` |
+| **Refresh** | Click `Refresh` button (header) | Reconnects to gateway and refreshes agent state |
+| **Themes** | Click 🎨 icon (toolbar) | Switch between 8 pixel-art themes |
+| **Debug Panel** | Click 🐛 icon (toolbar) | Toggle live event log overlay |
+
 ### 4. (Optional) Enable Persistent Storage
 
 By default the gateway stores everything in memory (cleared on restart). For persistence, pick one:
@@ -1094,7 +1106,7 @@ const claw = wrapOpenClaw(openClawInstance, {
 // Brain, Skills, Memory, Heartbeat, Channels — all tracked automatically
 ```
 
-> **OpenClaw is the most deeply integrated framework in Agent Arcade.** See the [full OpenClaw deep-dive above](#-openclaw--deepest-ai-brain-observability) for the complete event map, WhatsApp bidirectional visibility, and architecture diagram.
+> **⚠️ OpenClaw adapter is unverified.** The adapter code is structurally complete but has not been tested against a real OpenClaw instance. See the [OpenClaw section above](#-openclaw--ai-brain-observability-adapter) for status details.
 
 ### Node.js SDK (Manual)
 
@@ -1139,7 +1151,7 @@ import { AgentArcadeEmbed } from '@agent-arcade/embed'
 | **LlamaIndex** | `@agent-arcade/adapter-llamaindex` | Callback handler |
 | **CrewAI** | `agent-arcade-crewai` | `arcade_crew(crew)` |
 | **AutoGen** | `agent-arcade-autogen` | `wrap_autogen_agents(agents)` |
-| **OpenClaw** | `@agent-arcade/adapter-openclaw` | `wrapOpenClaw(instance)` |
+| **OpenClaw** ⚠️ | `@agent-arcade/adapter-openclaw` | `wrapOpenClaw(instance)` — **unverified**, not tested against real OpenClaw |
 | **Any AI API** | `@agent-arcade/proxy` | Change base URL only |
 | **Cursor / Aider / Copilot** | `@agent-arcade/watcher` | Process auto-detection |
 | **Ollama** | `@agent-arcade/watcher` | Process auto-detection |
@@ -1279,7 +1291,7 @@ Theme-based background loops that match the selected visual theme. Volume contro
 | | **Agent Intervention** | Pause, stop, redirect, or hand off any agent mid-task — from the dashboard, REST API, CLI slash commands, or WhatsApp. Full action history timeline. |
 | | **Prometheus Metrics** | Production-grade `/metrics` endpoint with uptime, connection counts, publish rates, auth failures — ready for Grafana. |
 | | **Multilingual Input** | 20-language detection engine with Hinglish normalization (40+ phrase mappings). Hindi, Arabic, CJK, Cyrillic, and 9 Indic scripts supported natively. |
-| | **OpenClaw Deep Integration** | Full Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel (WhatsApp/Slack) observability. Bidirectional visibility: see OpenClaw's WhatsApp activity in the dashboard AND control OpenClaw from WhatsApp. |
+| | **OpenClaw Adapter (Unverified)** | Adapter code covers Brain (ReAct loop), Skills, Memory, Heartbeat, and Channel observability. **Not yet tested against a real OpenClaw instance** — see [OpenClaw section](#-openclaw--ai-brain-observability-adapter). |
 | | **Execution Traces** | Hierarchical span tree viewer. Parent→child spans with collapsible I/O, token stream log, cost per span, full-text search, error highlighting, side-by-side span comparison. `agent.span` event type + `GET /v1/session/:id/traces`. No third-party account needed. |
 | | **Session Replay** | DVR-style replay. Timeline scrubber, per-agent swimlanes (Gantt-style), event inspector, state snapshot at any seek point, failure detection (⚠ badge). Speed control 0.25×–8×, up to 50 recordings in localStorage. Works fully offline. |
 | | **Cost Analytics** | Real-time cost dashboard. Token data from spans, per-model breakdowns, budget progress bar, 80% warning + over-budget alert, model × calls table, one-click CSV export. |
@@ -1486,6 +1498,7 @@ flowchart LR
 | GET | `/v1/agents/:sessionId/:agentId/history` | Get agent action history |
 | GET | `/v1/session/:sessionId/agents` | List all agents in a session |
 | GET | `/v1/session/:sessionId/cost` | Per-agent cost breakdown for a session |
+| POST | `/v1/session/:id/reset` | Clear all agents, events, and spans — fresh start. Broadcasts `session.reset` event |
 
 #### AI Chat
 
@@ -1553,8 +1566,10 @@ flowchart LR
 | `agent.link` | Parent-child relationship established |
 | `agent.position` | Movement on canvas grid |
 | `agent.end` | Agent finished (success/fail) |
+| `agent.span` | Execution trace span (for hierarchical span tree) |
 | `session.start` | Session begins |
 | `session.end` | Session ends |
+| `session.reset` | Session cleared — all agents/events/spans removed |
 
 ### Agent States
 
