@@ -505,27 +505,37 @@ exit 0
   }
 
   // Merge arcade hooks into existing settings
+  // On Windows, hook commands run via bash — convert backslash paths to forward slashes
+  // and prefix with 'bash' so the shell script is invoked correctly
+  const toHookCmd = (p: string) => {
+    const fwd = p.replace(/\\/g, '/')
+    const isWin = process.platform === 'win32'
+    // Convert C:/Users/... to /c/Users/... for Git Bash on Windows
+    const bashPath = isWin ? fwd.replace(/^([A-Za-z]):/, (_, d: string) => `/${d.toLowerCase()}`) : fwd
+    return isWin ? `bash ${bashPath}` : bashPath
+  }
+
   const arcadeHooks = {
     PreToolUse: [
       {
         matcher: '.*',
-        hooks: [{ type: 'command', command: preToolPath }],
+        hooks: [{ type: 'command', command: toHookCmd(preToolPath) }],
       },
     ],
     PostToolUse: [
       {
         matcher: '.*',
-        hooks: [{ type: 'command', command: postToolPath }],
+        hooks: [{ type: 'command', command: toHookCmd(postToolPath) }],
       },
     ],
     Notification: [
       {
-        hooks: [{ type: 'command', command: notifyPath }],
+        hooks: [{ type: 'command', command: toHookCmd(notifyPath) }],
       },
     ],
     Stop: [
       {
-        hooks: [{ type: 'command', command: stopPath }],
+        hooks: [{ type: 'command', command: toHookCmd(stopPath) }],
       },
     ],
   }
