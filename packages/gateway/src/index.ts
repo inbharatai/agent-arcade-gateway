@@ -726,6 +726,13 @@ class InMemoryStorage {
     }
   }
 
+  /** Clear all agents and events for a session (fresh start) */
+  async clearSession(sessionId: string) {
+    this.agents.delete(sessionId)
+    this.events.delete(sessionId)
+    this.spans.delete(sessionId)
+  }
+
   /** Upsert a span (by spanId) for a session */
   saveSpan(sessionId: string, span: SpanRecord): void {
     const map = this.spans.get(sessionId) || new Map<string, SpanRecord>()
@@ -869,6 +876,12 @@ class SqliteStorage {
 
   async deleteAgent(sessionId: string, agentId: string) {
     this.db.prepare('DELETE FROM agents WHERE id = ? AND session_id = ?').run(agentId, sessionId)
+  }
+
+  async clearSession(sessionId: string) {
+    this.db.prepare('DELETE FROM agents WHERE session_id = ?').run(sessionId)
+    this.db.prepare('DELETE FROM events WHERE session_id = ?').run(sessionId)
+    this.db.prepare('DELETE FROM spans WHERE session_id = ?').run(sessionId)
   }
 
   saveSpan(sessionId: string, span: SpanRecord) {
@@ -1053,6 +1066,12 @@ class RedisStorage {
   async deleteAgent(sessionId: string, agentId: string) {
     const key = this.sessionAgentsKey(sessionId)
     await this.client.hDel(key, agentId)
+  }
+
+  async clearSession(sessionId: string) {
+    await this.client.del(this.sessionAgentsKey(sessionId))
+    await this.client.del(`aa:session:${sessionId}:events`)
+    await this.client.del(`aa:session:${sessionId}:spans`)
   }
 
   saveSpan(sessionId: string, span: SpanRecord): void {
@@ -2370,6 +2389,27 @@ const httpServer = createServer(async (req, res) => {
     }
     const snap = await sessionSnapshot(sessionId)
     return jsonRes(res, 200, snap)
+  }
+
+  // POST /v1/session/:id/reset — clear all agents and events for a session (fresh start)
+  const resetMatch = url.pathname.match(/^\/v1\/session\/([^/]+)\/reset$/)
+  if (req.method === 'POST' && resetMatch) {
+    const resetSessionId = decodeURIComponent(resetMatch[1])
+    const principal = await authenticate(req, ['viewer'])
+    if (!principal) { metrics.authFailures++; return jsonRes(res, 401, { error: 'Unauthorized' }) }
+    if (!canAccessSession(principal, resetSessionId)) {
+      metrics.authFailures++
+      return jsonRes(res, 403, { error: 'Forbidden for session' })
+    }
+    await storage.clearSession(resetSessionId)
+    // Broadcast a reset event so connected clients refresh
+    const resetEv: TelemetryEvent = {
+      v: PROTOCOL_VERSION, ts: Date.now(), sessionId: resetSessionId,
+      agentId: 'system', type: 'session.reset' as any, payload: {},
+    }
+    io.to(`session:${resetSessionId}`).emit('event', resetEv)
+    broadcastSseEvent(resetSessionId, resetEv)
+    return jsonRes(res, 200, { ok: true, cleared: resetSessionId })
   }
 
   // GET /v1/chat/providers — which AI providers are configured on this gateway

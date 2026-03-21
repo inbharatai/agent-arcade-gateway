@@ -151,6 +151,18 @@ export default function Home() {
     }
   }
 
+  const clearSession = async () => {
+    if (!activeSessionId) return
+    const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:47890'
+    try {
+      await fetch(`${gatewayUrl}/v1/session/${encodeURIComponent(activeSessionId)}/reset`, {
+        method: 'POST',
+        headers: auth?.sessionSignature ? { 'x-session-signature': auth.sessionSignature } : {},
+      })
+      arcadeReset()
+    } catch { /* ignore */ }
+  }
+
   const handleAgentCommand = useCallback((cmd: string, agentId?: string, args?: string) => {
     if (!agentId) return
     if (cmd === '/pause') pauseAgent(agentId)
@@ -191,6 +203,13 @@ export default function Home() {
               onClick={refreshSession}
             >
               Refresh
+            </button>
+            <button
+              className="px-2 py-1 rounded text-xs bg-red-900/50 hover:bg-red-800/60 text-red-300"
+              onClick={clearSession}
+              title="Clear all agents and events from this session"
+            >
+              Clear
             </button>
             {/* Console toggle — always visible, responsive sizing */}
             <button
