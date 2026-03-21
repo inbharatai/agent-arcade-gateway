@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'crypto'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, execFileSync, ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { SignJWT, jwtVerify } from 'jose'
@@ -74,6 +74,11 @@ function detectAnthropicKey(): string {
 
 const CHAT_ANTHROPIC_KEY  = detectAnthropicKey()
 const CHAT_ANTHROPIC_URL  = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
+
+/** Check if `claude` CLI is available — subscription handles its own auth */
+const CLAUDE_CLI_AVAILABLE = (() => {
+  try { execFileSync('claude', ['--version'], { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' }); return true } catch { return false }
+})()
 const CHAT_OPENAI_KEY     = process.env.OPENAI_API_KEY     || ''
 const CHAT_GEMINI_KEY     = process.env.GEMINI_API_KEY     || ''
 const CHAT_MISTRAL_KEY    = process.env.MISTRAL_API_KEY    || ''
@@ -2339,7 +2344,11 @@ const httpServer = createServer(async (req, res) => {
   // GET /v1/chat/providers — which AI providers are configured on this gateway
   if (req.method === 'GET' && url.pathname === '/v1/chat/providers') {
     // Re-detect on each request so OAuth token refresh is picked up
-    const anthropicAvailable = !!detectAnthropicKey()
+    const anthropicKey = detectAnthropicKey()
+    const anthropicAvailable = !!anthropicKey || CLAUDE_CLI_AVAILABLE
+    const authMode = anthropicKey
+      ? (anthropicKey.startsWith('sk-ant-oat01-') ? 'oauth-subscription' : 'api-key')
+      : CLAUDE_CLI_AVAILABLE ? 'cli-subscription' : 'none'
     return jsonRes(res, 200, {
       providers: {
         claude:  anthropicAvailable,
@@ -2347,8 +2356,7 @@ const httpServer = createServer(async (req, res) => {
         gemini:  !!CHAT_GEMINI_KEY,
         mistral: !!CHAT_MISTRAL_KEY,
       },
-      // Tell the client HOW claude auth works so it knows no manual key is needed
-      authMode: anthropicAvailable ? (detectAnthropicKey().startsWith('sk-ant-oat01-') ? 'oauth-subscription' : 'api-key') : 'none',
+      authMode,
     })
   }
 

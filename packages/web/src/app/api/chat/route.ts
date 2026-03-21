@@ -36,6 +36,17 @@ function detectAnthropicKey(): string {
   return ''
 }
 
+/** Check if `claude` CLI is available (Claude Code subscription handles its own auth) */
+function isClaudeCliAvailable(): boolean {
+  try {
+    execFileSync('claude', ['--version'], { timeout: 5_000, encoding: 'utf-8', stdio: 'pipe' })
+    return true
+  } catch { return false }
+}
+
+// Cache CLI check at startup (doesn't change during session)
+const CLAUDE_CLI_AVAILABLE = isClaudeCliAvailable()
+
 const SYSTEM_PROMPT = `You are an expert assistant inside Agent Arcade — a universal AI agent cockpit.
 Help the user understand and direct the AI agents visible in the current session.
 Be concise and helpful. When writing code use markdown code blocks.`
@@ -46,14 +57,17 @@ export async function GET() {
   try {
     const gwRes = await fetch(`${GATEWAY_URL}/v1/chat/providers`, { cache: 'no-store' })
     if (gwRes.ok) {
-      const { providers } = await gwRes.json()
+      const data = await gwRes.json()
+      const providers = data.providers as Record<string, boolean>
+      // If gateway says claude is unavailable but CLI is present, CLI handles its own auth
+      if (!providers.claude && CLAUDE_CLI_AVAILABLE) providers.claude = true
       return Response.json({ providers, source: 'gateway' })
     }
   } catch { /* gateway unreachable, fall through to local */ }
 
-  // Fall back to local env + Claude Code OAuth detection
+  // Fall back to local env + Claude Code OAuth detection + CLI availability
   const providers: Record<string, boolean> = {
-    claude:  !!detectAnthropicKey(),
+    claude:  !!detectAnthropicKey() || CLAUDE_CLI_AVAILABLE,
     openai:  !!process.env.OPENAI_API_KEY,
     gemini:  !!process.env.GEMINI_API_KEY,
     mistral: !!process.env.MISTRAL_API_KEY,
@@ -98,6 +112,31 @@ export async function POST(req: NextRequest) {
   if (provider === 'claude') {
     const apiKey = detectAnthropicKey()
     const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com'
+
+    // If no API key but CLI is available, use CLI directly (it handles its own auth)
+    if (!apiKey && CLAUDE_CLI_AVAILABLE) {
+      try {
+        const lastMsg = messages[messages.length - 1]?.content || ''
+        const cliModel = model || 'claude-sonnet-4-6'
+        const prompt = `${SYSTEM_PROMPT}\n\n${lastMsg}`
+        const reply = execFileSync('claude', ['-p', '--model', cliModel], {
+          input: prompt,
+          timeout: 60_000,
+          encoding: 'utf-8',
+        }).trim()
+
+        const encoder = new TextEncoder()
+        const sseData = JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: reply } })
+        const stopData = JSON.stringify({ type: 'message_stop' })
+        const body = `event: content_block_delta\ndata: ${sseData}\n\nevent: message_stop\ndata: ${stopData}\n\n`
+        return new Response(encoder.encode(body), {
+          headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' },
+        })
+      } catch (e) {
+        return Response.json({ error: `Claude CLI error: ${String(e).slice(0, 150)}` }, { status: 500 })
+      }
+    }
+
     if (!apiKey) {
       return Response.json({
         error: 'No Anthropic API key detected. Add your key in Settings → Providers, or set ANTHROPIC_API_KEY in your environment.',
