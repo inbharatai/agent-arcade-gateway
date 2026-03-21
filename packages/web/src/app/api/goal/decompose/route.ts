@@ -52,7 +52,7 @@ async function callGatewayChat(messages: Array<{ role: string; content: string }
   const res = await fetch(`${GATEWAY_URL}/v1/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, provider: 'claude' }),
+    body: JSON.stringify({ messages, provider: 'claude', model: 'claude-sonnet-4-6' }),
   })
   if (!res.ok) throw new Error(`Gateway chat returned ${res.status}`)
 
