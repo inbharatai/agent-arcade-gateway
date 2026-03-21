@@ -191,7 +191,7 @@ const notificationRouter = buildNotificationRouter()
 type EventType =
   | 'agent.spawn' | 'agent.state' | 'agent.tool' | 'agent.message'
   | 'agent.link' | 'agent.position' | 'agent.end' | 'agent.span'
-  | 'session.start' | 'session.end'
+  | 'session.start' | 'session.end' | 'session.reset'
 
 type AgentState =
   | 'idle' | 'thinking' | 'reading' | 'writing' | 'tool'
@@ -205,7 +205,7 @@ const VALID_STATES: AgentState[] = [
 const VALID_EVENT_TYPES: EventType[] = [
   'agent.spawn', 'agent.state', 'agent.tool', 'agent.message',
   'agent.link', 'agent.position', 'agent.end', 'agent.span',
-  'session.start', 'session.end',
+  'session.start', 'session.end', 'session.reset',
 ]
 
 interface TelemetryEvent {
@@ -2405,7 +2405,7 @@ const httpServer = createServer(async (req, res) => {
     // Broadcast a reset event so connected clients refresh
     const resetEv: TelemetryEvent = {
       v: PROTOCOL_VERSION, ts: Date.now(), sessionId: resetSessionId,
-      agentId: 'system', type: 'session.reset' as any, payload: {},
+      agentId: 'system', type: 'session.reset', payload: {},
     }
     io.to(`session:${resetSessionId}`).emit('event', resetEv)
     broadcastSseEvent(resetSessionId, resetEv)

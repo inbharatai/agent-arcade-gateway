@@ -1808,6 +1808,9 @@ This table is our honest, point-in-time statement of what the platform does toda
 | **CrewAI Python adapter** | ✅ Production | Duck-typed, thread-safe, fire-and-forget |
 | **AutoGen Python adapter** | ✅ Production | Wraps 0.3/0.4 agents, patches generate\_reply/a\_send/a\_receive |
 | **OpenAI, Anthropic, LangChain, LlamaIndex adapters** | ✅ Production | CI-tested |
+| **OpenClaw adapter** | ⚠️ Unverified | Code complete but targets guessed SDK interface — never connected to a real OpenClaw instance. peerDep corrected to `openclaw`. See [CLAUDE.md](CLAUDE.md). |
+| **Session reset / Clear button** | ✅ Production | `POST /v1/session/:id/reset` clears agents/events/spans. Clear button in dashboard header. |
+| **Console full-panel expand** | ✅ Production | Expand/restore toggle (Ctrl+Shift+F) — Console fills full viewport width |
 | **Gamification** (XP, achievements, leaderboard) | ✅ Production | 30+ achievements, 12 levels, 5 leaderboard categories |
 | **20-language i18n detection** | ✅ Production | 100-case test suite |
 | **JWT auth + session signing + rate limiting** | ✅ Production | Fail-fast on weak secrets in production mode |
@@ -1833,6 +1836,13 @@ This table is our honest, point-in-time statement of what the platform does toda
 
 | Version | Change | Type |
 |---------|--------|------|
+| **v3.8.1** | **Session reset endpoint + Clear button** — `POST /v1/session/:id/reset` clears all agents, events, and spans. Red "Clear" button in dashboard header. Fixes stale agent persistence across restarts. | Feature |
+| **v3.8.1** | **Console full-panel expand** — Expand/restore toggle button + Ctrl+Shift+F shortcut. Console fills full viewport width when expanded, arcade canvas hidden. | Feature |
+| **v3.8.1** | **OpenClaw adapter honesty pass** — peerDep corrected from nonexistent `@openclaw/sdk` to real `openclaw` package. README section marked "Unverified". CLAUDE.md created with integration truth requirement. | Docs |
+| **v3.8.1** | **Theme names corrected** — README table fixed: Dungeon/Terminal/Holo Arena → Deep Space Lab/Dungeon Terminal/Hacker Bunker (matching source code) | Docs |
+| **v3.8.1** | **CLI Windows hook paths fixed** — `toHookCmd()` converts backslash paths to Git Bash format on Windows. Cross-platform safe (no-op on Linux/Mac). | Fix |
+| **v3.8.1** | **Goal Mode decompose 400 fixed** — Added missing `model` field to `/api/goal/decompose` gateway call | Fix |
+| **v3.8.1** | **Send/voice buttons fixed** — Added `min-h-0` to ChatHistory containers so buttons don't get clipped with long input text | Fix |
 | **v3.8.1** | **Gateway tests sign sessions correctly** — All three gateway integration test suites now compute HMAC-SHA256 signatures matching the gateway's `checkSessionSignature()`. Previously any local gateway with `SESSION_SIGNING_SECRET` set caused 85 tests to fail with 403. | Fix |
 | **v3.8.1** | **Hardcoded `'copilot-live'` removed from gateway** — 12 hardcoded session ID strings in directive and chat proxy telemetry paths replaced with `GATEWAY_DEFAULT_SESSION` constant (reads `GATEWAY_SESSION_ID` env var). | Fix |
 | **v3.8.1** | **WhatsApp poll interval race fixed** — `WhatsAppSettings.tsx` used stale React state to decide QR vs normal poll interval. Now uses the freshly-fetched response status. | Fix |
