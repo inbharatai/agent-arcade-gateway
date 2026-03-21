@@ -300,7 +300,7 @@ export function AgentArcadePanel({
   }, [handleSelect, store])
 
   return (
-    <div className={`flex flex-col h-full ${settings.darkMode ? 'dark bg-gray-950 text-gray-100' : 'bg-white text-gray-900'}`}>
+    <div className={`relative flex flex-col h-full ${settings.darkMode ? 'dark bg-gray-950 text-gray-100' : 'bg-white text-gray-900'}`}>
       {/* ── Mission Bar Header ─────────────────────────────────────────── */}
       {!embed && (
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-gradient-to-r from-background via-muted/30 to-background">
@@ -625,8 +625,12 @@ export function AgentArcadePanel({
         <NarrativePanel narrative={narrative} agents={agents} />
       )}
 
-      {/* ── Debug panel ────────────────────────────────────────────────── */}
-      {showDebug && <DebugPanel />}
+      {/* ── Debug panel — absolute overlay, does NOT displace the canvas ── */}
+      {showDebug && (
+        <div className="absolute bottom-8 left-0 right-0 z-50 mx-2 mb-1 rounded-xl shadow-2xl border border-border overflow-hidden">
+          <DebugPanel />
+        </div>
+      )}
     </div>
   )
 }
@@ -877,8 +881,8 @@ function DebugPanel() {
   const events = store.events.slice(-20)
 
   return (
-    <div className="border-t border-border bg-muted/30 text-[10px] font-mono p-3 max-h-64 overflow-y-auto">
-      <div className="flex flex-wrap gap-3 mb-2">
+    <div className="bg-black/85 backdrop-blur-sm text-[10px] font-mono p-3 max-h-48 overflow-y-auto">
+      <div className="flex flex-wrap gap-3 mb-2 text-green-400/80">
         <span>Session: {store.sessionId || '—'}</span>
         <span>Status: {store.status}</span>
         <span>Transport: {store.transport || '—'}</span>
