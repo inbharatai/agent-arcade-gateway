@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'crypto'
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto'
 import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { spawn, execFileSync, ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
@@ -492,7 +492,9 @@ function checkSessionSignature(sessionId: string, signature?: string): boolean {
   }
   if (!signature) return false
   const expected = createHmac('sha256', SESSION_SIGNING_SECRET).update(sessionId).digest('hex')
-  return signature === expected
+  // Timing-safe comparison to prevent signature brute-forcing via response time analysis
+  if (signature.length !== expected.length) return false
+  return timingSafeEqual(Buffer.from(signature, 'utf-8'), Buffer.from(expected, 'utf-8'))
 }
 
 function makeSessionSignature(sessionId: string): string {
@@ -1924,6 +1926,11 @@ const httpServer = createServer(async (req, res) => {
   // POST /v1/directives/:id/ack  — acknowledge completion
 
   if (url.pathname === '/v1/directives' && req.method === 'POST') {
+    // Auth: session signature required when SESSION_SIGNING_SECRET is set
+    const dirSig = req.headers['x-session-signature'] as string || url.searchParams.get('sig') || ''
+    if (SESSION_SIGNING_SECRET && !checkSessionSignature(GATEWAY_DEFAULT_SESSION, dirSig)) {
+      return jsonRes(res, 403, { error: 'Invalid session signature' })
+    }
     // Rate-limit directive submissions the same way as ingest events
     const dirIp = getClientIp(req)
     const dirIpAllowed = await allowRate('ip', dirIp, RATE_MAX_IP, RATE_WINDOW_MS)
@@ -1973,11 +1980,21 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (url.pathname === '/v1/directives' && req.method === 'GET') {
+    // Auth: session signature required when SESSION_SIGNING_SECRET is set
+    const pollSig = url.searchParams.get('sig') || req.headers['x-session-signature'] as string || ''
+    if (SESSION_SIGNING_SECRET && !checkSessionSignature(GATEWAY_DEFAULT_SESSION, pollSig)) {
+      return jsonRes(res, 403, { error: 'Invalid session signature' })
+    }
     const pending = directivesQueue.filter(d => d.status === 'pending')
     return jsonRes(res, 200, { directives: pending })
   }
 
   if (url.pathname.startsWith('/v1/directives/') && req.method === 'POST') {
+    // Auth: session signature required when SESSION_SIGNING_SECRET is set
+    const ackSig = req.headers['x-session-signature'] as string || url.searchParams.get('sig') || ''
+    if (SESSION_SIGNING_SECRET && !checkSessionSignature(GATEWAY_DEFAULT_SESSION, ackSig)) {
+      return jsonRes(res, 403, { error: 'Invalid session signature' })
+    }
     const parts = url.pathname.split('/')
     const directiveId = parts[3]
     const action = parts[4] // 'ack' or 'done'
@@ -2652,15 +2669,28 @@ const httpServer = createServer(async (req, res) => {
             const child = spawn('claude', ['-p', '--model', cliModel], {
               stdio: ['pipe', 'pipe', 'pipe'],
               env: { ...process.env },
-              shell: true,
+              // shell: false — prevent shell metacharacter injection from user prompts
             })
             let stdout = ''
             let stderr = ''
+            let timedOut = false
+            // Kill after 90s to prevent hung connections
+            const killTimer = setTimeout(() => {
+              timedOut = true
+              child.kill('SIGTERM')
+              setTimeout(() => { try { child.kill('SIGKILL') } catch {} }, 5_000)
+            }, 90_000)
             child.stdin.write(fullPrompt)
             child.stdin.end()
             child.stdout.on('data', (c: Buffer) => { stdout += c.toString() })
             child.stderr.on('data', (c: Buffer) => { stderr += c.toString() })
             child.on('close', (code) => {
+              clearTimeout(killTimer)
+              if (timedOut) {
+                jsonRes(res, 504, { error: 'Claude CLI timed out after 90s' })
+                resolve()
+                return
+              }
               if (code !== 0 || !stdout.trim()) {
                 log('warn', `[chat/sync] claude CLI error: ${stderr.slice(0, 200)}`)
                 jsonRes(res, 500, { error: `Claude CLI error: ${stderr.slice(0, 100) || 'no output'}` })

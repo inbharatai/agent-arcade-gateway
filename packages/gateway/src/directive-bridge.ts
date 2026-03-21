@@ -207,7 +207,9 @@ function executeWithClaude(
 
     const timeoutHandle = setTimeout(() => {
       timedOut = true
-      child.kill()
+      child.kill('SIGTERM')
+      // Follow up with SIGKILL if SIGTERM doesn't terminate within 5s
+      setTimeout(() => { try { child.kill('SIGKILL') } catch { /* already dead */ } }, 5_000)
       reject(new Error(`Execution timed out after ${DIRECTIVE_TIMEOUT_MS / 1000}s`))
     }, DIRECTIVE_TIMEOUT_MS)
 

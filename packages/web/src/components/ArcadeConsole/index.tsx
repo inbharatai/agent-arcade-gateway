@@ -325,7 +325,7 @@ export function ArcadeConsole({
     setError(null)
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       role: 'user',
       content: userInput,
       timestamp: Date.now(),
@@ -377,7 +377,7 @@ export function ArcadeConsole({
 
       const cost = calculateCost(lastInputTokens, lastOutputTokens, selectedModel)
       const aiMsg: ChatMessage = {
-        id: `msg-${Date.now()}-ai`,
+        id: `msg-${Date.now()}-ai-${Math.random().toString(36).slice(2, 8)}`,
         role: 'assistant',
         content: fullText,
         timestamp: Date.now(),
@@ -398,7 +398,7 @@ export function ArcadeConsole({
       if ((err as Error).name === 'AbortError') {
         if (fullText) {
           const aiMsg: ChatMessage = {
-            id: `msg-${Date.now()}-ai`,
+            id: `msg-${Date.now()}-ai-${Math.random().toString(36).slice(2, 8)}`,
             role: 'assistant',
             content: fullText + '\n\n*[Stopped]*',
             timestamp: Date.now(),
