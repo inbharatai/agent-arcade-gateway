@@ -13,7 +13,7 @@
 
 [![Goal Mode](https://img.shields.io/badge/Goal_Mode-AI_Planning_%26_Tracking-8B5CF6?style=for-the-badge)](#-goal-mode)
 [![WhatsApp Control](https://img.shields.io/badge/WhatsApp_Universal_Remote-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
-[![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Deep_Integration-FF4500?style=for-the-badge)](#-openclaw--deepest-ai-brain-observability)
+[![OpenClaw Integration](https://img.shields.io/badge/OpenClaw_Adapter_(Unverified)-FF4500?style=for-the-badge)](#-openclaw--ai-brain-observability-adapter)
 [![Auto Config](https://img.shields.io/badge/Auto_Config-Inherits_API_Keys_%26_Models-7C3AED?style=for-the-badge)](#what-is-agent-arcade)
 
 [![Directive Bridge](https://img.shields.io/badge/Directive_Bridge-Console_%E2%86%94_AI_Tools-10B981?style=for-the-badge)](#directive-bridge--console--ai-tool-loop)
@@ -45,7 +45,7 @@
 - [What Is Agent Arcade?](#what-is-agent-arcade)
 - [Directive Bridge](#-directive-bridge--console--ai-tool-loop)
 - [WhatsApp Agent Control](#-whatsapp-agent-control--universal-remote-for-every-ai-agent)
-- [OpenClaw Deep Integration](#-openclaw--deepest-ai-brain-observability)
+- [OpenClaw Adapter (Unverified)](#-openclaw--ai-brain-observability-adapter)
 - [Live Dashboard](#-live-dashboard)
 - [AI Chat Console](#-ai-chat-console)
 - [Agent Intervention System](#%EF%B8%8F-agent-intervention-system)
@@ -399,7 +399,9 @@ Self-chat supports conversation history (up to 20 messages per session, 50 concu
 
 ---
 
-## OpenClaw — Deepest AI Brain Observability
+## OpenClaw — AI Brain Observability Adapter
+
+> **Status: Conceptual / Unverified.** The adapter code is structurally complete but has **not been tested against a real OpenClaw instance**. The `peerDependencies` field references `@openclaw/sdk` which does not exist on npm — the real OpenClaw package is `openclaw` with plugin SDK surfaces at `openclaw/plugin-sdk/*`. See [CLAUDE.md](CLAUDE.md) for the full integration truth requirement.
 
 <div align="center">
 
@@ -409,9 +411,9 @@ Self-chat supports conversation history (up to 20 messages per session, 50 concu
 
 <br />
 
-> **OpenClaw is the most deeply integrated framework in Agent Arcade.** Every cognitive layer — Brain, Skills, Memory, Heartbeat, and Channels — is tracked in real-time with full event granularity.
+> The adapter is **designed** to provide the deepest integration in Agent Arcade — tracking every cognitive layer (Brain, Skills, Memory, Heartbeat, Channels) with full event granularity. However, it has not yet been validated against the real OpenClaw ecosystem.
 
-While most frameworks get basic start/end tracking, OpenClaw gets **full ReAct loop visibility**: you can see exactly when the agent thinks, plans, acts, observes, and responds. Each skill execution spawns a child agent on the dashboard. Memory reads and writes appear as tool events. Heartbeat tasks show as persistent child agents. And channel messages (WhatsApp, Slack, Discord) flow through the dashboard in real-time.
+The adapter supports **full ReAct loop visibility**: think, plan, act, observe, and respond events. Each skill execution spawns a child agent on the dashboard. Memory reads and writes appear as tool events. Heartbeat tasks show as persistent child agents. And channel messages (WhatsApp, Slack, Discord) flow through the dashboard in real-time.
 
 ### Installation
 
@@ -587,7 +589,7 @@ Set `trackMemory: false`, `trackHeartbeat: false`, or `trackSkills: false` to re
 
 ### Duck-Typing — Works With Any OpenClaw-Like Instance
 
-The adapter does **not** import from `@openclaw/sdk`. It uses a minimal duck-typed interface — any object with matching property shapes is supported:
+The adapter does **not** import from `@openclaw/sdk` at runtime (note: `@openclaw/sdk` is listed as a `peerDependency` but does not exist on npm — the real package is `openclaw`). It uses a minimal duck-typed interface — any object with matching property shapes is supported:
 
 ```typescript
 // These are all compatible:
@@ -658,9 +660,9 @@ The dashboard uses a **custom 60fps canvas renderer** (not DOM) with:
 | **Retro Arcade** | Grid | Neon | Nostalgic |
 | **Cyber Lab** | Circuit | Glass | Futuristic |
 | **Campus Ops** | Grass | Hedge | Casual |
-| **Dungeon** | Stone | Dungeon | Fantasy |
-| **Terminal** | Stars | Viewport | Hacker |
-| **Holo Arena** | Circuit | Holo | Sci-fi |
+| **Deep Space Lab** | Stars | Viewport | Sci-fi |
+| **Dungeon Terminal** | Stone | Dungeon | Fantasy |
+| **Hacker Bunker** | Circuit | Terminal | Hacker |
 
 ---
 

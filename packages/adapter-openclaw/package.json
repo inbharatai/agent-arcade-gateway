@@ -9,7 +9,7 @@
     "dev": "tsc --watch"
   },
   "peerDependencies": {
-    "@openclaw/sdk": ">=0.5.0"
+    "openclaw": ">=0.5.0"
   },
   "dependencies": {
     "@agent-arcade/sdk-node": "workspace:*"
