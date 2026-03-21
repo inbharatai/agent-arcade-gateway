@@ -38,6 +38,7 @@ export function SplitPanel({
 }: SplitPanelProps) {
   const [consoleWidth, setConsoleWidth] = useState(getStoredWidth)
   const [isDragging, setIsDragging] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
@@ -74,6 +75,18 @@ export function SplitPanel({
     }
   }, [isDragging, consoleWidth])
 
+  // Keyboard shortcut: Ctrl+Shift+F to toggle expand
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'f') {
+        e.preventDefault()
+        if (consoleOpen) setExpanded(v => !v)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [consoleOpen])
+
   // Mobile: Tab switcher
   if (isMobile) {
     return (
@@ -101,28 +114,33 @@ export function SplitPanel({
   }
 
   // Desktop: Resizable split
+  // isExpanded = only true when console is also open
+  const isExpanded = expanded && consoleOpen
+
   return (
     <div ref={containerRef} className="flex h-full overflow-hidden relative">
-      {/* Left: Arcade */}
+      {/* Left: Arcade — hidden when console is expanded */}
       <div
-        className="flex-1 overflow-hidden min-w-0 transition-all duration-200"
-        style={{ minWidth: '0' }}
+        className={`overflow-hidden min-w-0 transition-all duration-200 ${isExpanded ? 'w-0 opacity-0 pointer-events-none' : 'flex-1'}`}
+        style={isExpanded ? { width: 0, flexShrink: 1, flexGrow: 0 } : {}}
       >
         {left}
       </div>
 
-      {/* Toggle button */}
-      <button
-        onClick={onToggleConsole}
-        className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 w-6 h-12 flex items-center justify-center rounded-l-lg transition-all duration-200 ${consoleOpen ? 'bg-blue-600 hover:bg-blue-500 text-white right-[var(--console-width)]' : 'bg-white/10 hover:bg-white/20 text-white/60'}`}
-        style={{ right: consoleOpen ? `${consoleWidth}px` : 0 } as React.CSSProperties}
-        title={consoleOpen ? 'Close Console (Ctrl+`)' : 'Open Console (Ctrl+`)'}
-      >
-        <span className="text-xs">{consoleOpen ? '›' : '‹'}</span>
-      </button>
+      {/* Toggle button (open/close) — hidden when expanded */}
+      {!isExpanded && (
+        <button
+          onClick={onToggleConsole}
+          className={`absolute top-1/2 -translate-y-1/2 z-20 w-6 h-12 flex items-center justify-center rounded-l-lg transition-all duration-200 ${consoleOpen ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/60'}`}
+          style={{ right: consoleOpen ? `${consoleWidth}px` : 0 }}
+          title={consoleOpen ? 'Close Console (Ctrl+`)' : 'Open Console (Ctrl+`)'}
+        >
+          <span className="text-xs">{consoleOpen ? '›' : '‹'}</span>
+        </button>
+      )}
 
-      {/* Resize handle */}
-      {consoleOpen && (
+      {/* Resize handle — hidden when expanded */}
+      {consoleOpen && !isExpanded && (
         <div
           onMouseDown={handleMouseDown}
           className={`w-1 hover:w-1.5 bg-white/5 hover:bg-blue-500/50 cursor-col-resize transition-all duration-100 shrink-0 ${isDragging ? 'w-1.5 bg-blue-500/70' : ''}`}
@@ -133,9 +151,28 @@ export function SplitPanel({
       {/* Right: Console */}
       {consoleOpen && (
         <div
-          className="shrink-0 overflow-hidden border-l border-white/10"
-          style={{ width: `${consoleWidth}px` }}
+          className="shrink-0 overflow-hidden border-l border-white/10 relative transition-all duration-200"
+          style={{ width: isExpanded ? '100%' : `${consoleWidth}px` }}
         >
+          {/* Expand / Restore button — top-right corner of console panel */}
+          <button
+            onClick={() => setExpanded(v => !v)}
+            title={isExpanded ? 'Restore panel (Ctrl+Shift+F)' : 'Expand panel (Ctrl+Shift+F)'}
+            className="absolute top-2 right-2 z-30 w-6 h-6 flex items-center justify-center rounded-md bg-white/8 hover:bg-white/15 border border-white/10 text-white/40 hover:text-white/80 transition-all"
+          >
+            {isExpanded ? (
+              // Restore icon: inward arrows
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
+                <path d="M6 2H2v4M2 2l4 4M10 14h4v-4M14 14l-4-4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              // Expand icon: outward arrows
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5">
+                <path d="M2 6V2h4M2 2l4 4M14 10v4h-4M14 14l-4-4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+
           {right}
         </div>
       )}
