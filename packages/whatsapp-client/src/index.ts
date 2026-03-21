@@ -161,7 +161,7 @@ async function handleCommand(from: string, text: string): Promise<string> {
     try {
       const res = await fetch(
         `${GATEWAY_URL}/v1/agents/${encodeURIComponent(sessionId)}/${encodeURIComponent(agentId)}/${cmd}`,
-        { method: 'POST', headers }
+        { method: 'POST', headers: gwHeaders() }
       )
       if (res.status === 404) return `Agent "${agentId}" not found in session "${sessionId}"`
       if (res.status === 429) return `Rate limited — please wait before sending more commands`
@@ -187,7 +187,7 @@ async function handleCommand(from: string, text: string): Promise<string> {
     try {
       const res = await fetch(
         `${GATEWAY_URL}/v1/agents/${encodeURIComponent(sessionId)}/${encodeURIComponent(agentId)}/redirect`,
-        { method: 'POST', headers, body: JSON.stringify({ instruction }) }
+        { method: 'POST', headers: gwHeaders(), body: JSON.stringify({ instruction }) }
       )
       if (res.status === 404) return `Agent "${agentId}" not found in session "${sessionId}"`
       if (!res.ok) return `Error: gateway returned ${res.status}`
@@ -471,11 +471,24 @@ async function startWhatsApp() {
       if (msg.key.fromMe && !isSelfChat) continue  // ignore own messages to others
 
       if (isSelfChat && SELF_CHAT_ENABLED) {
-        // Skip messages sent by the bot itself to prevent echo loops.
-        // fromMe===true is the primary guard (no race condition), with text prefix
-        // and outgoingMessageIds as fallbacks for Baileys edge cases.
-        if (msg.key.fromMe === true || text.startsWith('🎮 Console:') || outgoingMessageIds.has(msg.key.id || '')) {
-          console.log(`[whatsapp-client] Skipping bot-sent message to prevent echo loop`)
+        // Skip messages sent by the BOT itself to prevent echo loops.
+        // We rely on outgoingMessageIds (tracks IDs of messages the bot sends)
+        // and known bot text prefixes. We do NOT use fromMe here because in
+        // self-chat, both user-typed AND bot-sent messages have fromMe=true.
+        if (outgoingMessageIds.has(msg.key.id || '')) {
+          console.log(`[whatsapp-client] Skipping bot-sent message (ID matched outgoingMessageIds)`)
+          continue
+        }
+        // Text-prefix guard for bot responses that slipped past the ID check
+        // (e.g., if Baileys fires upsert before sendMessage resolves)
+        if (
+          text.startsWith('🎮 Console:') ||
+          text.startsWith('⏱️ AI response timed out') ||
+          text.startsWith('⚠️ AI error:') ||
+          text.startsWith('⚠️ Error reaching AI:') ||
+          text.startsWith('⚠️ Empty response from AI')
+        ) {
+          console.log(`[whatsapp-client] Skipping bot-prefixed message to prevent echo loop`)
           continue
         }
 
