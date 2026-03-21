@@ -1,0 +1,225 @@
+{
+  "product": "Agent Arcade Gateway",
+  "version": "3.2.0",
+  "date": "2026-03-21",
+  "summary": "A universal AI agent cockpit — a retro-pixel web UI that visualises, narrates, and lets you redirect any running AI agent. Zero-config when Claude Code is installed.",
+
+  "stories": [
+    {
+      "id": "AA-001",
+      "title": "Zero-config Claude connection",
+      "as": "a developer with Claude Code installed",
+      "want": "Agent Arcade to detect my Claude subscription automatically without entering any API key",
+      "so_that": "I can start using it immediately after cloning the repo",
+      "acceptance_criteria": [
+        "Opening the Console shows 'Claude Sonnet 4.6' in the header with no error",
+        "Settings → Providers shows 'Anthropic Claude: Connected ✓'",
+        "No API key input field exists anywhere in the UI",
+        "Works on Windows via cmd.exe /c claude fallback"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-002",
+      "title": "Live agent canvas",
+      "as": "a user",
+      "want": "to see my AI agents as pixel-art sprites on a retro game canvas",
+      "so_that": "I can visually track what every agent is doing at a glance",
+      "acceptance_criteria": [
+        "Canvas renders within 2s of page load",
+        "Each agent has a sprite, name label, and status bubble",
+        "Agents show 'Idle' state when not working",
+        "Speech bubbles update with task descriptions when agents are active"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-003",
+      "title": "Console chat with AI response",
+      "as": "a user",
+      "want": "to type a message in the Console and receive an AI response",
+      "so_that": "I can ask questions and direct agents through natural language",
+      "acceptance_criteria": [
+        "Typing a message and pressing Ctrl+Enter sends it",
+        "Response streams back and appears in the chat panel",
+        "Message counter increments ('2 msgs')",
+        "Canvas agents display the response in speech bubbles",
+        "Cost counter updates after each response",
+        "Feed bar shows the completed task"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-004",
+      "title": "Agent intervention",
+      "as": "a user",
+      "want": "to click an agent in the roster and redirect it mid-task",
+      "so_that": "I can course-correct agents without killing them",
+      "acceptance_criteria": [
+        "Clicking an agent in the AGENT ROSTER opens an intervention panel",
+        "Panel shows agent name, status, Pause and Stop buttons",
+        "REDIRECT THIS AGENT text input is present",
+        "Quick-direction chips ('Use JWT instead of sessions', etc.) are shown",
+        "'Send New Direction →' button is visible"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-005",
+      "title": "Goal Mode — multi-agent orchestration",
+      "as": "a user",
+      "want": "to describe a high-level goal and have it broken into agent tasks automatically",
+      "so_that": "complex projects get parallelised without manual task decomposition",
+      "acceptance_criteria": [
+        "Clicking 'Goal Mode' tab shows a goal description input",
+        "Example prompts are displayed below the input",
+        "Header shows 'Supervised Multi-Agent Orchestration'",
+        "Auto / + New / ↓ Export controls are present"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-006",
+      "title": "Command palette",
+      "as": "a power user",
+      "want": "to press Ctrl+K and get a searchable list of commands",
+      "so_that": "I can drive the tool entirely from the keyboard",
+      "acceptance_criteria": [
+        "Ctrl+K opens the command palette overlay",
+        "Palette shows /fix, /explain, /test, /review, /opt, /docs commands",
+        "Palette is searchable / filterable",
+        "Pressing Escape closes it"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-007",
+      "title": "Theme switching",
+      "as": "a user",
+      "want": "to switch between 8 visual themes for the canvas",
+      "so_that": "the tool feels personal and fits my workspace vibe",
+      "acceptance_criteria": [
+        "Clicking the palette icon in the toolbar opens the theme picker",
+        "All 8 themes listed: Office, War Room, Retro Arcade, Cyber Lab, Campus Ops, Deep Space Lab, Dungeon Terminal, Hacker Bunker",
+        "Selecting a theme applies it instantly — canvas colour and subtitle change",
+        "Currently active theme is highlighted in the picker"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-008",
+      "title": "Provider settings — status only, no key entry",
+      "as": "a user",
+      "want": "the Settings → Providers tab to show connection status without asking for keys",
+      "so_that": "there is no confusion about where to paste credentials",
+      "acceptance_criteria": [
+        "No <input> fields exist in the Providers tab",
+        "Each provider shows 'Connected ✓' or 'Not detected' badge",
+        "Claude auto-detected via Claude Code shows green",
+        "OpenAI/Gemini/Ollama show env var hint when not detected",
+        "Header reads 'Providers are detected automatically — no API keys needed.'"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-009",
+      "title": "Debug / event feed overlay",
+      "as": "a developer",
+      "want": "to toggle a live event feed without losing the canvas",
+      "so_that": "I can debug agent telemetry without navigating away",
+      "acceptance_criteria": [
+        "Clicking the bug icon in the toolbar opens the debug panel",
+        "Panel overlays the bottom of the canvas — canvas top remains visible",
+        "Panel shows session status line (Status, Transport, Agents, Events)",
+        "Timestamped event log entries are displayed",
+        "Clicking the bug icon again closes the panel"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-010",
+      "title": "XP / cost gamification bar",
+      "as": "a user",
+      "want": "to see my XP level, achievement count, and session cost at the bottom",
+      "so_that": "I have a fun sense of progression and budget awareness",
+      "acceptance_criteria": [
+        "Bottom bar always shows: Level N, XP progress bar, 🏆 N achievements, 💰 $X.XXXX cost",
+        "Cost counter increases after each AI response",
+        "XP counter increments as actions are performed"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-011",
+      "title": "WhatsApp integration setup",
+      "as": "a user",
+      "want": "to see clear instructions for connecting WhatsApp to control agents from my phone",
+      "so_that": "I can direct agents while away from my desk",
+      "acceptance_criteria": [
+        "Settings → WhatsApp tab shows connection status",
+        "When not connected, shows 'Error' status with startup instructions",
+        "Instructions show correct bun run command and gateway URL",
+        "Panel explains QR code scan flow"
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "AA-012",
+      "title": "Windows CLI spawn compatibility",
+      "as": "a Windows user with Claude Code installed",
+      "want": "the gateway and web server to correctly invoke the claude CLI",
+      "so_that": "I don't get 'No Anthropic API key detected' errors despite having Claude Code",
+      "acceptance_criteria": [
+        "gateway/src/index.ts uses cmd.exe /c claude on Windows",
+        "web/src/app/api/chat/route.ts uses cmd.exe /c claude on Windows",
+        "gateway/src/directive-bridge.ts uses cmd.exe /c claude on Windows",
+        "IS_WIN constant and claudeSpawnArgs helper present in gateway",
+        "No EINVAL errors spawning claude on Windows"
+      ],
+      "status": "PASS"
+    }
+  ],
+
+  "known_issues": [
+    {
+      "id": "KI-001",
+      "severity": "low",
+      "description": "Debug panel covers ~50% of canvas height when open (not the full canvas as in the previous bug, but still partially obscuring)",
+      "workaround": "Close the debug panel when not needed; agents remain visible in the top portion"
+    },
+    {
+      "id": "KI-002",
+      "severity": "low",
+      "description": "WhatsApp tab shows 'Error' status even when the client simply hasn't been started — no distinction between 'not started' and 'crashed'",
+      "workaround": "Follow the startup instructions shown in the panel"
+    },
+    {
+      "id": "KI-003",
+      "severity": "info",
+      "description": "Ollama listed as auto-detected in ProviderSettings but gateway only checks it in /v1/chat/providers, not exposed in the web /api/chat GET fallback",
+      "workaround": "Ollama works end-to-end via gateway; direct web fallback path doesn't enumerate it"
+    }
+  ],
+
+  "browser_test_results": {
+    "date": "2026-03-21",
+    "environment": "Windows 11, Chrome, localhost:47380",
+    "flows": [
+      {"flow": "App load", "result": "PASS"},
+      {"flow": "Console open — no API key error", "result": "PASS"},
+      {"flow": "Goal Mode tab", "result": "PASS"},
+      {"flow": "Ctrl+K command palette", "result": "PASS"},
+      {"flow": "Settings → Console tab", "result": "PASS"},
+      {"flow": "Settings → Providers tab (status-only, Claude connected)", "result": "PASS"},
+      {"flow": "Settings → Language tab", "result": "PASS"},
+      {"flow": "Settings → Appearance tab", "result": "PASS"},
+      {"flow": "Settings → WhatsApp tab", "result": "PASS"},
+      {"flow": "Agent roster click → intervention panel", "result": "PASS"},
+      {"flow": "XP / cost bar display", "result": "PASS"},
+      {"flow": "Theme switching (all 8 themes)", "result": "PASS"},
+      {"flow": "Debug panel overlay (canvas stays visible)", "result": "PASS"},
+      {"flow": "End-to-end Console chat → AI response → canvas bubbles", "result": "PASS"}
+    ],
+    "pass_rate": "14/14 (100%)"
+  }
+}

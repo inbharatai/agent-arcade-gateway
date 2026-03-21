@@ -891,7 +891,7 @@ The Settings panel (7 tabs) is accessible from the toolbar:
 | Tab | What It Controls |
 |-----|-----------------|
 | **Console** | Default AI model (auto-detected from running agents), token count display, cost estimates, history retention |
-| **Providers** | Auto-detected status for Anthropic / OpenAI / Gemini / Mistral — shows "Auto" when keys are inherited from environment. One-click "Add Key" for manual entry — keys stored in browser localStorage (not encrypted client-side; use server-side env vars for production). |
+| **Providers** | Read-only connection status for Anthropic / OpenAI / Gemini / Mistral / Ollama. Claude is auto-detected via Claude Code CLI or OAuth token. Other providers activate via server-side env vars (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.) — no key entry in the browser. |
 | **Language** | 20-language detection for console input (Hindi, Hinglish, Arabic, CJK, and more) |
 | **Appearance** | Console font size, code font (Mono / Fira Code / JetBrains Mono), animation speed, compact mode |
 | **WhatsApp** | Auto-generated QR code to pair your personal WhatsApp — scan once, control agents from your phone. Gateway auto-starts the client. |

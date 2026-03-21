@@ -54,3 +54,14 @@ scripts/e2e-*.mjs
 
 # Auto-generated
 next-env.d.ts
+
+# SQLite databases (runtime data)
+*.db
+*.db-shm
+*.db-wal
+
+# Claude Code settings (local only)
+.claude/
+
+# Bun lockfile (track at package level, not root)
+/bun.lock

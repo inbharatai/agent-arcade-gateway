@@ -1,7 +1,7 @@
 {
   "name": "@agent-arcade/gateway",
-  "version": "3.8.0",
-  "description": "Agent Arcade telemetry relay gateway — WebSocket + SSE + HTTP ingest",
+  "version": "3.8.1",
+  "description": "Agent Arcade telemetry relay gateway \u00e2\u20ac\u201d WebSocket + SSE + HTTP ingest",
   "private": true,
   "scripts": {
     "dev": "bun --hot src/index.ts",
